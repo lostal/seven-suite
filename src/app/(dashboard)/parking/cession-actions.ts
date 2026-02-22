@@ -1,10 +1,10 @@
 "use server";
 
 /**
- * Cession Actions
+ * Acciones de cesión
  *
- * Server Actions for management users to cede their assigned
- * parking spots on specific dates.
+ * Server Actions para que los directivos cedan sus plazas asignadas
+ * en fechas específicas.
  */
 
 import { actionClient, success, error, type ActionResult } from "@/lib/actions";
@@ -17,12 +17,12 @@ import {
 } from "@/lib/queries/cessions";
 
 /**
- * Create cessions for multiple dates.
+ * Crea cesiones para múltiples fechas.
  *
- * Business rules:
- * - User must be management or admin
- * - User must own the spot (assigned_to = user.id)
- * - One cession per spot per date
+ * Reglas de negocio:
+ * - El usuario debe ser directivo o administrador
+ * - El usuario debe ser propietario de la plaza (assigned_to = user.id)
+ * - Una cesión por plaza por fecha
  */
 export const createCession = actionClient
   .schema(createCessionSchema)
@@ -40,12 +40,14 @@ export const createCession = actionClient
     const supabase = await createClient();
 
     // Verify user owns the spot
-    const { data: spot } = await supabase
+    const { data: spot, error: spotError } = await supabase
       .from("spots")
       .select("id, assigned_to")
       .eq("id", parsedInput.spot_id)
-      .single();
+      .maybeSingle();
 
+    if (spotError)
+      throw new Error(`Error al verificar plaza: ${spotError.message}`);
     if (!spot) throw new Error("Plaza no encontrada");
     if (spot.assigned_to !== user.id) {
       throw new Error("Solo puedes ceder tu propia plaza");
@@ -76,11 +78,11 @@ export const createCession = actionClient
   });
 
 /**
- * Cancel a cession.
+ * Cancela una cesión.
  *
- * Business rules:
- * - User must own the cession
- * - Cannot cancel if the cession has already been reserved
+ * Reglas de negocio:
+ * - El usuario debe ser el propietario de la cesión
+ * - No se puede cancelar si la cesión ya ha sido reservada
  */
 export const cancelCession = actionClient
   .schema(cancelCessionSchema)
@@ -160,8 +162,8 @@ export const cancelCession = actionClient
   });
 
 /**
- * Get the current user's active cessions.
- * Wrapper action for client components to call.
+ * Obtiene las cesiones activas del usuario actual.
+ * Wrapper de acción para que los componentes cliente puedan llamarla.
  */
 export async function getMyCessions(): Promise<
   ActionResult<CessionWithDetails[]>

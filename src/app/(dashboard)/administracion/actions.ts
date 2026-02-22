@@ -1,10 +1,10 @@
 "use server";
 
 /**
- * Admin Actions
+ * Acciones de administración
  *
- * Server Actions for admin-only operations:
- * spot CRUD, user role management, and spot assignment.
+ * Server Actions exclusivas para administradores:
+ * CRUD de plazas, gestión de roles de usuario y asignación de plazas.
  */
 
 import { actionClient } from "@/lib/actions";
@@ -24,7 +24,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // ─── Spot CRUD ───────────────────────────────────────────────
 
 /**
- * Create a new parking spot.
+ * Crea una nueva plaza de aparcamiento.
  */
 export const createSpot = actionClient
   .schema(createSpotSchema)
@@ -56,7 +56,7 @@ export const createSpot = actionClient
   });
 
 /**
- * Update an existing parking spot.
+ * Actualiza una plaza de aparcamiento existente.
  */
 export const updateSpot = actionClient
   .schema(updateSpotSchema)
@@ -80,8 +80,8 @@ export const updateSpot = actionClient
   });
 
 /**
- * Delete a parking spot.
- * Cascade deletes related reservations/cessions (DB constraint).
+ * Elimina una plaza de aparcamiento.
+ * Elimina en cascada reservas y cesiones relacionadas (restricción de BD).
  */
 export const deleteSpot = actionClient
   .schema(deleteSpotSchema)
@@ -105,7 +105,7 @@ export const deleteSpot = actionClient
 // ─── User Role Management ───────────────────────────────────
 
 /**
- * Update a user's role (admin only).
+ * Actualiza el rol de un usuario (solo administradores).
  */
 export const updateUserRole = actionClient
   .schema(updateUserRoleSchema)
@@ -129,12 +129,12 @@ export const updateUserRole = actionClient
 // ─── Assign Spot to Management User ─────────────────────────
 
 /**
- * Assign (or unassign) a management spot to a user.
+ * Asigna (o desasigna) una plaza de dirección a un usuario.
  *
- * Rules:
- *   - Only management-type spots can be assigned.
- *   - A spot can only be assigned to one user at a time.
- *   - Passing spot_id = null removes the assignment.
+ * Reglas:
+ *   - Solo se pueden asignar plazas de tipo dirección.
+ *   - Una plaza solo puede estar asignada a un usuario a la vez.
+ *   - Pasar spot_id = null elimina la asignación.
  */
 export const assignSpotToUser = actionClient
   .schema(assignSpotToUserSchema)
@@ -192,7 +192,7 @@ export const assignSpotToUser = actionClient
 // ─── Delete User Account ─────────────────────────────────────
 
 /**
- * Permanently delete a user account (auth + cascade profile).
+ * Elimina permanentemente una cuenta de usuario (auth + cascade perfil).
  */
 export const deleteUser = actionClient
   .schema(deleteUserSchema)

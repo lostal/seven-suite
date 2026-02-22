@@ -86,8 +86,8 @@ export const getCalendarMonthData = actionClient
     // Rango de fechas del mes
     const year = monthStart.getFullYear();
     const month = monthStart.getMonth();
-    const firstDay = new Date(year, month, 1).toISOString().split("T")[0];
-    const lastDay = new Date(year, month + 1, 0).toISOString().split("T")[0];
+    const firstDay = new Date(year, month, 1).toISOString().split("T")[0]!;
+    const lastDay = new Date(year, month + 1, 0).toISOString().split("T")[0]!;
 
     if (role === "management" || role === "admin") {
       // ── Directivo: necesita su plaza asignada y sus cesiones ──
@@ -119,7 +119,7 @@ export const getCalendarMonthData = actionClient
       // Iteramos todos los días del mes
       const current = new Date(year, month, 1);
       while (current.getMonth() === month) {
-        const dateStr = current.toISOString().split("T")[0] as string;
+        const dateStr = current.toISOString().split("T")[0]!;
         const cession = cessionsByDate.get(dateStr);
 
         let status: ManagementDayStatus;
@@ -234,7 +234,7 @@ export const getCalendarMonthData = actionClient
       const current = new Date(year, month, 1);
 
       while (current.getMonth() === month) {
-        const dateStr = current.toISOString().split("T")[0] as string;
+        const dateStr = current.toISOString().split("T")[0]!;
         const myRes = myReservationByDate.get(dateStr);
         const reserved = reservedByDate.get(dateStr) ?? new Set();
         const cededAvail = cededAvailableByDate.get(dateStr) ?? 0;

@@ -1,14 +1,14 @@
 /**
- * Authentication Helpers
+ * Helpers de autenticación
  *
- * Server-side auth utilities for user verification and authorization.
- * These functions run on the server and handle redirects automatically.
+ * Utilidades de servidor para verificación y autorización de usuarios.
+ * Estas funciones se ejecutan en el servidor y gestionan redirecciones automáticamente.
  *
- * Usage:
- *   - getCurrentUser() - Returns user + profile or null if not authenticated
- *   - requireAuth() - Returns user + profile or redirects to /login
- *   - requireAdmin() - Returns admin user or redirects to /dashboard
- *   - requireManagement() - Returns management/admin user or redirects
+ * Uso:
+ *   - getCurrentUser() - Devuelve usuario + perfil o null si no está autenticado
+ *   - requireAuth() - Devuelve usuario + perfil o redirige a /login
+ *   - requireAdmin() - Devuelve usuario admin o redirige al dashboard
+ *   - requireManagement() - Devuelve usuario directivo/admin o redirige
  */
 
 import { redirect } from "next/navigation";
@@ -23,8 +23,8 @@ export interface AuthUser {
 }
 
 /**
- * Get the current authenticated user with their profile
- * @returns User object with profile or null if not authenticated
+ * Obtiene el usuario autenticado actual con su perfil.
+ * @returns Objeto de usuario con perfil o null si no está autenticado
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const supabase = await createClient();
@@ -43,7 +43,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     .from("profiles")
     .select("*")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   return {
     id: user.id,
@@ -53,9 +53,9 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 }
 
 /**
- * Require authentication - redirects to login if not authenticated
- * Use this in protected layouts/pages
- * @returns Authenticated user with profile
+ * Requiere autenticación — redirige a /login si no está autenticado.
+ * Usar en layouts/páginas protegidas.
+ * @returns Usuario autenticado con perfil
  */
 export async function requireAuth(): Promise<AuthUser> {
   const user = await getCurrentUser();
@@ -68,9 +68,9 @@ export async function requireAuth(): Promise<AuthUser> {
 }
 
 /**
- * Require admin role - redirects to dashboard if not admin
- * Use this in admin-only pages/layouts
- * @returns Admin user with profile
+ * Requiere rol de administrador — redirige al dashboard si no es admin.
+ * Usar en páginas/layouts exclusivos de administración.
+ * @returns Usuario admin con perfil
  */
 export async function requireAdmin(): Promise<AuthUser> {
   const user = await requireAuth();
@@ -83,9 +83,9 @@ export async function requireAdmin(): Promise<AuthUser> {
 }
 
 /**
- * Require management or admin role
- * Use this for features like cession management
- * @returns Management/admin user with profile
+ * Requiere rol de directivo o administrador.
+ * Usar para funcionalidades como la gestión de cesiones.
+ * @returns Usuario directivo/admin con perfil
  */
 export async function requireManagement(): Promise<AuthUser> {
   const user = await requireAuth();

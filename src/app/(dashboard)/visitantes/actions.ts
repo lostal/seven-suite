@@ -149,7 +149,7 @@ export const createVisitorReservation = actionClient
       .from("spots")
       .select("label")
       .eq("id", parsedInput.spot_id)
-      .single();
+      .maybeSingle();
 
     const spotLabel = spotData?.label ?? parsedInput.spot_id;
     const reservedByName = user.profile?.full_name ?? user.email;
@@ -226,7 +226,7 @@ export const updateVisitorReservation = actionClient
       .from("spots")
       .select("label")
       .eq("id", parsedInput.spot_id)
-      .single();
+      .maybeSingle();
 
     const spotLabel = spotData?.label ?? parsedInput.spot_id;
     const reservedByName = user.profile?.full_name ?? user.email;
@@ -293,6 +293,15 @@ export const updateVisitorReservation = actionClient
  * Cancela una reserva de visitante y envía email de cancelación.
  * Solo puede cancelar el empleado que la creó o un administrador.
  */
+/** Tipo interno para la query pre-cancelación de visitante */
+type VisitorReservationForCancel = {
+  visitor_email: string;
+  visitor_name: string;
+  visitor_company: string;
+  date: string;
+  spots: { label: string } | null;
+};
+
 export const cancelVisitorReservation = actionClient
   .schema(cancelVisitorReservationSchema)
   .action(async ({ parsedInput }) => {
@@ -311,9 +320,10 @@ export const cancelVisitorReservation = actionClient
       .eq("id", parsedInput.id)
       .eq("status", "confirmed");
 
-    const { data: reservation } = await (
+    const { data: rawReservation } = await (
       isAdmin ? fetchBase : fetchBase.eq("reserved_by", user.id)
-    ).single();
+    ).maybeSingle();
+    const reservation = rawReservation as VisitorReservationForCancel | null;
 
     if (!reservation) {
       throw new Error("Reserva no encontrada o sin permisos para cancelarla");
@@ -333,8 +343,7 @@ export const cancelVisitorReservation = actionClient
 
     // Enviar email de cancelación con ICS METHOD:CANCEL (no bloqueante)
     try {
-      const spotLabel =
-        (reservation.spots as { label: string } | null)?.label ?? "";
+      const spotLabel = reservation.spots?.label ?? "";
       const formattedDate = format(
         new Date(reservation.date + "T00:00:00"),
         "EEEE, d 'de' MMMM 'de' yyyy",

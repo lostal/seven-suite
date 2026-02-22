@@ -59,7 +59,7 @@ export function useUser(): UseUserReturn {
             .from("profiles")
             .select("*")
             .eq("id", authUser.id)
-            .single();
+            .maybeSingle();
 
           if (mounted) {
             setProfile(profileData);
@@ -100,7 +100,7 @@ export function useUser(): UseUserReturn {
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
-          .single();
+          .maybeSingle();
 
         if (mounted) {
           setProfile(profileData);
