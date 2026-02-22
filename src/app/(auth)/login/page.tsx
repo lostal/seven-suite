@@ -75,12 +75,22 @@ export default function LoginPage() {
       <div className="lg:p-8">
         <div className="mx-auto flex w-full flex-col justify-center space-y-2 py-8 sm:w-120 sm:p-8">
           <div className="mb-4 flex items-center justify-center">
+            {/* Logo modo claro */}
             <Image
-              src="/logo.png"
+              src="/logo-light.png"
               alt="GRUPOSIETE Parking"
               width={240}
               height={80}
-              className="h-20 w-auto"
+              className="h-20 w-auto dark:hidden"
+              priority
+            />
+            {/* Logo modo oscuro */}
+            <Image
+              src="/logo-dark.png"
+              alt="GRUPOSIETE Parking"
+              width={240}
+              height={80}
+              className="hidden h-20 w-auto dark:block"
               priority
             />
           </div>
@@ -230,11 +240,20 @@ export default function LoginPage() {
 
       {/* Right Column - Mockup */}
       <div className="bg-muted relative hidden h-full overflow-hidden lg:block">
+        {/* Mockup modo claro */}
         <Image
-          src="/mockup.png"
+          src="/mockup-light.png"
           alt="GRUPOSIETE Parking"
           fill
-          className="object-cover object-top select-none"
+          className="object-cover object-top select-none dark:hidden"
+          priority
+        />
+        {/* Mockup modo oscuro */}
+        <Image
+          src="/mockup-dark.png"
+          alt="GRUPOSIETE Parking"
+          fill
+          className="hidden object-cover object-top select-none dark:block"
           priority
         />
       </div>
