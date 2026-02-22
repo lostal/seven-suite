@@ -6,3 +6,4 @@
  */
 
 export { useUser } from "./use-user";
+export { useMounted } from "./use-mounted";

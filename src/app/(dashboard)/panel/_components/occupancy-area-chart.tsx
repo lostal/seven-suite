@@ -8,7 +8,6 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   Area,
   AreaChart,
@@ -19,14 +18,14 @@ import {
   YAxis,
 } from "recharts";
 import type { DailyCount } from "@/lib/queries/stats";
+import { useMounted } from "@/hooks";
 
 interface OccupancyAreaChartProps {
   data: DailyCount[];
 }
 
 export function OccupancyAreaChart({ data }: OccupancyAreaChartProps) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   const total = data.length;
 

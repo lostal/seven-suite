@@ -8,7 +8,6 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   Bar,
   BarChart,
@@ -20,6 +19,7 @@ import {
   YAxis,
 } from "recharts";
 import type { DailyCount } from "@/lib/queries/stats";
+import { useMounted } from "@/hooks";
 
 interface ReservationsOverviewChartProps {
   data: DailyCount[];
@@ -34,8 +34,7 @@ function tickFormatter(value: string, index: number, total: number): string {
 export function ReservationsOverviewChart({
   data,
 }: ReservationsOverviewChartProps) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   const total = data.length;
 
