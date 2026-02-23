@@ -35,25 +35,25 @@ export function DataTableColumnHeader<TData, TValue>({
           <Button
             variant="ghost"
             size="sm"
-            className="data-[state=open]:bg-accent -ml-3 h-8"
+            className="data-[state=open]:bg-accent -ms-2 h-8 px-2"
           >
             <span>{title}</span>
             {column.getIsSorted() === "desc" ? (
-              <ArrowDown className="ml-2 h-4 w-4" />
+              <ArrowDown className="ms-2 size-3.5" />
             ) : column.getIsSorted() === "asc" ? (
-              <ArrowUp className="ml-2 h-4 w-4" />
+              <ArrowUp className="ms-2 size-3.5" />
             ) : (
-              <ChevronsUpDown className="ml-2 h-4 w-4" />
+              <ChevronsUpDown className="ms-2 size-3.5" />
             )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
-            <ArrowUp className="text-muted-foreground/70 mr-2 h-3.5 w-3.5" />
+            <ArrowUp className="text-muted-foreground/70 size-3.5" />
             Asc
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
-            <ArrowDown className="text-muted-foreground/70 mr-2 h-3.5 w-3.5" />
+            <ArrowDown className="text-muted-foreground/70 size-3.5" />
             Desc
           </DropdownMenuItem>
         </DropdownMenuContent>

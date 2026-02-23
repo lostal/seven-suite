@@ -38,7 +38,7 @@ export default async function DashboardLayout({
   const dbTheme = prefs?.theme ?? "system";
 
   return (
-    <SearchProvider>
+    <SearchProvider role={(user.profile?.role ?? "employee") as UserRole}>
       <SidebarProvider defaultOpen={defaultOpen}>
         <SkipToMain />
         <ThemeSync dbTheme={dbTheme} />

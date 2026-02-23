@@ -9,19 +9,22 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { CommandMenu } from "@/components/command-menu";
+import type { UserRole } from "@/lib/supabase/types";
 
 type SearchContextType = {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  role: UserRole;
 };
 
 const SearchContext = createContext<SearchContextType | null>(null);
 
 type SearchProviderProps = {
   children: React.ReactNode;
+  role: UserRole;
 };
 
-export function SearchProvider({ children }: SearchProviderProps) {
+export function SearchProvider({ children, role }: SearchProviderProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
   }, []);
 
   return (
-    <SearchContext value={{ open, setOpen }}>
+    <SearchContext value={{ open, setOpen, role }}>
       {children}
       <CommandMenu />
     </SearchContext>

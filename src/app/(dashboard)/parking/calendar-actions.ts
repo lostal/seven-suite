@@ -42,6 +42,8 @@ export interface CalendarDayData {
   availableCount?: number;
   /** ID de reserva del usuario ese día (para empleado) */
   myReservationId?: string;
+  /** Label de la plaza reservada por el usuario (para empleado) */
+  myReservationSpotLabel?: string;
   /** ID de cesión del directivo ese día */
   myCessionId?: string;
   /** Estado de la cesión si existe */
@@ -188,7 +190,7 @@ export const getCalendarMonthData = actionClient
           .neq("status", "cancelled"),
         supabase
           .from("reservations")
-          .select("id, date")
+          .select("id, date, spot:spots(label)")
           .eq("user_id", user.id)
           .gte("date", firstDay)
           .lte("date", lastDay)
@@ -238,9 +240,17 @@ export const getCalendarMonthData = actionClient
       }
 
       // Mis reservas
-      const myReservationByDate = new Map<string, { id: string }>();
+      const myReservationByDate = new Map<
+        string,
+        { id: string; spotLabel?: string }
+      >();
       for (const r of myReservationsData.data ?? []) {
-        myReservationByDate.set(r.date, { id: r.id });
+        const spotLabel = (r as unknown as { spot: { label: string } | null })
+          .spot?.label;
+        myReservationByDate.set(r.date, {
+          id: r.id,
+          spotLabel: spotLabel ?? undefined,
+        });
       }
 
       const days: CalendarDayData[] = [];
@@ -292,6 +302,7 @@ export const getCalendarMonthData = actionClient
           employeeStatus: status,
           availableCount,
           myReservationId: myRes?.id,
+          myReservationSpotLabel: myRes?.spotLabel,
         });
 
         current.setDate(current.getDate() + 1);

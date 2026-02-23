@@ -38,9 +38,7 @@ export function buildSpotsColumns(profiles: Profile[]): ColumnDef<Spot>[] {
     },
     {
       accessorKey: "type",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Tipo" />
-      ),
+      header: "Tipo",
       cell: ({ row }) => {
         const type = row.getValue<string>("type");
         const config = spotTypeOptions.find((o) => o.value === type);
@@ -89,9 +87,7 @@ export function buildSpotsColumns(profiles: Profile[]): ColumnDef<Spot>[] {
     },
     {
       accessorKey: "is_active",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Estado" />
-      ),
+      header: "Estado",
       cell: ({ row }) => {
         const active = row.getValue<boolean>("is_active");
         return active ? (

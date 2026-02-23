@@ -11,12 +11,12 @@
 import Link from "next/link";
 import { useTransition } from "react";
 import {
-  BadgeCheck,
   CalendarCheck,
   ChevronsUpDown,
   LogOut,
   Loader2,
   Repeat2,
+  User,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { signOutAction } from "@/lib/supabase/sign-out";
@@ -135,8 +135,8 @@ export function NavUser() {
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <Link href={ROUTES.SETTINGS}>
-                  <BadgeCheck />
-                  Mi Cuenta
+                  <User />
+                  Perfil
                 </Link>
               </DropdownMenuItem>
               {reservationLink && (

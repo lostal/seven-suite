@@ -44,6 +44,8 @@ interface EmployeeDaySheetProps {
   date: string | null;
   /** ID de reserva existente del usuario para este día (si la hay) */
   myReservationId?: string;
+  /** Label de la plaza reservada (ej. "A-12") */
+  myReservationSpotLabel?: string;
   /** Plazas disponibles conocidas desde el calendario (evita pop de altura en skeleton) */
   availableCount?: number;
   onClose: () => void;
@@ -54,6 +56,7 @@ interface EmployeeDaySheetProps {
 export function EmployeeDaySheet({
   date,
   myReservationId,
+  myReservationSpotLabel,
   availableCount,
   onClose,
   onActionSuccess,
@@ -68,9 +71,11 @@ export function EmployeeDaySheet({
   // Congela los valores visibles mientras el sheet se cierra para evitar pop visual.
   // Solo se actualizan cuando el sheet está abierto (isOpen=true).
   const stableReservationId = React.useRef(myReservationId);
+  const stableSpotLabel = React.useRef(myReservationSpotLabel);
   const stableSkeletonCount = React.useRef(availableCount ?? 3);
   if (isOpen) {
     stableReservationId.current = myReservationId;
+    stableSpotLabel.current = myReservationSpotLabel;
     if (availableCount !== undefined)
       stableSkeletonCount.current = availableCount;
   }
@@ -170,7 +175,11 @@ export function EmployeeDaySheet({
                     <CheckCircle2 className="size-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">Plaza reservada</p>
+                    <p className="text-sm font-semibold">
+                      {stableSpotLabel.current
+                        ? `Plaza ${stableSpotLabel.current}`
+                        : "Plaza reservada"}
+                    </p>
                     <p className="text-muted-foreground text-xs">
                       Tu reserva para este día está confirmada
                     </p>

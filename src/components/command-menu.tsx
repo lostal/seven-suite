@@ -28,7 +28,7 @@ import { updateTheme } from "@/app/(dashboard)/ajustes/actions";
 export function CommandMenu() {
   const router = useRouter();
   const { setTheme } = useTheme();
-  const { open, setOpen } = useSearch();
+  const { open, setOpen, role } = useSearch();
 
   const runCommand = React.useCallback(
     (command: () => unknown) => {
@@ -43,13 +43,27 @@ export function CommandMenu() {
     void updateTheme({ theme });
   };
 
+  // Filter nav items by role, same logic as AppSidebar
+  const filteredNavGroups = React.useMemo(
+    () =>
+      sidebarData.navGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter(
+            (item) => !item.roles || item.roles.includes(role)
+          ),
+        }))
+        .filter((group) => group.items.length > 0),
+    [role]
+  );
+
   return (
     <CommandDialog modal open={open} onOpenChange={setOpen}>
       <CommandInput placeholder="Escribe un comando o busca..." />
       <CommandList>
         <ScrollArea type="hover" className="h-72 pe-1">
           <CommandEmpty>No se encontraron resultados.</CommandEmpty>
-          {sidebarData.navGroups.map((group) => (
+          {filteredNavGroups.map((group) => (
             <CommandGroup key={group.title} heading={group.title}>
               {group.items.map((navItem, i) => {
                 if (navItem.url)

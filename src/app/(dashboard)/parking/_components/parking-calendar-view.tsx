@@ -198,6 +198,11 @@ export function ParkingCalendarView({
               ? dayData.get(employeeSheetDate)?.myReservationId
               : undefined
           }
+          myReservationSpotLabel={
+            employeeSheetDate
+              ? dayData.get(employeeSheetDate)?.myReservationSpotLabel
+              : undefined
+          }
           availableCount={
             employeeSheetDate
               ? dayData.get(employeeSheetDate)?.availableCount

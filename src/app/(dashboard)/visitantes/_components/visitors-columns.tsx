@@ -23,6 +23,7 @@ export const visitantesColumns: ColumnDef<VisitorReservationWithDetails>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Fecha" />
     ),
+    meta: {},
     cell: ({ row }) => {
       const dateStr = row.getValue<string>("date");
       return (
@@ -37,9 +38,7 @@ export const visitantesColumns: ColumnDef<VisitorReservationWithDetails>[] = [
   },
   {
     accessorKey: "spot_label",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Plaza" />
-    ),
+    header: "Plaza",
     cell: ({ row }) => (
       <Badge variant="outline" className="font-mono font-semibold">
         {row.getValue("spot_label")}
@@ -51,15 +50,14 @@ export const visitantesColumns: ColumnDef<VisitorReservationWithDetails>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Visitante" />
     ),
+    meta: {},
     cell: ({ row }) => (
       <span className="font-medium">{row.getValue("visitor_name")}</span>
     ),
   },
   {
     accessorKey: "visitor_company",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Empresa" />
-    ),
+    header: "Empresa",
     cell: ({ row }) => (
       <span className="text-muted-foreground">
         {row.getValue("visitor_company")}
@@ -69,9 +67,7 @@ export const visitantesColumns: ColumnDef<VisitorReservationWithDetails>[] = [
   },
   {
     accessorKey: "visitor_email",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Email" />
-    ),
+    header: "Email",
     cell: ({ row }) => (
       <span className="text-muted-foreground text-sm">
         {row.getValue("visitor_email")}
@@ -81,9 +77,7 @@ export const visitantesColumns: ColumnDef<VisitorReservationWithDetails>[] = [
   },
   {
     accessorKey: "reserved_by_name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Reservado por" />
-    ),
+    header: "Reservado por",
     cell: ({ row }) => (
       <span className="text-muted-foreground text-sm">
         {row.getValue("reserved_by_name")}
@@ -93,9 +87,7 @@ export const visitantesColumns: ColumnDef<VisitorReservationWithDetails>[] = [
   },
   {
     accessorKey: "notification_sent",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Email" />
-    ),
+    header: "Email",
     cell: ({ row }) => {
       const sent = row.getValue<boolean>("notification_sent");
       return sent ? (
