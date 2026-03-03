@@ -2,6 +2,8 @@
  * Admin Settings — Configuración de Parking
  */
 
+export const dynamic = "force-dynamic";
+
 import { getAllResourceConfigs } from "@/lib/config";
 import { ContentSection } from "@/components/content-section";
 import { ResourceConfigForm } from "../_components/resource-config-form";

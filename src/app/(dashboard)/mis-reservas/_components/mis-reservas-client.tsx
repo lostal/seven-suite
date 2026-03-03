@@ -524,51 +524,40 @@ export function MisReservasClient({
 
   // ── Secciones reutilizables ───────────────────────────────
 
-  const reservationsSection = (
-    <>
-      {hasReservations ? (
-        <GroupedList
-          items={mergedReservations}
-          renderItem={(item) => (
-            <ReservationRow
-              key={item.id}
-              reservation={item}
-              cancellingId={cancellingId}
-              onCancel={handleCancelReservation}
-            />
-          )}
-        />
-      ) : (
-        <EmptyState
-          hasParkingSpot={hasParkingSpot}
-          hasOfficeSpot={hasOfficeSpot}
+  const reservationsSection = hasReservations ? (
+    <GroupedList
+      items={mergedReservations}
+      renderItem={(item) => (
+        <ReservationRow
+          key={item.id}
+          reservation={item}
+          cancellingId={cancellingId}
+          onCancel={handleCancelReservation}
         />
       )}
-    </>
+    />
+  ) : (
+    <EmptyState hasParkingSpot={hasParkingSpot} hasOfficeSpot={hasOfficeSpot} />
   );
 
-  const cessionsSection = (
-    <>
-      {hasCessions ? (
-        <GroupedList
-          items={cessions}
-          renderItem={(item) => (
-            <CessionRow
-              key={item.id}
-              cession={item}
-              cancellingId={cancellingId}
-              onCancel={handleCancelCession}
-            />
-          )}
-        />
-      ) : (
-        <EmptyState
-          isCessions
-          hasParkingSpot={hasParkingSpot}
-          hasOfficeSpot={hasOfficeSpot}
+  const cessionsSection = hasCessions ? (
+    <GroupedList
+      items={cessions}
+      renderItem={(item) => (
+        <CessionRow
+          key={item.id}
+          cession={item}
+          cancellingId={cancellingId}
+          onCancel={handleCancelCession}
         />
       )}
-    </>
+    />
+  ) : (
+    <EmptyState
+      isCessions
+      hasParkingSpot={hasParkingSpot}
+      hasOfficeSpot={hasOfficeSpot}
+    />
   );
 
   // ── Renderizado adaptativo según el rol ──────────────────

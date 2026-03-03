@@ -57,7 +57,7 @@ export default async function PanelPage() {
   // Fetch all data in parallel
   const [
     spots,
-    profiles,
+    _profiles,
     dailyCounts,
     topSpots,
     movementDistribution,
@@ -92,7 +92,7 @@ export default async function PanelPage() {
     totalSpots > 0 ? Math.round((occupiedSpots / totalSpots) * 100) : 0;
 
   // El rol "management" ya no existe – no hay alertas de este tipo
-  const pendingManagement: typeof profiles = [];
+  const pendingManagement: typeof _profiles = [];
 
   return (
     <>

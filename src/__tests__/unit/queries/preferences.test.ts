@@ -206,7 +206,7 @@ describe("getMicrosoftConnectionStatus", () => {
 
     const result = await getMicrosoftConnectionStatus(USER_ID);
 
-    expect(result.connected).toBe(true);
+    expect(result!.connected).toBe(true);
   });
 
   it("devuelve connected=false con token expirado", async () => {
@@ -217,7 +217,7 @@ describe("getMicrosoftConnectionStatus", () => {
 
     const result = await getMicrosoftConnectionStatus(USER_ID);
 
-    expect(result.connected).toBe(false);
+    expect(result!.connected).toBe(false);
   });
 
   it("mapea teamsConnected=true si hay teams_user_id", async () => {
@@ -226,7 +226,7 @@ describe("getMicrosoftConnectionStatus", () => {
 
     const result = await getMicrosoftConnectionStatus(USER_ID);
 
-    expect(result.teamsConnected).toBe(true);
+    expect(result!.teamsConnected).toBe(true);
   });
 
   it("mapea teamsConnected=false si teams_user_id es null", async () => {
@@ -235,7 +235,7 @@ describe("getMicrosoftConnectionStatus", () => {
 
     const result = await getMicrosoftConnectionStatus(USER_ID);
 
-    expect(result.teamsConnected).toBe(false);
+    expect(result!.teamsConnected).toBe(false);
   });
 
   it("mapea outlookConnected=true si hay outlook_calendar_id", async () => {
@@ -244,7 +244,7 @@ describe("getMicrosoftConnectionStatus", () => {
 
     const result = await getMicrosoftConnectionStatus(USER_ID);
 
-    expect(result.outlookConnected).toBe(true);
+    expect(result!.outlookConnected).toBe(true);
   });
 
   it("mapea los campos lastSync y lastOOOCheck del token", async () => {
@@ -256,8 +256,8 @@ describe("getMicrosoftConnectionStatus", () => {
 
     const result = await getMicrosoftConnectionStatus(USER_ID);
 
-    expect(result.lastSync).toBe("2025-03-01T10:00:00Z");
-    expect(result.lastOOOCheck).toBe("2025-03-01T09:00:00Z");
+    expect(result!.lastSync).toBe("2025-03-01T10:00:00Z");
+    expect(result!.lastOOOCheck).toBe("2025-03-01T09:00:00Z");
   });
 
   it("mapea los scopes del token", async () => {
@@ -268,7 +268,7 @@ describe("getMicrosoftConnectionStatus", () => {
 
     const result = await getMicrosoftConnectionStatus(USER_ID);
 
-    expect(result.scopes).toEqual(["Calendars.Read", "Mail.Send"]);
+    expect(result!.scopes).toEqual(["Calendars.Read", "Mail.Send"]);
   });
 });
 
