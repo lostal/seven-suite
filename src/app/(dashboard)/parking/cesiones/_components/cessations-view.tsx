@@ -58,7 +58,7 @@ import type { CessionWithDetails } from "@/lib/queries/cessions";
 import {
   createCession,
   cancelCession,
-  getMyCessions,
+  getMyParkingCessions,
 } from "../../cession-actions";
 
 interface CessionsViewProps {
@@ -72,10 +72,13 @@ export function CessionsView({ spot, initialCessions }: CessionsViewProps) {
   const [isCreating, setIsCreating] = React.useState(false);
   const [cancellingId, setCancellingId] = React.useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = React.useState(false);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const refreshCessions = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
     try {
-      const result = await getMyCessions();
+      const result = await getMyParkingCessions();
       if (result.success) {
         setCessions(result.data);
       } else {
@@ -83,6 +86,8 @@ export function CessionsView({ spot, initialCessions }: CessionsViewProps) {
       }
     } catch {
       toast.error("Error al actualizar cesiones");
+    } finally {
+      setIsRefreshing(false);
     }
   };
 

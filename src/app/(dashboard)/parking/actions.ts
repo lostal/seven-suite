@@ -141,7 +141,7 @@ export async function getAvailableSpotsForDate(
 
     return success(available);
   } catch (err) {
-    console.error("Error en getAvailableSpotsForDate:", err);
+    console.error("[parking] getAvailableSpotsForDate error:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener plazas disponibles"
     );
@@ -162,7 +162,7 @@ export async function getMyParkingReservations(): Promise<
     const reservations = await getUserReservations(user.id, "parking");
     return success(reservations);
   } catch (err) {
-    console.error("Error en getMyParkingReservations:", err);
+    console.error("[parking] getMyParkingReservations error:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener tus reservas"
     );

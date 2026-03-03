@@ -45,6 +45,7 @@ import {
 import { cancelReservation } from "@/app/(dashboard)/parking/actions";
 import { cancelCession } from "@/app/(dashboard)/parking/cession-actions";
 import { cancelOfficeReservation } from "@/app/(dashboard)/oficinas/actions";
+import { cancelOfficeCession } from "@/app/(dashboard)/oficinas/cession-actions";
 import type { ReservationRow } from "@/lib/queries/reservations";
 import type { ReservationWithDetails as OfficeReservationWithDetails } from "@/types";
 import type { CessionWithDetails } from "@/lib/queries/cessions";
@@ -234,7 +235,7 @@ function CessionRow({
 }: {
   cession: CessionWithDetails;
   cancellingId: string | null;
-  onCancel: (id: string) => void;
+  onCancel: (id: string, resourceType: "parking" | "office") => void;
 }) {
   const date = parseLocalDate(cession.date);
   const isToday = cession.date === new Date().toISOString().split("T")[0]!;
@@ -295,7 +296,7 @@ function CessionRow({
               size="icon"
               variant="ghost"
               className="hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => onCancel(cession.id)}
+              onClick={() => onCancel(cession.id, cession.resource_type)}
               disabled={cancellingId === cession.id}
             >
               {cancellingId === cession.id ? (
@@ -499,10 +500,16 @@ export function MisReservasClient({
     }
   };
 
-  const handleCancelCession = async (id: string) => {
+  const handleCancelCession = async (
+    id: string,
+    resourceType: "parking" | "office"
+  ) => {
     setCancellingId(id);
     try {
-      const result = await cancelCession({ id });
+      const result =
+        resourceType === "office"
+          ? await cancelOfficeCession({ id })
+          : await cancelCession({ id });
       if (result.success) {
         const msg = result.data.reservationAlsoCancelled
           ? "Cesión cancelada y reserva del empleado anulada"

@@ -54,17 +54,13 @@ export function SecuritySection({ user }: SecuritySectionProps) {
   };
 
   const handleDeleteAccount = async () => {
-    try {
-      setIsDeleting(true);
-      await deleteSelfAccount();
+    setIsDeleting(true);
+    const result = await deleteSelfAccount({});
+    setIsDeleting(false);
+    if (result.success) {
       router.push(ROUTES.LOGIN);
-    } catch (error) {
-      console.error("Error deleting account:", error);
-      toast.error(
-        error instanceof Error ? error.message : "No se pudo eliminar la cuenta"
-      );
-    } finally {
-      setIsDeleting(false);
+    } else {
+      toast.error(result.error ?? "No se pudo eliminar la cuenta");
     }
   };
 

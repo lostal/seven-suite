@@ -170,7 +170,7 @@ export async function getMyOfficeCessions(): Promise<
     const cessions = await getUserCessions(user.id, "office");
     return success(cessions);
   } catch (err) {
-    console.error("getMyOfficeCessions error:", err);
+    console.error("[oficinas] getMyOfficeCessions error:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener cesiones"
     );

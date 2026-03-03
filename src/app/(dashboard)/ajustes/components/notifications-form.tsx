@@ -78,12 +78,12 @@ export function NotificationsForm({
 
   const handleTestNotification = async () => {
     setIsTesting(true);
-    const result = await testTeamsNotification();
+    const result = await testTeamsNotification({});
     setIsTesting(false);
     if (result.success) {
       toast.success("Notificación de prueba enviada");
     } else {
-      toast.info(result.message);
+      toast.info(result.error);
     }
   };
 

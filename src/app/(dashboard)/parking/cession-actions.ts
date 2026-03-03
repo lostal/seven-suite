@@ -192,7 +192,7 @@ export const cancelCession = actionClient
  * Obtiene las cesiones activas del usuario actual.
  * Wrapper de acción para que los componentes cliente puedan llamarla.
  */
-export async function getMyCessions(): Promise<
+export async function getMyParkingCessions(): Promise<
   ActionResult<CessionWithDetails[]>
 > {
   try {
@@ -202,7 +202,7 @@ export async function getMyCessions(): Promise<
     const cessions = await queryUserCessions(user.id, "parking");
     return success(cessions);
   } catch (err) {
-    console.error("getMyCessions error:", err);
+    console.error("[parking] getMyParkingCessions error:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener cesiones"
     );

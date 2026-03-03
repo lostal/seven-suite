@@ -68,12 +68,12 @@ export function OutlookSyncForm({
 
   const handleForceSync = async () => {
     setIsSyncing(true);
-    const result = await forceCalendarSync();
+    const result = await forceCalendarSync({});
     setIsSyncing(false);
     if (result.success) {
       toast.success("Sincronización completada");
     } else {
-      toast.info(result.message);
+      toast.info(result.error);
     }
   };
 

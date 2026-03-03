@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
 import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,18 +39,15 @@ const adminSettingsSections = [
 export function AdminSettingsSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [val, setVal] = useState(pathname ?? ROUTES.ADMIN_SETTINGS);
-
-  const handleSelect = (href: string) => {
-    setVal(href);
-    router.push(href);
-  };
 
   return (
     <>
       {/* Mobile: Select Dropdown */}
       <div className="p-1 md:hidden">
-        <Select value={val} onValueChange={handleSelect}>
+        <Select
+          value={pathname ?? ROUTES.ADMIN_SETTINGS}
+          onValueChange={(href) => router.push(href)}
+        >
           <SelectTrigger className="h-12 sm:w-48">
             <SelectValue placeholder="Seleccionar sección" />
           </SelectTrigger>

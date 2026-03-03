@@ -29,11 +29,14 @@ export default async function DashboardLayout({
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
   // Fetch user preferences and visitor_booking_enabled config in parallel.
+  // Both modules are checked so the link shows if either has visitor booking on.
   // getResourceConfig usa el cache de 5 min (tag system-config) para consistencia.
-  const [prefs, visitorBookingEnabled] = await Promise.all([
+  const [prefs, parkingVisitors, officeVisitors] = await Promise.all([
     getUserPreferences(user.id),
     getResourceConfig("parking", "visitor_booking_enabled"),
+    getResourceConfig("office", "visitor_booking_enabled"),
   ]);
+  const visitorBookingEnabled = parkingVisitors || officeVisitors;
   const dbTheme = prefs?.theme ?? "system";
 
   return (

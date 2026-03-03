@@ -83,6 +83,7 @@ export interface ReservationWithDetails {
   spot_label: string;
   resource_type: "parking" | "office";
   user_id: string;
+  user_name?: string;
   date: string;
   status: string;
   notes?: string | null;

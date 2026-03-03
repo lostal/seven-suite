@@ -50,7 +50,7 @@ export async function getOfficeSpotsForDate(
     const spots = await getOfficeAvailabilityForDate(date, startTime, endTime);
     return success(spots);
   } catch (err) {
-    console.error("Error en getOfficeSpotsForDate:", err);
+    console.error("[oficinas] getOfficeSpotsForDate error:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener disponibilidad"
     );
@@ -93,7 +93,7 @@ export async function getOfficeTimeSlotsForSpot(
 
     return success(slots);
   } catch (err) {
-    console.error("Error en getOfficeTimeSlotsForSpot:", err);
+    console.error("[oficinas] getOfficeTimeSlotsForSpot error:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener franjas"
     );
@@ -113,7 +113,7 @@ export async function getMyOfficeReservations(): Promise<
     const reservations = await getUserOfficeReservations(user.id);
     return success(reservations);
   } catch (err) {
-    console.error("Error en getMyOfficeReservations:", err);
+    console.error("[oficinas] getMyOfficeReservations error:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener tus reservas"
     );
@@ -150,11 +150,24 @@ export const createOfficeReservation = actionClient
     // Comprobar día permitido, fechas pasadas y antelación máxima
     validateBookingDate(parsedInput.date, config);
 
-    // Si las franjas están habilitadas, las horas son obligatorias
+    // Si las franjas están habilitadas, las horas son obligatorias y deben estar dentro del horario del día
     if (config.time_slots_enabled) {
       if (!parsedInput.start_time || !parsedInput.end_time) {
         throw new Error(
           "Debes seleccionar una franja horaria para reservar este puesto"
+        );
+      }
+      const toMinutes = (t: string) => {
+        const [h, m] = t.split(":").map(Number);
+        return (h ?? 0) * 60 + (m ?? 0);
+      };
+      const startMins = toMinutes(parsedInput.start_time);
+      const endMins = toMinutes(parsedInput.end_time);
+      const dayStart = config.day_start_hour ?? 0;
+      const dayEnd = config.day_end_hour ?? 24;
+      if (startMins < dayStart * 60 || endMins > dayEnd * 60) {
+        throw new Error(
+          `La franja horaria debe estar entre las ${dayStart}:00 y las ${dayEnd}:00`
         );
       }
     }

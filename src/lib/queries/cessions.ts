@@ -50,7 +50,7 @@ export async function getCessionsByDate(
   if (error) throw new Error(`Error al obtener cesiones: ${error.message}`);
 
   return data
-    .filter((c) => !resourceType || c.spots?.resource_type === resourceType)
+    .filter((c) => c.spots !== null)
     .map(
       (c): CessionWithDetails => ({
         id: c.id,
@@ -59,10 +59,9 @@ export async function getCessionsByDate(
         date: c.date,
         status: c.status,
         created_at: c.created_at,
-        spot_label: c.spots?.label ?? "",
+        spot_label: c.spots!.label,
         user_name: c.profiles?.full_name ?? "",
-        resource_type:
-          (c.spots?.resource_type as "parking" | "office") ?? "parking",
+        resource_type: c.spots!.resource_type as "parking" | "office",
       })
     );
 }
@@ -98,18 +97,19 @@ export async function getUserCessions(
   if (error)
     throw new Error(`Error al obtener cesiones del usuario: ${error.message}`);
 
-  return data.map(
-    (c): CessionWithDetails => ({
-      id: c.id,
-      spot_id: c.spot_id,
-      user_id: c.user_id,
-      date: c.date,
-      status: c.status,
-      created_at: c.created_at,
-      spot_label: c.spots?.label ?? "",
-      user_name: c.profiles?.full_name ?? "",
-      resource_type:
-        (c.spots?.resource_type as "parking" | "office") ?? "parking",
-    })
-  );
+  return data
+    .filter((c) => c.spots !== null)
+    .map(
+      (c): CessionWithDetails => ({
+        id: c.id,
+        spot_id: c.spot_id,
+        user_id: c.user_id,
+        date: c.date,
+        status: c.status,
+        created_at: c.created_at,
+        spot_label: c.spots!.label,
+        user_name: c.profiles?.full_name ?? "",
+        resource_type: c.spots!.resource_type as "parking" | "office",
+      })
+    );
 }

@@ -52,7 +52,7 @@ export async function getVisitorReservationsAction(): Promise<
     const reservations = await getUpcomingVisitorReservations();
     return success(reservations);
   } catch (err) {
-    console.error("Error al obtener reservas de visitantes:", err);
+    console.error("[visitantes] getVisitorReservations error:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener las reservas"
     );
@@ -77,7 +77,7 @@ export async function getAvailableVisitorSpotsAction(
     );
     return success(spots);
   } catch (err) {
-    console.error("Error al obtener plazas de visitantes:", err);
+    console.error("[visitantes] getAvailableVisitorSpots error:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener plazas disponibles"
     );

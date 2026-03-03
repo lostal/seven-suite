@@ -50,18 +50,29 @@ export async function getOfficeAvailabilityForDate(
 ): Promise<SpotWithStatus[]> {
   const supabase = await createClient();
 
-  const [spotsResult, reservationsResult, cessionsResult] = await Promise.all([
-    supabase
-      .from("spots")
-      .select("*")
-      .eq("is_active", true)
-      .eq("resource_type", "office")
-      .order("label"),
+  const spotsResult = await supabase
+    .from("spots")
+    .select("*")
+    .eq("is_active", true)
+    .eq("resource_type", "office")
+    .order("label");
+
+  if (spotsResult.error)
+    throw new Error(`Error al obtener puestos: ${spotsResult.error.message}`);
+
+  const spots = spotsResult.data ?? [];
+
+  if (spots.length === 0) return [];
+
+  const spotIds = spots.map((s) => s.id);
+
+  const [reservationsResult, cessionsResult] = await Promise.all([
     supabase
       .from("reservations")
       .select("id, spot_id, start_time, end_time")
       .eq("date", date)
       .eq("status", "confirmed")
+      .in("spot_id", spotIds)
       .returns<
         {
           id: string;
@@ -74,13 +85,9 @@ export async function getOfficeAvailabilityForDate(
       .from("cessions")
       .select("id, spot_id, status")
       .eq("date", date)
-      .neq("status", "cancelled"),
+      .neq("status", "cancelled")
+      .in("spot_id", spotIds),
   ]);
-
-  if (spotsResult.error)
-    throw new Error(`Error al obtener puestos: ${spotsResult.error.message}`);
-
-  const spots = spotsResult.data ?? [];
   const reservations = reservationsResult.data ?? [];
   const cessionBySpot = new Map(
     (cessionsResult.data ?? []).map((c) => [c.spot_id, c])
@@ -254,18 +261,25 @@ export async function getUserOfficeReservations(
     .eq("spots.resource_type", "office")
     .gte("date", today)
     .order("date")
-    // start_time/end_time y resource_type son de migraciones 00002/00003 – cast hasta regenerar tipos
     .returns<ReservationRow[]>();
 
   if (error)
     throw new Error(`Error al obtener reservas de oficina: ${error.message}`);
 
-  return (data ?? []).map((r) => ({
-    ...r,
-    spots: undefined,
-    profiles: undefined,
-    spot_label: r.spots?.label ?? "",
-    resource_type: "office" as const,
-    user_name: r.profiles?.full_name ?? "",
-  }));
+  return (data ?? []).map(
+    (r): ReservationWithDetails => ({
+      id: r.id,
+      spot_id: r.spot_id,
+      spot_label: r.spots?.label ?? "",
+      resource_type: "office",
+      user_id: r.user_id,
+      user_name: r.profiles?.full_name ?? "",
+      date: r.date,
+      status: r.status,
+      notes: r.notes,
+      start_time: r.start_time,
+      end_time: r.end_time,
+      created_at: r.created_at,
+    })
+  );
 }

@@ -5,7 +5,7 @@
  * parking como por oficinas para evitar duplicación.
  */
 
-import { getDayOfWeek } from "@/lib/utils";
+import { getDayOfWeek, toServerDateStr } from "@/lib/utils";
 import type { ResourceConfigValues } from "@/lib/config";
 
 /**
@@ -26,19 +26,25 @@ export function validateBookingDate(
     throw new Error("No se puede reservar en este día de la semana");
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const reservationDate = new Date(date);
-  const daysAhead = Math.round(
-    (reservationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const todayStr = toServerDateStr(new Date());
 
-  if (daysAhead < 0) {
+  if (date < todayStr) {
     throw new Error("No puedes reservar para fechas pasadas");
   }
-  if (config.max_advance_days !== null && daysAhead > config.max_advance_days) {
-    throw new Error(
-      `Solo puedes reservar con un máximo de ${config.max_advance_days} días de antelación`
+
+  if (config.max_advance_days !== null) {
+    // Parse both dates from their string components to avoid UTC/local offset issues
+    const [ty, tm, td] = todayStr.split("-").map(Number);
+    const [ry, rm, rd] = date.split("-").map(Number);
+    const todayMs = new Date(ty!, tm! - 1, td!).getTime();
+    const reservationMs = new Date(ry!, rm! - 1, rd!).getTime();
+    const daysAhead = Math.round(
+      (reservationMs - todayMs) / (1000 * 60 * 60 * 24)
     );
+    if (daysAhead > config.max_advance_days) {
+      throw new Error(
+        `Solo puedes reservar con un máximo de ${config.max_advance_days} días de antelación`
+      );
+    }
   }
 }

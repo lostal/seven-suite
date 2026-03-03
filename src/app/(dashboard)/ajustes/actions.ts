@@ -7,6 +7,7 @@
  * Todas usan el patrón actionClient → devuelven ActionResult<T>, nunca lanzan.
  */
 
+import { z } from "zod/v4";
 import { actionClient } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -84,7 +85,7 @@ export const updateOutlookPreferences = actionClient
       .from("user_preferences")
       .update({
         outlook_create_events: parsedInput.outlook_create_events,
-        outlook_calendar_name: parsedInput.outlook_calendar_name || "Parking",
+        outlook_calendar_name: parsedInput.outlook_calendar_name || "Reservas",
         outlook_sync_enabled: parsedInput.outlook_sync_enabled,
         outlook_sync_interval: parsedInput.outlook_sync_interval || 15,
         updated_at: new Date().toISOString(),
@@ -123,48 +124,44 @@ export const updateCessionRules = actionClient
     return { updated: true };
   });
 
-// ─── Disconnect Microsoft Account ───────────────────────────
+// ─── Disconnect Microsoft Account ────────────────────────────
 
-export async function disconnectMicrosoftAccount() {
-  const user = await requireAuth();
-  const supabase = await createClient();
+export const disconnectMicrosoftAccount = actionClient
+  .schema(z.object({}))
+  .action(async () => {
+    const user = await requireAuth();
+    const supabase = await createClient();
 
-  const { error } = await supabase
-    .from("user_microsoft_tokens")
-    .delete()
-    .eq("user_id", user.id);
+    const { error } = await supabase
+      .from("user_microsoft_tokens")
+      .delete()
+      .eq("user_id", user.id);
 
-  if (error) {
-    throw new Error("No se pudo desvincular la cuenta de Microsoft");
-  }
+    if (error) {
+      throw new Error("No se pudo desvincular la cuenta de Microsoft");
+    }
 
-  revalidatePath("/ajustes");
-  return { success: true };
-}
+    revalidatePath("/ajustes");
+    return { disconnected: true };
+  });
 
 // ─── Test Teams Notification (Stub for Future) ───────────────
 
-export async function testTeamsNotification() {
-  await requireAuth();
-
-  // TODO: Implementar cuando el bot de Teams esté listo
-  return {
-    success: false,
-    message: "Función no implementada todavía (bot de Teams pendiente)",
-  };
-}
+// TODO: Implementar cuando el bot de Teams esté listo
+export const testTeamsNotification = actionClient
+  .schema(z.object({}))
+  .action(async () => {
+    throw new Error("Función no implementada todavía (bot de Teams pendiente)");
+  });
 
 // ─── Force Calendar Sync (Stub for Future) ───────────────────
 
-export async function forceCalendarSync() {
-  await requireAuth();
-
-  // TODO: Implementar cuando la sincronización con Outlook esté lista
-  return {
-    success: false,
-    message: "Función no implementada todavía (Outlook API pendiente)",
-  };
-}
+// TODO: Implementar cuando la sincronización con Outlook esté lista
+export const forceCalendarSync = actionClient
+  .schema(z.object({}))
+  .action(async () => {
+    throw new Error("Función no implementada todavía (Outlook API pendiente)");
+  });
 
 // ─── Update Theme ─────────────────────────────────────────────
 
@@ -190,15 +187,17 @@ export const updateTheme = actionClient
 
 // ─── Delete Own Account ───────────────────────────────────────
 
-export async function deleteSelfAccount() {
-  const user = await requireAuth();
-  const adminClient = createAdminClient();
+export const deleteSelfAccount = actionClient
+  .schema(z.object({}))
+  .action(async () => {
+    const user = await requireAuth();
+    const adminClient = createAdminClient();
 
-  const { error } = await adminClient.auth.admin.deleteUser(user.id);
+    const { error } = await adminClient.auth.admin.deleteUser(user.id);
 
-  if (error) {
-    throw new Error(`Error al eliminar la cuenta: ${error.message}`);
-  }
+    if (error) {
+      throw new Error(`Error al eliminar la cuenta: ${error.message}`);
+    }
 
-  return { deleted: true };
-}
+    return { deleted: true };
+  });
