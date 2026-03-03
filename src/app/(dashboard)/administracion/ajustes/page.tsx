@@ -5,6 +5,8 @@
  * Controla los toggles de notificaciones y funcionalidades globales.
  */
 
+export const dynamic = "force-dynamic";
+
 import { getGlobalConfigs } from "@/lib/config";
 import { ContentSection } from "@/components/content-section";
 import { GlobalConfigForm } from "./_components/global-config-form";
