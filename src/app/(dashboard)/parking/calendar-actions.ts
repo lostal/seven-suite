@@ -30,6 +30,7 @@ import { getAllResourceConfigs } from "@/lib/config";
 
 type MyReservationRow = {
   id: string;
+  spot_id: string;
   date: string;
   spot: { label: string } | null;
 };
@@ -75,6 +76,7 @@ export const getCalendarMonthData = actionClient
         .from("cessions")
         .select("id, date, status")
         .eq("user_id", user.id)
+        .eq("spot_id", assignedSpot.id)
         .gte("date", firstDay)
         .lte("date", lastDay)
         .neq("status", "cancelled");
@@ -120,12 +122,11 @@ export const getCalendarMonthData = actionClient
             .neq("status", "cancelled"),
           supabase
             .from("reservations")
-            .select("id, date, spot:spots(label)")
+            .select("id, spot_id, date, spot:spots(label)")
             .eq("user_id", user.id)
             .gte("date", firstDay)
             .lte("date", lastDay)
             .eq("status", "confirmed")
-            .eq("spots.resource_type", "parking")
             .returns<MyReservationRow[]>(),
         ]);
 
@@ -161,6 +162,7 @@ export const getCalendarMonthData = actionClient
         { id: string; spotLabel?: string }
       >();
       for (const r of myReservationsData.data ?? []) {
+        if (!allParkingIds.has(r.spot_id)) continue; // ignorar reservas de otros módulos
         myReservationByDate.set(r.date, {
           id: r.id,
           spotLabel: r.spot?.label ?? undefined,

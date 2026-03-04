@@ -53,6 +53,8 @@ export const createSpot = actionClient
     }
 
     revalidatePath("/administracion");
+    revalidatePath("/parking");
+    revalidatePath("/oficinas");
     return { id: data.id };
   });
 
@@ -196,12 +198,20 @@ export const assignSpotToUser = actionClient
     // 4. Clear any previous spot of the SAME resource_type assigned to this user
     //    (preserves assignments of the other resource_type). Runs AFTER successful
     //    assignment — worst case on failure: user has two spots, not zero.
-    await supabase
+    const { error: cleanupError } = await supabase
       .from("spots")
       .update({ assigned_to: null })
       .eq("assigned_to", user_id)
       .eq("resource_type", spot.resource_type)
       .neq("id", spot_id); // Don't clear the spot we just assigned
+
+    if (cleanupError) {
+      console.error("[admin] assignSpotToUser cleanup error:", {
+        userId: user_id,
+        resourceType: spot.resource_type,
+        error: cleanupError.message,
+      });
+    }
 
     revalidatePath("/administracion/usuarios");
     revalidatePath("/administracion");

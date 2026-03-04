@@ -88,9 +88,13 @@ export async function getDailyCountsLast30Days(
     countsByDate.set(dateStr, { reservations: 0, visitors: 0 });
   }
 
-  for (const r of (reservationsResult.data ?? []) as unknown as {
+  type ReservationForCount = {
     date: string;
-  }[]) {
+    spots?: { resource_type: string } | null;
+  };
+  for (const r of (reservationsResult.data ??
+    []) as unknown as ReservationForCount[]) {
+    if (resourceType && r.spots?.resource_type !== resourceType) continue;
     const entry = countsByDate.get(r.date);
     if (entry) entry.reservations++;
   }

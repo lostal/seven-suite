@@ -124,19 +124,9 @@ export async function getAvailableSpotsForDate(
           position_y: spot.position_y,
           status: "ceded",
         });
-      } else {
-        // Plaza sin propietario (assigned_to === null): libre para reservar
-        available.push({
-          id: spot.id,
-          label: spot.label,
-          type: spot.type,
-          resource_type: "parking",
-          assigned_to: null,
-          position_x: spot.position_x,
-          position_y: spot.position_y,
-          status: "free",
-        });
       }
+      // Sin propietario → no reservable en el nuevo modelo:
+      // solo las plazas cedidas activamente por su dueño son reservables.
     }
 
     return success(available);

@@ -204,17 +204,15 @@ describe("getAvailableSpotsForDate", () => {
 
   // ── Plazas estándar ────────────────────────────────────────────────────────
 
-  it("incluye plazas estándar libres con status 'free'", async () => {
+  it("excluye plazas sin propietario (nuevo modelo: solo cesiones son reservables)", async () => {
+    // Spot sin assigned_to → no reservable, aunque esté activo y sin reservas
     const spot = createMockSpot({ id: "s1", type: "standard" });
     setupSupabaseMock({ spots: [spot] });
 
     const result = await getAvailableSpotsForDate("2025-03-17");
 
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data).toHaveLength(1);
-      expect(result.data[0]?.status).toBe("free");
-    }
+    if (result.success) expect(result.data).toHaveLength(0);
   });
 
   it("excluye plazas estándar con reserva confirmada", async () => {

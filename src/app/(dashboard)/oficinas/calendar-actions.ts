@@ -73,6 +73,7 @@ export const getOfficeCalendarMonthData = actionClient
         .from("cessions")
         .select("id, date, status")
         .eq("user_id", user.id)
+        .eq("spot_id", assignedSpot.id)
         .gte("date", firstDay)
         .lte("date", lastDay)
         .neq("status", "cancelled");
