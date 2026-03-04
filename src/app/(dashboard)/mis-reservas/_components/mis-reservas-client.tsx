@@ -67,6 +67,8 @@ interface MisReservasClientProps {
   hasParkingSpot?: boolean;
   /** true si el usuario tiene un puesto de oficina asignado (modo cesión) */
   hasOfficeSpot?: boolean;
+  /** Ocultar los botones CTA del empty state (cuando la página ya los muestra arriba) */
+  hideCtaLinks?: boolean;
 }
 
 type GroupKey = "esta-semana" | "este-mes" | "mas-adelante";
@@ -319,10 +321,12 @@ function EmptyState({
   isCessions,
   hasParkingSpot,
   hasOfficeSpot,
+  hideCtaLinks,
 }: {
   isCessions?: boolean;
   hasParkingSpot?: boolean;
   hasOfficeSpot?: boolean;
+  hideCtaLinks?: boolean;
 }) {
   return (
     <div className="flex h-52 flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-center">
@@ -345,26 +349,26 @@ function EmptyState({
             : "Reserva una plaza de parking o un puesto de oficina"}
         </p>
       </div>
-      <div className="flex gap-2">
-        {/* En modo reservas: CTAs a los recursos que puede reservar */}
-        {/* En modo cesiones: CTAs a los recursos que puede ceder */}
-        {(isCessions ? hasParkingSpot : !hasParkingSpot) && (
-          <Button asChild variant="outline" size="sm">
-            <Link href={ROUTES.PARKING}>
-              <Car className="mr-1.5 size-3.5" />
-              Parking
-            </Link>
-          </Button>
-        )}
-        {(isCessions ? hasOfficeSpot : !hasOfficeSpot) && (
-          <Button asChild variant="outline" size="sm">
-            <Link href={ROUTES.OFFICES}>
-              <Building2 className="mr-1.5 size-3.5" />
-              Oficinas
-            </Link>
-          </Button>
-        )}
-      </div>
+      {!hideCtaLinks && (
+        <div className="flex gap-2">
+          {(isCessions ? hasParkingSpot : !hasParkingSpot) && (
+            <Button asChild variant="outline" size="sm">
+              <Link href={ROUTES.PARKING}>
+                <Car className="mr-1.5 size-3.5" />
+                Parking
+              </Link>
+            </Button>
+          )}
+          {(isCessions ? hasOfficeSpot : !hasOfficeSpot) && (
+            <Button asChild variant="outline" size="sm">
+              <Link href={ROUTES.OFFICES}>
+                <Building2 className="mr-1.5 size-3.5" />
+                Oficinas
+              </Link>
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -444,6 +448,7 @@ export function MisReservasClient({
   cessions: initialCessions = [],
   hasParkingSpot = false,
   hasOfficeSpot = false,
+  hideCtaLinks = false,
 }: MisReservasClientProps) {
   // canReserve: hay al menos un recurso sin plaza asignada
   const canReserve = !hasParkingSpot || !hasOfficeSpot;
@@ -544,7 +549,11 @@ export function MisReservasClient({
       )}
     />
   ) : (
-    <EmptyState hasParkingSpot={hasParkingSpot} hasOfficeSpot={hasOfficeSpot} />
+    <EmptyState
+      hasParkingSpot={hasParkingSpot}
+      hasOfficeSpot={hasOfficeSpot}
+      hideCtaLinks={hideCtaLinks}
+    />
   );
 
   const cessionsSection = hasCessions ? (
@@ -564,6 +573,7 @@ export function MisReservasClient({
       isCessions
       hasParkingSpot={hasParkingSpot}
       hasOfficeSpot={hasOfficeSpot}
+      hideCtaLinks={hideCtaLinks}
     />
   );
 

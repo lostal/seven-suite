@@ -238,7 +238,7 @@ export const createReservation = actionClient
     }
 
     revalidatePath("/parking");
-    revalidatePath("/mis-reservas");
+    revalidatePath("/parking/reservas");
     return { id: data.id };
   });
 
@@ -271,6 +271,6 @@ export const cancelReservation = actionClient
     }
 
     revalidatePath("/parking");
-    revalidatePath("/mis-reservas");
+    revalidatePath("/parking/reservas");
     return { cancelled: true };
   });

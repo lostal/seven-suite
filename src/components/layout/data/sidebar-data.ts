@@ -19,114 +19,145 @@ import {
   Cloud,
   MapPin,
   LayoutGrid,
-  CalendarCheck,
   Building2,
   SlidersHorizontal,
   ParkingCircle,
+  ArrowLeftRight,
+  CalendarCheck,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { type SidebarData } from "../types";
 
-export const sidebarData: SidebarData = {
-  navGroups: [
-    {
-      title: "General",
-      items: [
-        {
-          title: "Panel",
-          url: ROUTES.DASHBOARD,
-          icon: LayoutDashboard,
-          roles: ["admin"],
-        },
-        {
-          title: "Espacios",
-          icon: LayoutGrid,
-          roles: ["employee", "admin"],
-          items: [
-            {
-              title: "Parking",
-              url: ROUTES.PARKING,
-              icon: ParkingCircle,
-            },
-            {
-              title: "Oficinas",
-              url: ROUTES.OFFICES,
-              icon: Building2,
-            },
-            {
-              title: "Mapa",
-              url: ROUTES.PARKING_MAP,
-              icon: MapPin,
-            },
-          ],
-        },
-        {
-          title: "Mi Actividad",
-          url: ROUTES.MIS_RESERVAS,
+interface SidebarDataParams {
+  hasParkingSpot: boolean;
+  hasOfficeSpot: boolean;
+  visitorBookingEnabled: boolean;
+}
+
+export function getSidebarData({
+  hasParkingSpot,
+  hasOfficeSpot,
+  visitorBookingEnabled,
+}: SidebarDataParams): SidebarData {
+  const parkingSubItems = [
+    hasParkingSpot
+      ? {
+          title: "Cesiones",
+          url: ROUTES.PARKING_CESSIONS,
+          icon: ArrowLeftRight,
+        }
+      : {
+          title: "Reservas",
+          url: ROUTES.PARKING_RESERVAS,
           icon: CalendarCheck,
-          roles: ["employee", "admin"],
         },
-        {
-          title: "Visitantes",
-          url: ROUTES.VISITORS,
-          icon: Users,
-          // All roles can see visitors; admin is the primary one to manage them
+    ...(visitorBookingEnabled
+      ? [{ title: "Visitantes", url: ROUTES.VISITORS, icon: Users }]
+      : []),
+  ];
+
+  const oficinasSubItems = [
+    hasOfficeSpot
+      ? {
+          title: "Cesiones",
+          url: ROUTES.OFFICES_CESSIONS,
+          icon: ArrowLeftRight,
+        }
+      : {
+          title: "Reservas",
+          url: ROUTES.OFFICES_RESERVAS,
+          icon: CalendarCheck,
         },
-      ],
-    },
-    {
-      title: "Administración",
-      items: [
-        {
-          title: "Plazas",
-          url: ROUTES.ADMIN,
-          icon: LayoutGrid,
-          roles: ["admin"],
-        },
-        {
-          title: "Usuarios",
-          url: ROUTES.ADMIN_USERS,
-          icon: Users,
-          roles: ["admin"],
-        },
-        {
-          title: "Configuración",
-          url: ROUTES.ADMIN_SETTINGS,
-          icon: SlidersHorizontal,
-          roles: ["admin"],
-        },
-        {
-          title: "Ajustes",
-          icon: Settings,
-          items: [
-            {
-              title: "Perfil",
-              url: ROUTES.SETTINGS,
-              icon: User,
-            },
-            {
-              title: "Notificaciones",
-              url: ROUTES.SETTINGS_NOTIFICATIONS,
-              icon: Bell,
-            },
-            {
-              title: "Preferencias",
-              url: ROUTES.SETTINGS_PREFERENCES,
-              icon: Settings,
-            },
-            {
-              title: "Microsoft 365",
-              url: ROUTES.SETTINGS_MICROSOFT,
-              icon: Cloud,
-            },
-            {
-              title: "Seguridad",
-              url: ROUTES.SETTINGS_SECURITY,
-              icon: Shield,
-            },
-          ],
-        },
-      ],
-    },
-  ],
-};
+    { title: "Mapa", url: ROUTES.OFFICES_MAP, icon: MapPin },
+  ];
+
+  return {
+    navGroups: [
+      {
+        title: "General",
+        items: [
+          {
+            title: "Panel",
+            url: ROUTES.DASHBOARD,
+            icon: LayoutDashboard,
+            roles: ["admin"],
+          },
+          {
+            title: "Parking",
+            url: ROUTES.PARKING,
+            icon: ParkingCircle,
+            roles: ["employee"],
+            items: parkingSubItems,
+          },
+          {
+            title: "Oficinas",
+            url: ROUTES.OFFICES,
+            icon: Building2,
+            roles: ["employee"],
+            items: oficinasSubItems,
+          },
+          {
+            title: "Visitantes",
+            url: ROUTES.VISITORS,
+            icon: Users,
+            roles: ["admin"],
+          },
+        ],
+      },
+      {
+        title: "Administración",
+        items: [
+          {
+            title: "Plazas",
+            url: ROUTES.ADMIN,
+            icon: LayoutGrid,
+            roles: ["admin"],
+          },
+          {
+            title: "Usuarios",
+            url: ROUTES.ADMIN_USERS,
+            icon: Users,
+            roles: ["admin"],
+          },
+          {
+            title: "Configuración",
+            url: ROUTES.ADMIN_SETTINGS,
+            icon: SlidersHorizontal,
+            roles: ["admin"],
+          },
+          {
+            title: "Ajustes",
+            icon: Settings,
+            items: [
+              {
+                title: "Perfil",
+                url: ROUTES.SETTINGS,
+                icon: User,
+              },
+              {
+                title: "Notificaciones",
+                url: ROUTES.SETTINGS_NOTIFICATIONS,
+                icon: Bell,
+              },
+              {
+                title: "Preferencias",
+                url: ROUTES.SETTINGS_PREFERENCES,
+                icon: Settings,
+              },
+              {
+                title: "Microsoft 365",
+                url: ROUTES.SETTINGS_MICROSOFT,
+                icon: Cloud,
+              },
+              {
+                title: "Seguridad",
+                url: ROUTES.SETTINGS_SECURITY,
+                icon: Shield,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}

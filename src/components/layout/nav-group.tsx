@@ -8,7 +8,7 @@
 
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
@@ -39,10 +39,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   type NavCollapsible,
+  type NavCollapsibleWithUrl,
   type NavItem,
   type NavLink,
   type NavGroup as NavGroupProps,
 } from "./types";
+
+function isNavCollapsibleWithUrl(item: NavItem): item is NavCollapsibleWithUrl {
+  return "url" in item && "items" in item && Array.isArray(item.items);
+}
 
 export function NavGroup({ title, items }: NavGroupProps) {
   const { state, isMobile } = useSidebar();
@@ -58,6 +63,24 @@ export function NavGroup({ title, items }: NavGroupProps) {
             return (
               <SidebarMenuLink key={key} item={item} pathname={pathname} />
             );
+
+          if (isNavCollapsibleWithUrl(item)) {
+            if (state === "collapsed" && !isMobile)
+              return (
+                <SidebarMenuCollapsedDropdownWithUrl
+                  key={key}
+                  item={item}
+                  pathname={pathname}
+                />
+              );
+            return (
+              <SidebarMenuCollapsibleWithUrl
+                key={key}
+                item={item}
+                pathname={pathname}
+              />
+            );
+          }
 
           if (state === "collapsed" && !isMobile)
             return (
@@ -177,6 +200,152 @@ function SidebarMenuCollapsedDropdown({
           <DropdownMenuLabel>
             {item.title} {item.badge ? `(${item.badge})` : ""}
           </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {item.items.map((sub) => (
+            <DropdownMenuItem key={`${sub.title}-${sub.url}`} asChild>
+              <Link
+                href={sub.url}
+                className={`${checkIsActive(pathname, sub) ? "bg-secondary" : ""}`}
+              >
+                {sub.icon && <sub.icon />}
+                <span className="max-w-52 text-wrap">{sub.title}</span>
+                {sub.badge && (
+                  <span className="ms-auto text-xs">{sub.badge}</span>
+                )}
+              </Link>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </SidebarMenuItem>
+  );
+}
+
+function SidebarMenuCollapsibleWithUrl({
+  item,
+  pathname,
+}: {
+  item: NavCollapsibleWithUrl;
+  pathname: string;
+}) {
+  const { setOpenMobile } = useSidebar();
+  // isInSection: true when anywhere inside the section → drives open/close
+  const isInSection = checkIsActive(pathname, item, true);
+  // isExactParent: true only on the parent URL itself → visual highlight
+  const isExactParent =
+    pathname === item.url || pathname.split("?")[0] === item.url;
+
+  const [open, setOpen] = useState(isInSection);
+  // Track previous value to detect when we enter the section (render-time adjustment,
+  // React-recommended alternative to useEffect+setState for derived state).
+  const [prevIsInSection, setPrevIsInSection] = useState(isInSection);
+  if (prevIsInSection !== isInSection) {
+    setPrevIsInSection(isInSection);
+    if (isInSection) setOpen(true);
+  }
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="group/collapsible"
+    >
+      <SidebarMenuItem>
+        {/*
+         * SidebarMenuButton asChild with a div: the div inherits all active/hover
+         * styles, so the full row (link + chevron) shares a uniform highlight.
+         */}
+        <SidebarMenuButton
+          asChild
+          isActive={isExactParent}
+          tooltip={item.title}
+        >
+          <div className="flex cursor-default items-center">
+            <Link
+              href={item.url}
+              onClick={() => {
+                setOpenMobile(false);
+                setOpen(true);
+              }}
+              className="flex flex-1 items-center gap-2 overflow-hidden"
+            >
+              {item.icon && <item.icon className="size-4 shrink-0" />}
+              <span className="flex-1 truncate">{item.title}</span>
+              {item.badge && <NavBadge>{item.badge}</NavBadge>}
+            </Link>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen((v) => !v);
+              }}
+              className="ms-1 flex size-6 shrink-0 items-center justify-center rounded-sm"
+            >
+              <ChevronRight className="size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 rtl:rotate-180" />
+              <span className="sr-only">Expandir {item.title}</span>
+            </button>
+          </div>
+        </SidebarMenuButton>
+        <CollapsibleContent className="CollapsibleContent">
+          <SidebarMenuSub>
+            {item.items.map((subItem) => (
+              <SidebarMenuSubItem key={subItem.title}>
+                <SidebarMenuSubButton
+                  asChild
+                  isActive={checkIsActive(pathname, subItem)}
+                >
+                  <Link href={subItem.url} onClick={() => setOpenMobile(false)}>
+                    {subItem.icon && <subItem.icon />}
+                    <span>{subItem.title}</span>
+                    {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
+                  </Link>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            ))}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  );
+}
+
+function SidebarMenuCollapsedDropdownWithUrl({
+  item,
+  pathname,
+}: {
+  item: NavCollapsibleWithUrl;
+  pathname: string;
+}) {
+  return (
+    <SidebarMenuItem>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <SidebarMenuButton
+            tooltip={item.title}
+            isActive={checkIsActive(pathname, item)}
+          >
+            {item.icon && <item.icon />}
+            <span>{item.title}</span>
+            {item.badge && <NavBadge>{item.badge}</NavBadge>}
+            <ChevronRight className="ms-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+          </SidebarMenuButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="right" align="start" sideOffset={4}>
+          <DropdownMenuItem asChild>
+            <Link
+              href={item.url}
+              className={
+                pathname === item.url || pathname.split("?")[0] === item.url
+                  ? "bg-secondary"
+                  : ""
+              }
+            >
+              {item.icon && <item.icon />}
+              <span className="max-w-52 font-medium text-wrap">
+                {item.title}
+              </span>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           {item.items.map((sub) => (
             <DropdownMenuItem key={`${sub.title}-${sub.url}`} asChild>

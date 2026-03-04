@@ -16,41 +16,40 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { sidebarData } from "./data/sidebar-data";
+import { getSidebarData } from "./data/sidebar-data";
 import { AppTitle } from "./app-title";
 import { NavGroup } from "./nav-group";
 import { NavUser } from "./nav-user";
-import { ROUTES } from "@/lib/constants";
 import type { UserRole } from "@/lib/supabase/types";
 
 interface AppSidebarProps {
   role: UserRole;
-  /** Ocultar la sección de visitantes cuando visitor_booking_enabled=false */
   visitorBookingEnabled?: boolean;
+  hasParkingSpot?: boolean;
+  hasOfficeSpot?: boolean;
 }
 
 export function AppSidebar({
   role,
   visitorBookingEnabled = true,
+  hasParkingSpot = false,
+  hasOfficeSpot = false,
 }: AppSidebarProps) {
   const filteredNavGroups = useMemo(() => {
-    return sidebarData.navGroups
+    const data = getSidebarData({
+      hasParkingSpot,
+      hasOfficeSpot,
+      visitorBookingEnabled,
+    });
+    return data.navGroups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => {
-          if (!(!item.roles || item.roles.includes(role))) return false;
-          // Ocultar Visitantes si visitor_booking_enabled está desactivado
-          if (
-            !visitorBookingEnabled &&
-            "url" in item &&
-            item.url === ROUTES.VISITORS
-          )
-            return false;
-          return true;
-        }),
+        items: group.items.filter(
+          (item) => !item.roles || item.roles.includes(role)
+        ),
       }))
       .filter((group) => group.items.length > 0);
-  }, [role, visitorBookingEnabled]);
+  }, [role, visitorBookingEnabled, hasParkingSpot, hasOfficeSpot]);
 
   return (
     <Sidebar collapsible="icon" variant="inset">

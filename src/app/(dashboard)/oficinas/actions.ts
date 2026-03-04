@@ -221,7 +221,7 @@ export const createOfficeReservation = actionClient
     }
 
     revalidatePath("/oficinas");
-    revalidatePath("/mis-reservas");
+    revalidatePath("/oficinas/reservas");
     return { id: data.id };
   });
 
@@ -256,6 +256,6 @@ export const cancelOfficeReservation = actionClient
     }
 
     revalidatePath("/oficinas");
-    revalidatePath("/mis-reservas");
+    revalidatePath("/oficinas/reservas");
     return { cancelled: true };
   });

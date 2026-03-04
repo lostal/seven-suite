@@ -22,13 +22,13 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { sidebarData } from "@/components/layout/data/sidebar-data";
+import { getSidebarData } from "@/components/layout/data/sidebar-data";
 import { updateTheme } from "@/app/(dashboard)/ajustes/actions";
 
 export function CommandMenu() {
   const router = useRouter();
   const { setTheme } = useTheme();
-  const { open, setOpen, role } = useSearch();
+  const { open, setOpen, role, visitorBookingEnabled } = useSearch();
 
   const runCommand = React.useCallback(
     (command: () => unknown) => {
@@ -43,19 +43,23 @@ export function CommandMenu() {
     void updateTheme({ theme });
   };
 
-  // Filter nav items by role, same logic as AppSidebar
-  const filteredNavGroups = React.useMemo(
-    () =>
-      sidebarData.navGroups
-        .map((group) => ({
-          ...group,
-          items: group.items.filter(
-            (item) => !item.roles || item.roles.includes(role)
-          ),
-        }))
-        .filter((group) => group.items.length > 0),
-    [role]
-  );
+  // Filter nav items by role, same logic as AppSidebar.
+  // Spot params default to false — command menu shows all reservable routes.
+  const filteredNavGroups = React.useMemo(() => {
+    const data = getSidebarData({
+      hasParkingSpot: false,
+      hasOfficeSpot: false,
+      visitorBookingEnabled,
+    });
+    return data.navGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) => !item.roles || item.roles.includes(role)
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [role, visitorBookingEnabled]);
 
   return (
     <CommandDialog modal open={open} onOpenChange={setOpen}>

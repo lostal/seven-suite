@@ -17,6 +17,7 @@ import { SkipToMain } from "@/components/skip-to-main";
 import { getUserPreferences } from "@/lib/queries/preferences";
 import { ThemeSync } from "@/components/providers/theme-sync";
 import { getResourceConfig } from "@/lib/config";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
   children,
@@ -28,25 +29,47 @@ export default async function DashboardLayout({
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
-  // Fetch user preferences and visitor_booking_enabled config in parallel.
-  // Both modules are checked so the link shows if either has visitor booking on.
+  // Fetch user preferences, visitor_booking_enabled config, and spot ownership in parallel.
   // getResourceConfig usa el cache de 5 min (tag system-config) para consistencia.
-  const [prefs, parkingVisitors, officeVisitors] = await Promise.all([
-    getUserPreferences(user.id),
-    getResourceConfig("parking", "visitor_booking_enabled"),
-    getResourceConfig("office", "visitor_booking_enabled"),
-  ]);
+  const supabase = await createClient();
+  const [prefs, parkingVisitors, officeVisitors, parkingSpot, officeSpot] =
+    await Promise.all([
+      getUserPreferences(user.id),
+      getResourceConfig("parking", "visitor_booking_enabled"),
+      getResourceConfig("office", "visitor_booking_enabled"),
+      supabase
+        .from("spots")
+        .select("id")
+        .eq("assigned_to", user.id)
+        .eq("resource_type", "parking")
+        .eq("is_active", true)
+        .maybeSingle(),
+      supabase
+        .from("spots")
+        .select("id")
+        .eq("assigned_to", user.id)
+        .eq("resource_type", "office")
+        .eq("is_active", true)
+        .maybeSingle(),
+    ]);
   const visitorBookingEnabled = parkingVisitors || officeVisitors;
+  const hasParkingSpot = !!parkingSpot.data;
+  const hasOfficeSpot = !!officeSpot.data;
   const dbTheme = prefs?.theme ?? "system";
 
   return (
-    <SearchProvider role={(user.profile?.role ?? "employee") as UserRole}>
+    <SearchProvider
+      role={(user.profile?.role ?? "employee") as UserRole}
+      visitorBookingEnabled={visitorBookingEnabled}
+    >
       <SidebarProvider defaultOpen={defaultOpen}>
         <SkipToMain />
         <ThemeSync dbTheme={dbTheme} />
         <AppSidebar
           role={(user.profile?.role ?? "employee") as UserRole}
           visitorBookingEnabled={visitorBookingEnabled}
+          hasParkingSpot={hasParkingSpot}
+          hasOfficeSpot={hasOfficeSpot}
         />
         <SidebarInset
           className={cn(

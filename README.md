@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🅿️ GRUPOSIETE Parking
+# GRUPOSIETE Reservas
 
 ![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=next.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
@@ -8,7 +8,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
 
-**Sistema de gestión de reservas de parking corporativo con mapa interactivo en tiempo real, tres roles y Microsoft 365**
+**ERP modular de reservas corporativas: plazas de parking y escritorios de oficina, con tres roles, integración Microsoft 365 y configuración por recurso**
 
 </div>
 
@@ -16,21 +16,22 @@
 
 ## 🎯 El Problema
 
-Las plazas de aparcamiento asignadas a directivos de [GRUPOSIETE](https://gruposiete.com) quedan vacías cuando estos viajan, mientras el resto de empleados no tiene forma de usarlas. Cuando llegan clientes o proveedores, tampoco existe mecanismo para asignarles plaza. Todo se gestiona "de palabra, o no se gestiona".
+[GRUPOSIETE](https://gruposiete.com) necesitaba gestionar dos tipos de recursos con lógica similar pero reglas distintas: las plazas de aparcamiento de directivos (que quedan vacías cuando viajan) y los escritorios en zonas de hoteling (que deben reservarse por franjas horarias). Todo se gestionaba "de palabra, o no se gestionaba".
 
-> 💡 En empresas con +50 empleados y plazas limitadas, la tasa de infrautilización del parking corporativo puede superar el 30% en días laborables.
+> 💡 En empresas con +50 empleados y recursos limitados, la tasa de infrautilización del parking corporativo puede superar el 30% — y los escritorios de hoteling sin sistema son fuente constante de conflictos.
 
 ## ✨ La Solución
 
-| ❌ Sin el sistema                            | ✅ Con GRUPOSIETE Parking                              |
+| ❌ Sin el sistema                            | ✅ Con GRUPOSIETE Reservas                             |
 | -------------------------------------------- | ------------------------------------------------------ |
 | Plazas vacías cuando el directivo viaja      | Cesión temporal al pool de plazas disponibles          |
 | Sin visibilidad de disponibilidad            | Mapa SVG interactivo con estado en tiempo real         |
+| Escritorios de hoteling sin control          | Reservas por franja horaria con configuración global   |
 | Gestión de visitantes por email o de palabra | Reserva con notificación automática al visitante       |
 | Sin control de quién aparca dónde            | Panel admin con gestión de plazas, usuarios y roles    |
 | Cada herramienta va por separado             | Integrado en el ecosistema Microsoft 365 de la empresa |
 
-**Resultado:** Un sistema con tres roles (Empleado, Dirección, Administrador) que convierte plazas infrautilizadas en un recurso compartido y gestionable.
+**Resultado:** Un sistema modular con tres roles (Empleado, Dirección, Administrador) que cubre parking y oficinas desde una sola aplicación, con configuración independiente por recurso.
 
 ---
 
@@ -82,14 +83,14 @@ Las plazas de aparcamiento asignadas a directivos de [GRUPOSIETE](https://grupos
 ### 🔐 Autenticación y Roles
 
 - ✅ Login con Microsoft Entra ID (Azure AD)
-- ✅ Tres roles: Empleado, Dirección, Admin
+- ✅ Dos roles: Empleado, Admin
 - ✅ RLS con ~30 policies a nivel de BD
 - ✅ Perfil automático vía trigger al signup
 
 </td>
 <td width="50%">
 
-### 🗺️ Mapa Interactivo
+### 🗺️ Parking — Mapa Interactivo
 
 - ✅ SVG del plano real del parking
 - ✅ Color por estado (libre, reservada, cedida...)
@@ -101,14 +102,26 @@ Las plazas de aparcamiento asignadas a directivos de [GRUPOSIETE](https://grupos
 <tr>
 <td>
 
+### 🏢 Oficinas — Escritorios por Franja
+
+- ✅ Reservas por franja horaria configurable
+- ✅ Días permitidos y horarios definidos por admin
+- ✅ Misma lógica de cesión que parking
+- ✅ Activable/desactivable independientemente
+
+</td>
+<td>
+
 ### 📅 Cesiones y Reservas
 
-- ✅ Directivos ceden plaza los días que viajan
-- ✅ Empleados reservan plazas cedidas (1/día)
+- ✅ Directivos ceden recurso los días que no lo usan
+- ✅ Empleados reservan recursos cedidos (1/día)
 - ✅ Cancelación con lógica de estados
 - ✅ Alertas "Avísame si hay plaza el día X"
 
 </td>
+</tr>
+<tr>
 <td>
 
 ### 👥 Visitantes y Notificaciones
@@ -119,26 +132,14 @@ Las plazas de aparcamiento asignadas a directivos de [GRUPOSIETE](https://grupos
 - ✅ Sistema de alertas por disponibilidad
 
 </td>
-</tr>
-<tr>
 <td>
 
 ### ⚙️ Panel de Administración
 
-- ✅ CRUD de plazas y asignaciones
+- ✅ CRUD de plazas y asignaciones (parking + oficinas)
 - ✅ Gestión de usuarios y roles
-- ✅ Configuración global del sistema
-- ✅ DataTable genérica con TanStack React Table
-
-</td>
-<td>
-
-### 🎨 UX y Calidad
-
-- ✅ Command palette ⌘K con cmdk
-- ✅ Tema dual (light/dark) con next-themes
-- ✅ Mobile first + PWA-ready
-- ✅ CI completo: types + lint + format + tests + build
+- ✅ Configuración global por recurso (`system_config`)
+- ✅ Dashboard de estadísticas con Recharts
 
 </td>
 </tr>
@@ -195,24 +196,41 @@ Las Server Actions de Next.js no ofrecen validación de entrada ni gestión de e
 
 ---
 
+### 🧩 Challenge #4: Dos Módulos, Un Modelo de Datos
+
+**El problema:**
+Parking y oficinas comparten el mismo modelo de datos (`spots`, `reservations`, `cessions`) pero tienen reglas distintas: el parking tiene mapa SVG, las oficinas tienen franjas horarias; el parking permite visitantes externos, las oficinas no. Añadir oficinas no podía romper parking.
+
+**La solución:**
+
+- Campo `resource_type: "parking" | "office"` en todas las tablas clave
+- Capa de configuración `system_config` con claves prefijadas (`parking.*`, `office.*`) cacheadas con `unstable_cache`
+- Cada módulo activa sus propias features vía config — mismas queries, distintos parámetros
+- Módulos activables/desactivables desde el panel admin sin tocar código
+
+**Tech stack:** PostgreSQL • system_config table • Next.js unstable_cache
+
+---
+
 ## ⚙️ Arquitectura del Sistema
 
 ```mermaid
 flowchart TB
     subgraph Cliente["Next.js 16 — App Router"]
         A[🔐 Auth Module] --> B[📊 Dashboard]
-        B --> C[🗺️ Mapa Parking]
-        B --> D[📅 Calendario]
-        B --> E[👥 Visitantes]
-        B --> F[⚙️ Admin Panel]
+        B --> C[🗺️ Parking]
+        B --> C2[🏢 Oficinas]
+        B --> D[👥 Visitantes]
+        B --> E[⚙️ Admin Panel]
+        B --> F[📈 Panel Stats]
         B --> G[🔧 Ajustes]
     end
 
     subgraph Servidor["Server Actions + Middleware"]
         C --> H[actionClient + Zod]
+        C2 --> H
         D --> H
         E --> H
-        F --> H
         H --> I[Supabase Client SSR]
     end
 
@@ -231,22 +249,23 @@ flowchart TB
     L -->|WebSocket| C
 ```
 
-**Componentes Principales:**
+**Módulos de la aplicación:**
 
-| Componente       | Responsabilidad                                  | Tecnologías                               |
-| ---------------- | ------------------------------------------------ | ----------------------------------------- |
-| App Router       | Routing, layouts, SSR, protección de rutas       | Next.js 16 • TypeScript • Middleware      |
-| Server Actions   | Mutaciones tipadas con validación                | actionClient • Zod v4 • React Hook Form   |
-| Mapa Interactivo | Visualización de plazas en tiempo real           | SVG • Supabase Realtime • React           |
-| Capa de Datos    | Queries tipadas, RLS, triggers de sincronización | Supabase • PostgreSQL • 7 módulos queries |
-| Panel Admin      | CRUD de plazas, usuarios, roles, configuración   | TanStack Table • DataTable genérica       |
-| Notificaciones   | Emails transaccionales a visitantes y usuarios   | Resend • React Email • Templates          |
+| Ruta              | Propósito                                    |
+| ----------------- | -------------------------------------------- |
+| `parking/`        | Reservas, cesiones, mapa SVG, calendario     |
+| `oficinas/`       | Escritorios por franja horaria, cesiones     |
+| `administracion/` | CRUD de plazas, usuarios, config por recurso |
+| `panel/`          | Dashboard de estadísticas (solo admin)       |
+| `mis-reservas/`   | Reservas propias del usuario                 |
+| `visitantes/`     | Reservas de visitantes externos              |
+| `ajustes/`        | Preferencias, Microsoft 365, seguridad       |
 
 ---
 
 ## 🎓 Lo Que Aprendí
 
-> Este proyecto me obligó a pensar la seguridad desde la base de datos hacia arriba, no al revés. Diseñar ~30 RLS policies me hizo entender que la autorización real vive en la capa de datos, no en el middleware. También descubrí que las Server Actions de Next.js eliminan una cantidad brutal de boilerplate cuando les pones un builder pattern encima — una sola función reemplaza controller + route + validación + error handling. Lo más gratificante fue ver cómo el trigger de sincronización cesión ↔ reserva hace imposible el estado inconsistente sin que el código de aplicación tenga que preocuparse por ello.
+> Este proyecto me obligó a pensar la seguridad desde la base de datos hacia arriba, no al revés. Diseñar ~30 RLS policies me hizo entender que la autorización real vive en la capa de datos, no en el middleware. También descubrí que las Server Actions de Next.js eliminan una cantidad brutal de boilerplate cuando les pones un builder pattern encima — una sola función reemplaza controller + route + validación + error handling. Lo más gratificante fue ver cómo el trigger de sincronización cesión ↔ reserva hace imposible el estado inconsistente sin que el código de aplicación tenga que preocuparse por ello. Añadir el módulo de oficinas sobre la misma base de datos demostró que el diseño `resource_type` era la abstracción correcta desde el principio.
 
 ---
 

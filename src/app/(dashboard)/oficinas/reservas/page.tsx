@@ -1,16 +1,17 @@
 /**
- * Cesiones de Parking
+ * Reservas de Oficinas
  *
- * Cesiones de parking del usuario con plaza asignada.
- * Redirige a /parking/reservas si el usuario no tiene plaza asignada.
+ * Reservas y cesiones de oficina del usuario actual.
+ * Redirige a /oficinas/cesiones si el usuario tiene un puesto asignado.
  */
 
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, ParkingCircle } from "lucide-react";
+import { ArrowRight, Building2 } from "lucide-react";
 
 import { requireAuth } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getUserOfficeReservations } from "@/lib/queries/offices";
 import { getUserCessions } from "@/lib/queries/cessions";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
@@ -20,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/lib/constants";
 import { MisReservasClient } from "../../mis-reservas/_components/mis-reservas-client";
 
-export default async function ParkingCesionesPage() {
+export default async function OficinasReservasPage() {
   const user = await requireAuth();
   const role = user.profile?.role ?? "employee";
 
@@ -30,28 +31,30 @@ export default async function ParkingCesionesPage() {
 
   const supabase = await createClient();
 
-  const [cessions, parkingSpotResult] = await Promise.all([
-    getUserCessions(user.id, "parking"),
+  const [officeReservations, cessions, officeSpotResult] = await Promise.all([
+    getUserOfficeReservations(user.id),
+    getUserCessions(user.id, "office"),
     supabase
       .from("spots")
       .select("id")
       .eq("assigned_to", user.id)
-      .eq("resource_type", "parking")
+      .eq("resource_type", "office")
       .eq("is_active", true)
       .maybeSingle(),
   ]);
 
-  const hasParkingSpot = !!parkingSpotResult.data;
+  const hasOfficeSpot = !!officeSpotResult.data;
 
-  if (!hasParkingSpot) {
-    redirect(ROUTES.PARKING_RESERVAS);
+  // Usuarios con puesto asignado van al calendario de cesiones de oficina
+  if (hasOfficeSpot) {
+    redirect(ROUTES.OFFICES_CESSIONS);
   }
 
-  const totalCount = cessions.length;
+  const totalCount = officeReservations.length;
   const countLabel =
     totalCount === 0
-      ? "No tienes cesiones programadas"
-      : `${totalCount} cesión${totalCount !== 1 ? "es" : ""}`;
+      ? "No tienes reservas de oficina próximas"
+      : `${totalCount} reserva${totalCount !== 1 ? "s" : ""}`;
 
   return (
     <>
@@ -66,22 +69,23 @@ export default async function ParkingCesionesPage() {
       <Main>
         <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Cesiones</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Reservas</h1>
             <p className="text-muted-foreground text-sm">{countLabel}</p>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link href={ROUTES.PARKING}>
-              <ParkingCircle className="mr-1.5 size-3.5" />
-              Ir al parking
+            <Link href={ROUTES.OFFICES}>
+              <Building2 className="mr-1.5 size-3.5" />
+              Ir a oficinas
               <ArrowRight className="ml-1.5 size-3.5" />
             </Link>
           </Button>
         </div>
 
         <MisReservasClient
+          officeReservations={officeReservations}
           cessions={cessions}
-          hasParkingSpot
-          hasOfficeSpot
+          hasParkingSpot={false}
+          hasOfficeSpot={hasOfficeSpot}
           hideCtaLinks
         />
       </Main>

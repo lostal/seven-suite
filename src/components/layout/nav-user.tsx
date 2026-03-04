@@ -10,13 +10,7 @@
 
 import Link from "next/link";
 import { useTransition } from "react";
-import {
-  CalendarCheck,
-  ChevronsUpDown,
-  LogOut,
-  Loader2,
-  User,
-} from "lucide-react";
+import { ChevronsUpDown, LogOut, Loader2, User } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { signOutAction } from "@/lib/supabase/sign-out";
 import { ROUTES } from "@/lib/constants";
@@ -57,18 +51,6 @@ export function NavUser() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
-
-  const role = profile?.role;
-
-  // Empleados ven acceso rápido a sus reservas; admins no tienen reservas personales
-  const reservationLink =
-    role === "employee"
-      ? {
-          href: ROUTES.MIS_RESERVAS,
-          label: "Mi Actividad",
-          icon: CalendarCheck,
-        }
-      : null;
 
   if (loading) {
     return (
@@ -134,14 +116,6 @@ export function NavUser() {
                   Perfil
                 </Link>
               </DropdownMenuItem>
-              {reservationLink && (
-                <DropdownMenuItem asChild>
-                  <Link href={reservationLink.href}>
-                    <reservationLink.icon />
-                    {reservationLink.label}
-                  </Link>
-                </DropdownMenuItem>
-              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
