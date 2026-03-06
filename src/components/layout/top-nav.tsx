@@ -40,14 +40,28 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent side="bottom" align="start">
             {links.map(({ title, href, isActive, disabled }) => (
-              <DropdownMenuItem key={`${title}-${href}`} asChild>
-                <Link
-                  href={disabled ? "#" : href}
-                  className={!isActive ? "text-muted-foreground" : ""}
-                  aria-disabled={disabled}
-                >
-                  {title}
-                </Link>
+              <DropdownMenuItem
+                key={`${title}-${href}`}
+                asChild
+                disabled={disabled}
+              >
+                {disabled ? (
+                  <span
+                    role="link"
+                    aria-disabled="true"
+                    tabIndex={-1}
+                    className="text-muted-foreground pointer-events-none"
+                  >
+                    {title}
+                  </span>
+                ) : (
+                  <Link
+                    href={href}
+                    className={!isActive ? "text-muted-foreground" : ""}
+                  >
+                    {title}
+                  </Link>
+                )}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -61,16 +75,27 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
         )}
         {...props}
       >
-        {links.map(({ title, href, isActive, disabled }) => (
-          <Link
-            key={`${title}-${href}`}
-            href={disabled ? "#" : href}
-            aria-disabled={disabled}
-            className={`hover:text-primary text-sm font-medium transition-colors ${isActive ? "" : "text-muted-foreground"}`}
-          >
-            {title}
-          </Link>
-        ))}
+        {links.map(({ title, href, isActive, disabled }) =>
+          disabled ? (
+            <span
+              key={`${title}-${href}`}
+              role="link"
+              aria-disabled="true"
+              tabIndex={-1}
+              className="text-muted-foreground pointer-events-none text-sm font-medium"
+            >
+              {title}
+            </span>
+          ) : (
+            <Link
+              key={`${title}-${href}`}
+              href={href}
+              className={`hover:text-primary text-sm font-medium transition-colors ${isActive ? "" : "text-muted-foreground"}`}
+            >
+              {title}
+            </Link>
+          )
+        )}
       </nav>
     </>
   );

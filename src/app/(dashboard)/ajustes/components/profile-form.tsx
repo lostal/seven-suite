@@ -12,15 +12,10 @@ import {
   updateProfileSchema,
   type UpdateProfileInput,
 } from "@/lib/validations";
+import type { Profile } from "@/lib/supabase/types";
 
 interface ProfileFormProps {
-  profile: {
-    id: string;
-    email: string;
-    full_name: string | null;
-    avatar_url: string | null;
-    role: string;
-  };
+  profile: Pick<Profile, "id" | "email" | "full_name" | "avatar_url" | "role">;
 }
 
 export function ProfileForm({ profile }: ProfileFormProps) {
@@ -105,13 +100,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         <Input
           id="role"
           type="text"
-          value={
-            profile.role === "admin"
-              ? "Administrador"
-              : profile.role === "management"
-                ? "Directivo"
-                : "Empleado"
-          }
+          value={profile.role === "admin" ? "Administrador" : "Empleado"}
           disabled
           className="bg-muted"
         />

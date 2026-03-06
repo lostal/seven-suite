@@ -8,6 +8,8 @@
  */
 
 import { z } from "zod/v4";
+
+const DEFAULT_OUTLOOK_CALENDAR_NAME = "Reservas";
 import { actionClient } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -89,7 +91,8 @@ export const updateOutlookPreferences = actionClient
       .from("user_preferences")
       .update({
         outlook_create_events: parsedInput.outlook_create_events,
-        outlook_calendar_name: parsedInput.outlook_calendar_name || "Reservas",
+        outlook_calendar_name:
+          parsedInput.outlook_calendar_name || DEFAULT_OUTLOOK_CALENDAR_NAME,
         outlook_sync_enabled: parsedInput.outlook_sync_enabled,
         outlook_sync_interval: parsedInput.outlook_sync_interval ?? 15,
         updated_at: new Date().toISOString(),

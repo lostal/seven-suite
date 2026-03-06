@@ -20,24 +20,30 @@ export interface VisitorReservationWithDetails extends VisitorReservation {
 }
 
 /**
- * Obtiene todas las reservas de visitantes confirmadas desde hoy en adelante,
+ * Obtiene las reservas de visitantes confirmadas desde hoy en adelante,
  * con detalles de plaza y empleado que la creó.
+ * @param userId - Si se proporciona, filtra solo las reservas del usuario; omitir para obtener todas (solo admins)
  */
-export async function getUpcomingVisitorReservations(): Promise<
-  VisitorReservationWithDetails[]
-> {
+export async function getUpcomingVisitorReservations(
+  userId?: string
+): Promise<VisitorReservationWithDetails[]> {
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0]!;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("visitor_reservations")
     .select(
       "*, spots!visitor_reservations_spot_id_fkey(label), profiles!visitor_reservations_reserved_by_fkey(full_name)"
     )
     .eq("status", "confirmed")
     .gte("date", today)
-    .order("date")
-    .returns<VisitorReservationJoin[]>();
+    .order("date");
+
+  if (userId) {
+    query = query.eq("reserved_by", userId);
+  }
+
+  const { data, error } = await query.returns<VisitorReservationJoin[]>();
 
   if (error)
     throw new Error(

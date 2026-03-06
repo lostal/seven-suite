@@ -10,6 +10,7 @@
 import { usePathname } from "next/navigation";
 import { ROUTES } from "@/lib/constants";
 import { TopNav } from "@/components/layout";
+import type { UserRole } from "@/lib/supabase/types";
 
 const linksByRole: Record<string, { title: string; href: string }[]> = {
   employee: [
@@ -27,7 +28,7 @@ const linksByRole: Record<string, { title: string; href: string }[]> = {
 };
 
 interface DashboardTopNavProps {
-  role: string;
+  role: UserRole;
 }
 
 export function DashboardTopNav({ role }: DashboardTopNavProps) {

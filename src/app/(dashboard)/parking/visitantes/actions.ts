@@ -49,7 +49,10 @@ export async function getVisitorReservationsAction(): Promise<
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
 
-    const reservations = await getUpcomingVisitorReservations();
+    const isAdmin = user.profile?.role === "admin";
+    const reservations = await getUpcomingVisitorReservations(
+      isAdmin ? undefined : user.id
+    );
     return success(reservations);
   } catch (err) {
     console.error("[visitantes] getVisitorReservations error:", err);

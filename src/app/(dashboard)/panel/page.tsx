@@ -26,6 +26,7 @@ import {
   StatsSkeleton,
   ChartsSkeleton,
   AnalyticsSkeleton,
+  AlertsSkeleton,
 } from "./_components/panel-skeleton";
 
 export default async function PanelPage() {
@@ -80,7 +81,7 @@ export default async function PanelPage() {
             </Suspense>
 
             {/* Admin alerts */}
-            <Suspense fallback={null}>
+            <Suspense fallback={<AlertsSkeleton />}>
               <PanelAlertsSection today={today} />
             </Suspense>
           </TabsContent>

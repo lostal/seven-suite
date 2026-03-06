@@ -192,7 +192,7 @@ export async function getAllResourceConfigs(
       result[_key] = Array.isArray(rawVal) ? rawVal : defVal;
     } else if (typeof defVal === "boolean") {
       // @ts-expect-error – idem
-      result[_key] = Boolean(rawVal);
+      result[_key] = rawVal === true || rawVal === 1;
     } else if (typeof defVal === "number" || defVal === null) {
       // null explícito en BD = "sin límite"; undefined ya fue gestionado arriba
       // @ts-expect-error – idem
@@ -217,17 +217,20 @@ export async function getGlobalConfigs(): Promise<GlobalConfigValues> {
   return {
     notifications_enabled:
       raw["notifications_enabled"] !== undefined
-        ? Boolean(raw["notifications_enabled"])
+        ? raw["notifications_enabled"] === true ||
+          raw["notifications_enabled"] === 1
         : GLOBAL_DEFAULTS.notifications_enabled,
 
     email_notifications_enabled:
       raw["email_notifications_enabled"] !== undefined
-        ? Boolean(raw["email_notifications_enabled"])
+        ? raw["email_notifications_enabled"] === true ||
+          raw["email_notifications_enabled"] === 1
         : GLOBAL_DEFAULTS.email_notifications_enabled,
 
     teams_notifications_enabled:
       raw["teams_notifications_enabled"] !== undefined
-        ? Boolean(raw["teams_notifications_enabled"])
+        ? raw["teams_notifications_enabled"] === true ||
+          raw["teams_notifications_enabled"] === 1
         : GLOBAL_DEFAULTS.teams_notifications_enabled,
   };
 }
@@ -248,5 +251,6 @@ export async function getResourceConfig<K extends ResourceConfigKey>(
  * Debe llamarse después de cada mutación en system_config.
  */
 export async function invalidateConfigCache(): Promise<void> {
+  // Second arg 'default' required by Next.js 16 internal cache layer — do not remove
   revalidateTag(CONFIG_CACHE_TAG, "default");
 }

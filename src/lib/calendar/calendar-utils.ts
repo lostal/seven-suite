@@ -53,9 +53,8 @@ export function isOutsideBookingWindow(
   maxAdvanceDays: number | null
 ): boolean {
   if (maxAdvanceDays === null) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr);
+  const today = new Date(toServerDateStr(new Date()) + "T00:00:00");
+  const target = new Date(dateStr + "T00:00:00");
   const daysAhead = Math.round(
     (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
   );
@@ -72,9 +71,8 @@ export function isTooSoonForCession(
 ): boolean {
   if (minAdvanceHours <= 0) return false;
   const now = Date.now();
-  // Medianoche del día objetivo (hora local del servidor)
-  const target = new Date(dateStr);
-  target.setHours(0, 0, 0, 0);
+  // Medianoche del día objetivo en zona del servidor (consistente con toServerDateStr)
+  const target = new Date(dateStr + "T00:00:00");
   const hoursUntil = (target.getTime() - now) / (1000 * 60 * 60);
   return hoursUntil < minAdvanceHours;
 }

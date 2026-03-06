@@ -21,13 +21,14 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
   const [offset, setOffset] = useState(0);
 
   useEffect(() => {
+    if (!fixed) return;
     const onScroll = () => {
       setOffset(document.body.scrollTop || document.documentElement.scrollTop);
     };
 
     document.addEventListener("scroll", onScroll, { passive: true });
     return () => document.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [fixed]);
 
   const scrolled = fixed && offset > 10;
 
@@ -49,7 +50,11 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
             scrolled ? "opacity-100" : "opacity-0"
           )}
         />
-        <SidebarTrigger variant="outline" className="max-md:scale-125" />
+        <SidebarTrigger
+          variant="outline"
+          className="max-md:scale-125"
+          aria-label="Alternar barra lateral"
+        />
         <Separator orientation="vertical" className="h-6" />
         {children}
       </div>
