@@ -31,10 +31,12 @@ export interface MovementDistribution {
  * Usada por el gráfico de barras del panel admin.
  *
  * @param resourceType - Si se proporciona, filtra reservas por tipo de recurso.
+ * @param entityId - Si se proporciona, filtra por sede.
  */
 export async function getDailyCountsLast30Days(
   days = 30,
-  resourceType?: "parking" | "office"
+  resourceType?: "parking" | "office",
+  entityId?: string | null
 ): Promise<DailyCount[]> {
   const supabase = await createClient();
 
@@ -45,9 +47,10 @@ export async function getDailyCountsLast30Days(
   const startStr = startDate.toISOString().split("T")[0]!;
   const endStr = endDate.toISOString().split("T")[0]!;
 
-  // Para filtrar por resource_type necesitamos hacer join con spots
-  const reservationsSelect = resourceType
-    ? "date, spots!reservations_spot_id_fkey(resource_type)"
+  // Para filtrar por resource_type o entity_id necesitamos hacer join con spots
+  const needsJoin = resourceType || entityId;
+  const reservationsSelect = needsJoin
+    ? "date, spots!reservations_spot_id_fkey(resource_type, entity_id)"
     : "date";
 
   let reservationsQuery = supabase
@@ -63,20 +66,38 @@ export async function getDailyCountsLast30Days(
       resourceType
     );
   }
+  if (entityId) {
+    reservationsQuery = reservationsQuery.eq("spots.entity_id", entityId);
+  }
 
   type ReservationForCount = {
     date: string;
-    spots?: { resource_type: string } | null;
+    spots?: { resource_type: string; entity_id: string | null } | null;
+  };
+
+  let visitorsQuery = supabase
+    .from("visitor_reservations")
+    .select(
+      entityId
+        ? "date, spots!visitor_reservations_spot_id_fkey(entity_id)"
+        : "date"
+    )
+    .eq("status", "confirmed")
+    .gte("date", startStr)
+    .lte("date", endStr);
+
+  if (entityId) {
+    visitorsQuery = visitorsQuery.eq("spots.entity_id", entityId);
+  }
+
+  type VisitorForCount = {
+    date: string;
+    spots?: { entity_id: string | null } | null;
   };
 
   const [reservationsResult, visitorsResult] = await Promise.all([
     reservationsQuery.returns<ReservationForCount[]>(),
-    supabase
-      .from("visitor_reservations")
-      .select("date")
-      .eq("status", "confirmed")
-      .gte("date", startStr)
-      .lte("date", endStr),
+    visitorsQuery.returns<VisitorForCount[]>(),
   ]);
 
   // Construir mapa de fechas → conteos
@@ -95,11 +116,13 @@ export async function getDailyCountsLast30Days(
 
   for (const r of reservationsResult.data ?? []) {
     if (resourceType && r.spots?.resource_type !== resourceType) continue;
+    if (entityId && r.spots?.entity_id !== entityId) continue;
     const entry = countsByDate.get(r.date);
     if (entry) entry.reservations++;
   }
 
   for (const v of visitorsResult.data ?? []) {
+    if (entityId && v.spots?.entity_id !== entityId) continue;
     const entry = countsByDate.get(v.date);
     if (entry) entry.visitors++;
   }
@@ -118,10 +141,12 @@ export async function getDailyCountsLast30Days(
  * Devuelve las N plazas con más reservas confirmadas en el mes actual.
  *
  * @param resourceType - Si se proporciona, filtra por tipo de recurso.
+ * @param entityId - Si se proporciona, filtra por sede.
  */
 export async function getTopSpots(
   limit = 6,
-  resourceType?: "parking" | "office"
+  resourceType?: "parking" | "office",
+  entityId?: string | null
 ): Promise<SpotUsage[]> {
   const supabase = await createClient();
 
@@ -135,7 +160,9 @@ export async function getTopSpots(
 
   let query = supabase
     .from("reservations")
-    .select("id, date, spots!reservations_spot_id_fkey(label, resource_type)")
+    .select(
+      "id, date, spots!reservations_spot_id_fkey(label, resource_type, entity_id)"
+    )
     .eq("status", "confirmed")
     .gte("date", firstOfMonth)
     .lte("date", lastOfMonth);
@@ -143,11 +170,18 @@ export async function getTopSpots(
   if (resourceType) {
     query = query.eq("spots.resource_type", resourceType);
   }
+  if (entityId) {
+    query = query.eq("spots.entity_id", entityId);
+  }
 
   type ReservaConPlazaFiltrada = {
     id: string;
     date: string;
-    spots: { label: string; resource_type: string } | null;
+    spots: {
+      label: string;
+      resource_type: string;
+      entity_id: string | null;
+    } | null;
   };
 
   const { data, error } = await query.returns<ReservaConPlazaFiltrada[]>();
@@ -157,10 +191,14 @@ export async function getTopSpots(
     return [];
   }
 
-  // Filtrar en JS las filas cuyo join no matched (spots is null) si resourceType dado
-  const filtered = resourceType
-    ? data.filter((r) => r.spots?.resource_type === resourceType)
-    : data;
+  // Filtrar en JS las filas cuyo join no matched (spots is null)
+  let filtered = data;
+  if (resourceType) {
+    filtered = filtered.filter((r) => r.spots?.resource_type === resourceType);
+  }
+  if (entityId) {
+    filtered = filtered.filter((r) => r.spots?.entity_id === entityId);
+  }
 
   // Agrupar por plaza
   const countBySpot = new Map<string, number>();
@@ -177,10 +215,12 @@ export async function getTopSpots(
 
 /**
  * Devuelve la distribución de tipos de movimiento para el mes actual.
+ *
+ * @param entityId - Si se proporciona, filtra por sede.
  */
-export async function getMovementDistribution(): Promise<
-  MovementDistribution[]
-> {
+export async function getMovementDistribution(
+  entityId?: string | null
+): Promise<MovementDistribution[]> {
   const supabase = await createClient();
 
   const now = new Date();
@@ -191,31 +231,81 @@ export async function getMovementDistribution(): Promise<
     .toISOString()
     .split("T")[0]!;
 
+  if (!entityId) {
+    // Sin filtro de sede → head:true para rendimiento
+    const [resResult, cesResult, visResult] = await Promise.all([
+      supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "confirmed")
+        .gte("date", firstOfMonth)
+        .lte("date", lastOfMonth),
+      supabase
+        .from("cessions")
+        .select("id", { count: "exact", head: true })
+        .neq("status", "cancelled")
+        .gte("date", firstOfMonth)
+        .lte("date", lastOfMonth),
+      supabase
+        .from("visitor_reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "confirmed")
+        .gte("date", firstOfMonth)
+        .lte("date", lastOfMonth),
+    ]);
+
+    return [
+      { name: "Reservas empleados", value: resResult.count ?? 0 },
+      { name: "Cesiones dirección", value: cesResult.count ?? 0 },
+      { name: "Visitantes", value: visResult.count ?? 0 },
+    ];
+  }
+
+  // Con filtro de sede — join con spots para filtrar por entity_id
+  type WithSpot = { spots: { entity_id: string | null } | null };
+
   const [resResult, cesResult, visResult] = await Promise.all([
     supabase
       .from("reservations")
-      .select("id", { count: "exact", head: true })
+      .select("id, spots!reservations_spot_id_fkey(entity_id)")
       .eq("status", "confirmed")
       .gte("date", firstOfMonth)
-      .lte("date", lastOfMonth),
+      .lte("date", lastOfMonth)
+      .eq("spots.entity_id", entityId)
+      .returns<WithSpot[]>(),
     supabase
       .from("cessions")
-      .select("id", { count: "exact", head: true })
+      .select("id, spots!cessions_spot_id_fkey(entity_id)")
       .neq("status", "cancelled")
       .gte("date", firstOfMonth)
-      .lte("date", lastOfMonth),
+      .lte("date", lastOfMonth)
+      .eq("spots.entity_id", entityId)
+      .returns<WithSpot[]>(),
     supabase
       .from("visitor_reservations")
-      .select("id", { count: "exact", head: true })
+      .select("id, spots!visitor_reservations_spot_id_fkey(entity_id)")
       .eq("status", "confirmed")
       .gte("date", firstOfMonth)
-      .lte("date", lastOfMonth),
+      .lte("date", lastOfMonth)
+      .eq("spots.entity_id", entityId)
+      .returns<WithSpot[]>(),
   ]);
 
+  // Filtro JS adicional por si PostgREST devuelve filas con spots:null
+  const resCount = (resResult.data ?? []).filter(
+    (r) => r.spots?.entity_id === entityId
+  ).length;
+  const cesCount = (cesResult.data ?? []).filter(
+    (r) => r.spots?.entity_id === entityId
+  ).length;
+  const visCount = (visResult.data ?? []).filter(
+    (r) => r.spots?.entity_id === entityId
+  ).length;
+
   return [
-    { name: "Reservas empleados", value: resResult.count ?? 0 },
-    { name: "Cesiones dirección", value: cesResult.count ?? 0 },
-    { name: "Visitantes", value: visResult.count ?? 0 },
+    { name: "Reservas empleados", value: resCount },
+    { name: "Cesiones dirección", value: cesCount },
+    { name: "Visitantes", value: visCount },
   ];
 }
 
@@ -223,9 +313,11 @@ export async function getMovementDistribution(): Promise<
  * Devuelve el total de reservas confirmadas para el mes actual.
  *
  * @param resourceType - Si se proporciona, filtra por tipo de recurso.
+ * @param entityId - Si se proporciona, filtra por sede.
  */
 export async function getMonthlyReservationCount(
-  resourceType?: "parking" | "office"
+  resourceType?: "parking" | "office",
+  entityId?: string | null
 ): Promise<number> {
   const supabase = await createClient();
 
@@ -237,15 +329,17 @@ export async function getMonthlyReservationCount(
     .toISOString()
     .split("T")[0]!;
 
+  const needsJoin = resourceType || entityId;
+
   let query = supabase
     .from("reservations")
     .select(
-      resourceType
-        ? "id, spots!reservations_spot_id_fkey(resource_type)"
+      needsJoin
+        ? "id, spots!reservations_spot_id_fkey(resource_type, entity_id)"
         : "id",
       {
         count: "exact",
-        head: !resourceType, // head:true solo si no filtramos por resource_type
+        head: !needsJoin, // head:true solo si no necesitamos filtrar el join
       }
     )
     .eq("status", "confirmed")
@@ -255,15 +349,22 @@ export async function getMonthlyReservationCount(
   if (resourceType) {
     query = query.eq("spots.resource_type", resourceType);
   }
+  if (entityId) {
+    query = query.eq("spots.entity_id", entityId);
+  }
 
   const { count, data } = await query;
 
-  // Si filtramos por resource_type, el count de head:false puede no ser exacto
-  // por el comportamiento del join — usamos el tamaño real del array
-  if (resourceType && data) {
-    const filtered = (
-      data as unknown as { spots: { resource_type: string } | null }[]
-    ).filter((r) => r.spots?.resource_type === resourceType);
+  // Si usamos join, el count puede no ser exacto — usamos filtro JS
+  if (needsJoin && data) {
+    const rows = data as unknown as {
+      spots: { resource_type: string; entity_id: string | null } | null;
+    }[];
+    const filtered = rows.filter((r) => {
+      if (resourceType && r.spots?.resource_type !== resourceType) return false;
+      if (entityId && r.spots?.entity_id !== entityId) return false;
+      return true;
+    });
     return filtered.length;
   }
 
@@ -301,34 +402,67 @@ type VisitanteActividad = {
  * Devuelve las últimas N reservas confirmadas + reservas de visitantes
  * combinadas y ordenadas por created_at.
  * Usada por el panel "Actividad reciente" del admin.
+ *
+ * @param entityId - Si se proporciona, filtra por sede.
  */
-export async function getRecentActivity(limit = 8): Promise<RecentActivity[]> {
+export async function getRecentActivity(
+  limit = 8,
+  entityId?: string | null
+): Promise<RecentActivity[]> {
   const supabase = await createClient();
 
+  /** Tipo interno para reservas en la actividad reciente con entity_id */
+  type ReservaActividadConEntidad = ReservaActividad & {
+    spots: { label: string; entity_id: string | null } | null;
+  };
+  /** Tipo interno para visitantes en la actividad reciente con entity_id */
+  type VisitanteActividadConEntidad = VisitanteActividad & {
+    spots: { label: string; entity_id: string | null } | null;
+  };
+
+  const resSelect = entityId
+    ? "id, date, created_at, spots!reservations_spot_id_fkey(label, entity_id), profiles!reservations_user_id_fkey(full_name)"
+    : "id, date, created_at, spots!reservations_spot_id_fkey(label), profiles!reservations_user_id_fkey(full_name)";
+
+  const visSelect = entityId
+    ? "id, date, created_at, visitor_name, spots!visitor_reservations_spot_id_fkey(label, entity_id)"
+    : "id, date, created_at, visitor_name, spots!visitor_reservations_spot_id_fkey(label)";
+
+  let resQuery = supabase
+    .from("reservations")
+    .select(resSelect)
+    .eq("status", "confirmed")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  let visQuery = supabase
+    .from("visitor_reservations")
+    .select(visSelect)
+    .eq("status", "confirmed")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (entityId) {
+    resQuery = resQuery.eq("spots.entity_id", entityId);
+    visQuery = visQuery.eq("spots.entity_id", entityId);
+  }
+
   const [resResult, visResult] = await Promise.all([
-    supabase
-      .from("reservations")
-      .select(
-        "id, date, created_at, spots!reservations_spot_id_fkey(label), profiles!reservations_user_id_fkey(full_name)"
-      )
-      .eq("status", "confirmed")
-      .order("created_at", { ascending: false })
-      .limit(limit)
-      .returns<ReservaActividad[]>(),
-    supabase
-      .from("visitor_reservations")
-      .select(
-        "id, date, created_at, visitor_name, spots!visitor_reservations_spot_id_fkey(label)"
-      )
-      .eq("status", "confirmed")
-      .order("created_at", { ascending: false })
-      .limit(limit)
-      .returns<VisitanteActividad[]>(),
+    resQuery.returns<ReservaActividadConEntidad[]>(),
+    visQuery.returns<VisitanteActividadConEntidad[]>(),
   ]);
 
   type ActivityWithTime = RecentActivity & { created_at: string };
 
-  const reservations: ActivityWithTime[] = (resResult.data ?? []).map((r) => ({
+  // Filtro JS adicional por si PostgREST devuelve filas con spots:null en lugar de excluirlas
+  const resData = entityId
+    ? (resResult.data ?? []).filter((r) => r.spots?.entity_id === entityId)
+    : (resResult.data ?? []);
+  const visData = entityId
+    ? (visResult.data ?? []).filter((v) => v.spots?.entity_id === entityId)
+    : (visResult.data ?? []);
+
+  const reservations: ActivityWithTime[] = resData.map((r) => ({
     id: r.id,
     user_name: r.profiles?.full_name ?? "Usuario",
     spot_label: r.spots?.label ?? "—",
@@ -337,7 +471,7 @@ export async function getRecentActivity(limit = 8): Promise<RecentActivity[]> {
     created_at: r.created_at,
   }));
 
-  const visitors: ActivityWithTime[] = (visResult.data ?? []).map((v) => ({
+  const visitors: ActivityWithTime[] = visData.map((v) => ({
     id: v.id,
     user_name: v.visitor_name ?? "Visitante",
     spot_label: v.spots?.label ?? "—",
@@ -356,7 +490,12 @@ export async function getRecentActivity(limit = 8): Promise<RecentActivity[]> {
     .map(({ created_at: _, ...item }) => item);
 }
 
-export async function getActiveUsersThisMonth(): Promise<number> {
+/**
+ * @param entityId - Si se proporciona, filtra por sede.
+ */
+export async function getActiveUsersThisMonth(
+  entityId?: string | null
+): Promise<number> {
   const supabase = await createClient();
 
   const now = new Date();
@@ -367,34 +506,70 @@ export async function getActiveUsersThisMonth(): Promise<number> {
     .toISOString()
     .split("T")[0]!;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("reservations")
-    .select("user_id")
+    .select(
+      entityId
+        ? "user_id, spots!reservations_spot_id_fkey(entity_id)"
+        : "user_id"
+    )
     .eq("status", "confirmed")
     .gte("date", firstOfMonth)
     .lte("date", lastOfMonth);
+
+  if (entityId) {
+    query = query.eq("spots.entity_id", entityId);
+  }
+
+  type Row = { user_id: string; spots?: { entity_id: string | null } | null };
+
+  const { data, error } = await query.returns<Row[]>();
 
   if (error) {
     console.error("Error al obtener usuarios activos:", error);
     return 0;
   }
 
-  const uniqueUsers = new Set(data.map((r) => r.user_id));
+  const rows = entityId
+    ? data.filter((r) => r.spots?.entity_id === entityId)
+    : data;
+
+  const uniqueUsers = new Set(rows.map((r) => r.user_id));
   return uniqueUsers.size;
 }
 
 /**
  * Devuelve el número de reservas de visitantes confirmadas para una fecha dada.
  * Usada por el panel admin (KPI de visitantes hoy).
+ *
+ * @param entityId - Si se proporciona, filtra por sede.
  */
-export async function getVisitorsTodayCount(date: string): Promise<number> {
+export async function getVisitorsTodayCount(
+  date: string,
+  entityId?: string | null
+): Promise<number> {
   const supabase = await createClient();
 
-  const { count } = await supabase
-    .from("visitor_reservations")
-    .select("id", { count: "exact", head: true })
-    .eq("date", date)
-    .eq("status", "confirmed");
+  if (!entityId) {
+    const { count } = await supabase
+      .from("visitor_reservations")
+      .select("id", { count: "exact", head: true })
+      .eq("date", date)
+      .eq("status", "confirmed");
 
-  return count ?? 0;
+    return count ?? 0;
+  }
+
+  // Con filtro de sede — join con spots
+  type Row = { spots: { entity_id: string | null } | null };
+
+  const { data } = await supabase
+    .from("visitor_reservations")
+    .select("id, spots!visitor_reservations_spot_id_fkey(entity_id)")
+    .eq("date", date)
+    .eq("status", "confirmed")
+    .eq("spots.entity_id", entityId)
+    .returns<Row[]>();
+
+  return (data ?? []).filter((r) => r.spots?.entity_id === entityId).length;
 }
