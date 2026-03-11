@@ -83,6 +83,37 @@ export async function requireAdmin(): Promise<AuthUser> {
 }
 
 /**
+ * Requiere rol HR o superior (hr | admin) — redirige al dashboard en caso contrario.
+ * Usar en páginas de nóminas, documentos y gestión de personal.
+ * @returns Usuario HR o admin con perfil
+ */
+export async function requireHR(): Promise<AuthUser> {
+  const user = await requireAuth();
+
+  if (user.profile?.role !== "hr" && user.profile?.role !== "admin") {
+    redirect(ROUTES.PARKING);
+  }
+
+  return user;
+}
+
+/**
+ * Requiere rol manager o superior (manager | hr | admin).
+ * Usar en páginas de aprobación de vacaciones y reportes de equipo.
+ * @returns Usuario manager, HR o admin con perfil
+ */
+export async function requireManagerOrAbove(): Promise<AuthUser> {
+  const user = await requireAuth();
+
+  const role = user.profile?.role;
+  if (role !== "manager" && role !== "hr" && role !== "admin") {
+    redirect(ROUTES.PARKING);
+  }
+
+  return user;
+}
+
+/**
  * Requiere tener una plaza asignada del tipo indicado.
  * Cualquier empleado (o admin) con plaza asignada puede gestionar cesiones.
  * @param resourceType "parking" | "office"
