@@ -1,12 +1,16 @@
 -- ============================================================
 -- GRUPOSIETE ERP — Seed Unificado
 -- ============================================================
--- Crea usuarios de prueba + asigna plazas reales.
+-- Crea entidades, usuarios de prueba + asigna plazas reales.
 --
 -- Orden de ejecucion:
 --   1. reset.sql
---   2. 00001_schema.sql   (crea schema + spots iniciales)
+--   2. TODAS las migraciones en orden (00001 .. última)  ← incluye 00011_spots_entity
 --   3. seed.sql           <- este archivo
+--
+-- IMPORTANTE: El seed debe ejecutarse DESPUES de TODAS las migraciones,
+-- especialmente 00011_spots_entity.sql que agrega entity_id a spots.
+-- Si lo ejecutas antes, el paso 6b (asignacion de sede a plazas) fallara.
 --
 -- Usuarios de prueba:
 --   admin@gruposiete.com               / Admin1234!       → admin
@@ -17,11 +21,17 @@
 -- ============================================================
 
 -- ─── 1. Limpiar datos de transaccion previos ─────────────────
-truncate table public.cession_rules        cascade;
-truncate table public.cessions             cascade;
-truncate table public.reservations         cascade;
-truncate table public.visitor_reservations cascade;
-truncate table public.alerts               cascade;
+truncate table public.audit_events               restart identity cascade;
+truncate table public.announcement_reads         cascade;
+truncate table public.announcements              cascade;
+truncate table public.notification_subscriptions cascade;
+truncate table public.leave_requests             cascade;
+truncate table public.documents                  cascade;
+truncate table public.cession_rules              cascade;
+truncate table public.cessions                   cascade;
+truncate table public.reservations               cascade;
+truncate table public.visitor_reservations       cascade;
+truncate table public.alerts                     cascade;
 
 -- ─── 2. Limpiar usuarios de prueba previos ───────────────────
 delete from auth.users
@@ -33,7 +43,22 @@ where email in (
   'empleado-solo-oficina@gruposiete.com'
 );
 
--- ─── 3. Insertar usuarios en auth.users ──────────────────────
+-- ─── 3. Entidades (sedes) ────────────────────────────────────
+-- Placeholder de sedes del Grupo Siete.
+-- Se puede ampliar desde Administración → Sedes.
+
+insert into public.entities (name, short_code, is_active)
+values
+  ('Madrid Centro',    'MAD', true),
+  ('Madrid Norte',     'MDN', true),
+  ('Barcelona',        'BCN', true),
+  ('Valencia',         'VLC', true),
+  ('Sevilla',          'SVQ', true),
+  ('Bilbao',           'BIO', true),
+  ('Zaragoza',         'ZAZ', true)
+on conflict (short_code) do nothing;
+
+-- ─── 4. Insertar usuarios en auth.users ──────────────────────
 
 insert into auth.users (
   id, instance_id, email, encrypted_password,
@@ -99,7 +124,7 @@ values
     now(), now(), '', '', '', ''
   );
 
--- ─── 4. Insertar identidades (necesario para login por email) ─
+-- ─── 5. Insertar identidades (necesario para login por email) ─
 
 insert into auth.identities (
   id, provider_id, user_id, identity_data,
@@ -126,7 +151,7 @@ where u.email in (
 )
 on conflict (provider, provider_id) do nothing;
 
--- ─── 5. Sincronizar perfiles ──────────────────────────────────
+-- ─── 6. Sincronizar perfiles ──────────────────────────────────
 -- El trigger handle_new_user los crea automaticamente,
 -- pero garantizamos los roles aqui explicitamente.
 
@@ -153,9 +178,13 @@ on conflict (id) do update
       email      = excluded.email,
       updated_at = now();
 
--- ─── 6. Asignar plaza de parking al empleado fijo ────────────
+-- ─── 6b. Asignar plazas a Madrid Centro (sede por defecto para seed) ──
+update public.spots
+set entity_id = (select id from public.entities where short_code = 'MAD')
+where entity_id is null;
+
+-- ─── 7. Asignar plaza de parking al empleado fijo ────────────
 -- Plaza 15 asignada a 'empleado-fijo@gruposiete.com'
--- (type='standard' con assigned_to = propietario fijo)
 -- El admin puede cambiar esto desde Administracion → Usuarios.
 
 update public.spots
@@ -165,7 +194,7 @@ set assigned_to = (
 where label = '15'
   and resource_type = 'parking';
 
--- ─── 7. Asignar plaza de parking al empleado-solo-parking ────
+-- ─── 8. Asignar plaza de parking al empleado-solo-parking ────
 -- Plaza 16 asignada a 'empleado-solo-parking@gruposiete.com'
 
 update public.spots
@@ -175,7 +204,7 @@ set assigned_to = (
 where label = '16'
   and resource_type = 'parking';
 
--- ─── 8. Asignar plaza de oficina al empleado-solo-oficina ────
+-- ─── 9. Asignar plaza de oficina al empleado-solo-oficina ────
 -- OF-08 asignada a 'empleado-solo-oficina@gruposiete.com'
 
 update public.spots
@@ -186,9 +215,18 @@ where label = 'OF-08'
   and resource_type = 'office';
 
 -- ─── Resumen ─────────────────────────────────────────────────
+-- Entidades (7 sedes placeholder):
+--   MAD — Madrid Centro
+--   MDN — Madrid Norte
+--   BCN — Barcelona
+--   VLC — Valencia
+--   SVQ — Sevilla
+--   BIO — Bilbao
+--   ZAZ — Zaragoza
+--
 -- Usuarios:
 --   admin@gruposiete.com                 Admin1234!    admin
---   empleado-fijo@gruposiete.com         Empleado1234! employee (parking 15 + oficina via admin)
+--   empleado-fijo@gruposiete.com         Empleado1234! employee (parking 15)
 --   empleado@gruposiete.com              Empleado1234! employee (sin plaza fija)
 --   empleado-solo-parking@gruposiete.com Empleado1234! employee (parking 16, sin oficina)
 --   empleado-solo-oficina@gruposiete.com Empleado1234! employee (OF-08, sin parking)
