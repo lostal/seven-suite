@@ -1,7 +1,0 @@
-- **Hipótesis**: Un ERP modular de parking y oficinas integrado en M365 resolverá las ineficiencias de espacio en GRUPOSIETE sin necesidad de cambiar de sede.
-- **Objetivo general**: Desarrollar una aplicación web modular para la gestión de espacios corporativos (parking inicial, oficinas) en GRUPOSIETE, integrada nativamente en Microsoft 365.
-- **Objetivos específicos**:
-  - OS1: Capturar requisitos y elaborar modelo del dominio/casos de uso (Capítulo 2).
-  - OS2: Realizar análisis y diseño del sistema (Capítulo 3).
-  - OS3: Implementar y validar MVP funcional (Capítulo 4).
-  - OS4: Evaluar solución y extraer conclusiones (Capítulo 5).
