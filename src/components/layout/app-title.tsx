@@ -17,7 +17,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-export function AppTitle() {
+export function AppTitle({ entityName }: { entityName?: string }) {
   const { setOpenMobile } = useSidebar();
   return (
     <SidebarMenu>
@@ -43,7 +43,9 @@ export function AppTitle() {
             </div>
             <div className="grid flex-1 text-start text-sm leading-tight">
               <span className="truncate font-bold">GRUPOSIETE</span>
-              <span className="truncate text-xs">Reservas</span>
+              <span className="truncate text-xs">
+                {entityName ?? "Reservas"}
+              </span>
             </div>
           </Link>
         </SidebarMenuButton>
