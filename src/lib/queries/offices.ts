@@ -20,16 +20,25 @@ type OfficeReservationJoin = Reservation & {
 
 /**
  * Obtiene todos los puestos de oficina activos.
+ * @param entityId - Si se provee, filtra por esa entidad (incluye puestos sin entidad asignada).
  */
-export async function getOfficeSpots(): Promise<Spot[]> {
+export async function getOfficeSpots(
+  entityId?: string | null
+): Promise<Spot[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("spots")
     .select("*")
     .eq("is_active", true)
     .eq("resource_type", "office")
     .order("label");
+
+  if (entityId) {
+    query = query.or(`entity_id.eq.${entityId},entity_id.is.null`);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw new Error(`Error al obtener puestos: ${error.message}`);
   return data ?? [];
@@ -42,20 +51,28 @@ export async function getOfficeSpots(): Promise<Spot[]> {
  * @param date - Fecha ISO YYYY-MM-DD
  * @param startTime - Hora de inicio para filtrar solapamientos (opcional)
  * @param endTime - Hora de fin para filtrar solapamientos (opcional)
+ * @param entityId - Si se provee, filtra por esa entidad (incluye puestos sin entidad asignada).
  */
 export async function getOfficeAvailabilityForDate(
   date: string,
   startTime?: string,
-  endTime?: string
+  endTime?: string,
+  entityId?: string | null
 ): Promise<SpotWithStatus[]> {
   const supabase = await createClient();
 
-  const spotsResult = await supabase
+  let spotsQuery = supabase
     .from("spots")
     .select("*")
     .eq("is_active", true)
     .eq("resource_type", "office")
     .order("label");
+
+  if (entityId) {
+    spotsQuery = spotsQuery.or(`entity_id.eq.${entityId},entity_id.is.null`);
+  }
+
+  const spotsResult = await spotsQuery;
 
   if (spotsResult.error)
     throw new Error(`Error al obtener puestos: ${spotsResult.error.message}`);

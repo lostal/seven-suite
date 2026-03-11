@@ -24,10 +24,12 @@ type ReservationConPerfil = {
  * @param resourceType - Si se proporciona, filtra por tipo de recurso
  *   ('parking' | 'office'). Sin filtro devuelve todas.
  * @param includeInactive - Si es true, incluye plazas inactivas. Por defecto false.
+ * @param entityId - Si se proporciona, filtra por sede (entity_id).
  */
 export async function getSpots(
   resourceType?: "parking" | "office",
-  includeInactive = false
+  includeInactive = false,
+  entityId?: string | null
 ): Promise<Spot[]> {
   const supabase = await createClient();
 
@@ -41,6 +43,10 @@ export async function getSpots(
     query = query.eq("resource_type", resourceType);
   }
 
+  if (entityId) {
+    query = query.or(`entity_id.eq.${entityId},entity_id.is.null`);
+  }
+
   const { data, error } = await query;
   if (error) throw new Error(`Error al obtener plazas: ${error.message}`);
   return data;
@@ -50,6 +56,7 @@ export async function getSpots(
  * Obtiene todas las plazas activas con estado calculado para una fecha específica.
  *
  * @param resourceType - Si se proporciona, filtra por tipo de recurso ('parking' | 'office').
+ * @param entityId - Si se proporciona, filtra las plazas por sede (entity_id).
  *
  * Lógica de estado:
  * - Plaza asignada sin cesión en esa fecha → "occupied" (asignada)
@@ -61,7 +68,8 @@ export async function getSpots(
  */
 export async function getSpotsByDate(
   date: string,
-  resourceType?: "parking" | "office"
+  resourceType?: "parking" | "office",
+  entityId?: string | null
 ): Promise<SpotWithStatus[]> {
   const supabase = await createClient();
 
@@ -73,6 +81,9 @@ export async function getSpotsByDate(
     .order("label");
   if (resourceType) {
     spotsQuery = spotsQuery.eq("resource_type", resourceType);
+  }
+  if (entityId) {
+    spotsQuery = spotsQuery.or(`entity_id.eq.${entityId},entity_id.is.null`);
   }
 
   const [spotsResult, reservationsResult, cessionsResult, visitorResult] =
