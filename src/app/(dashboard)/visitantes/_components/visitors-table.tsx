@@ -67,7 +67,7 @@ export function VisitantesTable({ data, isLoading }: VisitantesTableProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-8 w-[250px]" />
+        <Skeleton className="h-8 w-62.5" />
         <div className="rounded-md border">
           <div className="divide-y">
             {Array.from({ length: 5 }).map((_, i) => (
