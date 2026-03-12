@@ -258,12 +258,22 @@ export const updateVisitorReservation = actionClient
     const supabase = await createClient();
     const isAdmin = user.profile?.role === "admin";
 
-    // Obtener spot label de la nueva plaza
+    // Obtener spot label y entity_id de la nueva plaza
     const { data: spotData } = await supabase
       .from("spots")
-      .select("label")
+      .select("label, entity_id")
       .eq("id", parsedInput.spot_id)
       .maybeSingle();
+
+    const entityId = await getEffectiveEntityId();
+    if (
+      entityId &&
+      spotData &&
+      spotData.entity_id !== null &&
+      spotData.entity_id !== entityId
+    ) {
+      throw new Error("La plaza seleccionada no pertenece a la sede activa");
+    }
 
     const spotLabel = spotData?.label ?? parsedInput.spot_id;
     const reservedByName = user.profile?.full_name ?? user.email;

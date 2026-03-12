@@ -364,7 +364,8 @@ describe("getOfficeSpotsForDate", () => {
     expect(getOfficeAvailabilityForDate).toHaveBeenCalledWith(
       "2025-01-13",
       undefined,
-      undefined
+      undefined,
+      null
     );
   });
 
@@ -376,7 +377,8 @@ describe("getOfficeSpotsForDate", () => {
     expect(getOfficeAvailabilityForDate).toHaveBeenCalledWith(
       "2025-01-13",
       "09:00",
-      "11:00"
+      "11:00",
+      null
     );
   });
 

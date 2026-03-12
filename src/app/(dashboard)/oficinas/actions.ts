@@ -49,7 +49,12 @@ export async function getOfficeSpotsForDate(
     const dayOfWeek = getDayOfWeek(date);
     if (!config.allowed_days.includes(dayOfWeek)) return success([]);
 
-    const spots = await getOfficeAvailabilityForDate(date, startTime, endTime);
+    const spots = await getOfficeAvailabilityForDate(
+      date,
+      startTime,
+      endTime,
+      entityId
+    );
     return success(spots);
   } catch (err) {
     console.error("[oficinas] getOfficeSpotsForDate error:", err);

@@ -12,6 +12,7 @@ import {
   getVisitorReservationsAction,
   createVisitorReservation,
   cancelVisitorReservation,
+  updateVisitorReservation,
 } from "@/app/(dashboard)/parking/visitantes/actions";
 import { createQueryChain } from "../../mocks/supabase";
 import { createMockAuthUser } from "../../mocks/factories";
@@ -60,6 +61,7 @@ vi.mock("@/lib/queries/active-entity", () => ({
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import { getUpcomingVisitorReservations } from "@/lib/queries/visitor-reservations";
+import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -87,7 +89,7 @@ function setupSupabaseMock(
   // Chain compartido para spots (solo necesita maybeSingle para el label)
   const spotsChain = createQueryChain({ data: null, error: null });
   (spotsChain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
-    data: { label: "V-01" },
+    data: { label: "V-01", entity_id: null },
     error: null,
   });
 
@@ -251,5 +253,55 @@ describe("cancelVisitorReservation", () => {
     const result = await cancelVisitorReservation(validInput);
 
     expect(result.success).toBe(false);
+  });
+});
+
+// ─── updateVisitorReservation ──────────────────────────────────────────────────
+
+describe("updateVisitorReservation", () => {
+  const validInput = {
+    id: VISITOR_ID,
+    spot_id: SPOT_ID,
+    date: "2026-06-15",
+    visitor_name: "Juan Visitante",
+    visitor_company: "Empresa SA",
+    visitor_email: "juan@empresa.com",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
+    vi.mocked(getEffectiveEntityId).mockResolvedValue(null);
+  });
+
+  it("happy path: spot con entity_id null actualiza sin error", async () => {
+    setupSupabaseMock();
+
+    const result = await updateVisitorReservation(validInput);
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toHaveProperty("id", VISITOR_ID);
+  });
+
+  it("rechaza si el spot pertenece a una sede distinta a la activa", async () => {
+    const spotsChain = createQueryChain({ data: null, error: null });
+    (spotsChain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { label: "V-02", entity_id: "entity-B" },
+      error: null,
+    });
+
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn((table: string) =>
+        table === "spots"
+          ? spotsChain
+          : createQueryChain({ data: null, error: null })
+      ),
+    } as never);
+    vi.mocked(getEffectiveEntityId).mockResolvedValue("entity-A");
+
+    const result = await updateVisitorReservation(validInput);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain("sede activa");
   });
 });

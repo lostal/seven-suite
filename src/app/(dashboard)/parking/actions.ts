@@ -62,12 +62,20 @@ export async function getAvailableSpotsForDate(
     // Obtener todos los datos en paralelo
     const [spotsResult, reservationsResult, cessionsResult, visitorResult] =
       await Promise.all([
-        supabase
-          .from("spots")
-          .select("*")
-          .eq("is_active", true)
-          .eq("resource_type", "parking")
-          .order("label"),
+        entityId
+          ? supabase
+              .from("spots")
+              .select("*")
+              .eq("is_active", true)
+              .eq("resource_type", "parking")
+              .or(`entity_id.eq.${entityId},entity_id.is.null`)
+              .order("label")
+          : supabase
+              .from("spots")
+              .select("*")
+              .eq("is_active", true)
+              .eq("resource_type", "parking")
+              .order("label"),
         supabase
           .from("reservations")
           .select("id, spot_id")
