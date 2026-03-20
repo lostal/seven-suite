@@ -26,7 +26,7 @@ import {
 import { DataTablePagination, DataTableToolbar } from "@/components/data-table";
 import { type DirectorioUser } from "./directorio-schema";
 import { directorioColumns as columns } from "./directorio-columns";
-import { type Entity } from "@/lib/queries/entities";
+import type { Entity } from "@/lib/db/types";
 
 type DirectorioTableProps = {
   data: DirectorioUser[];

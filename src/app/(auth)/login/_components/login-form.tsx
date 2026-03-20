@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type Entity } from "@/lib/queries/entities";
+import type { Entity } from "@/lib/db/types";
 
 type LoginFormProps = {
   entities: Entity[];

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import useDialogState from "@/hooks/use-dialog-state";
 import { type DirectorioUser } from "./directorio-schema";
-import { type Entity } from "@/lib/queries/entities";
+import type { Entity } from "@/lib/db/types";
 
 type DirectorioDialogType = "add" | "edit" | "delete";
 

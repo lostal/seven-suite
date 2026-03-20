@@ -2,11 +2,7 @@
   "compilerOptions": {
     /* Language & Environment */
     "target": "ES2022",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "jsx": "react-jsx",
     /* Modules */
     "module": "esnext",
@@ -37,9 +33,7 @@
     ],
     /* Path Aliases */
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -50,10 +44,5 @@
     "**/*.mts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "shadcn-admin",
-    ".agent",
-    ".agents"
-  ]
+  "exclude": ["node_modules", "shadcn-admin", ".agent", ".agents"]
 }
