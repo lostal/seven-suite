@@ -14,18 +14,25 @@ import {
   cancelVisitorReservation,
   updateVisitorReservation,
 } from "@/app/(dashboard)/parking/visitantes/actions";
-import { createQueryChain } from "../../mocks/supabase";
+import {
+  mockDb,
+  resetDbMocks,
+  setupSelectMock,
+  setupInsertMock,
+  setupUpdateMock,
+} from "../../mocks/db";
 import { createMockAuthUser } from "../../mocks/factories";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-vi.mock("@/lib/supabase/auth", () => ({
+vi.mock("@/lib/auth/helpers", () => ({
   getCurrentUser: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(),
-}));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
 
 vi.mock("@/lib/queries/visitor-reservations", () => ({
   getUpcomingVisitorReservations: vi.fn().mockResolvedValue([]),
@@ -58,8 +65,7 @@ vi.mock("@/lib/queries/active-entity", () => ({
   getEffectiveEntityId: vi.fn().mockResolvedValue(null),
 }));
 
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/auth";
+import { getCurrentUser } from "@/lib/auth/helpers";
 import { getUpcomingVisitorReservations } from "@/lib/queries/visitor-reservations";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 
@@ -69,68 +75,19 @@ const VISITOR_ID = "550e8400-e29b-41d4-a716-446655440001";
 const SPOT_ID = "550e8400-e29b-41d4-a716-446655440002";
 const USER_ID = "550e8400-e29b-41d4-a716-446655440003";
 
-const DEFAULT_VISITOR = {
-  visitor_email: "visitor@test.com",
-  visitor_name: "Visitante Test",
-  visitor_company: "Test Corp",
+const DEFAULT_VISITOR_ROW = {
+  visitorEmail: "visitor@test.com",
+  visitorName: "Visitante Test",
+  visitorCompany: "Test Corp",
   date: "2026-04-15",
-  spots: { label: "V-01" },
+  spotId: SPOT_ID,
 };
-
-function setupSupabaseMock(
-  opts: {
-    insertResult?: {
-      data: { id: string } | null;
-      error: { message: string; code?: string } | null;
-    };
-    visitorFetchData?: typeof DEFAULT_VISITOR | null;
-    updateData?: { id: string }[] | null;
-    updateError?: { message: string; code?: string } | null;
-  } = {}
-) {
-  // Chain compartido para spots (solo necesita maybeSingle para el label)
-  const spotsChain = createQueryChain({ data: null, error: null });
-  (spotsChain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
-    data: {
-      label: "V-01",
-      entity_id: null,
-      type: "visitor",
-      resource_type: "parking",
-    },
-    error: null,
-  });
-
-  // Chain para visitor_reservations
-  const insertResult = opts.insertResult ?? {
-    data: { id: VISITOR_ID },
-    error: null,
-  };
-  const fetchData =
-    "visitorFetchData" in opts ? opts.visitorFetchData : DEFAULT_VISITOR;
-  const visitorChain = createQueryChain({
-    data: opts.updateData ?? [{ id: VISITOR_ID }],
-    error: opts.updateError ?? null,
-  });
-  (visitorChain.single as ReturnType<typeof vi.fn>).mockResolvedValue(
-    insertResult
-  );
-  (visitorChain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
-    data: fetchData,
-    error: null,
-  });
-
-  vi.mocked(createClient).mockResolvedValue({
-    from: vi.fn((table: string) =>
-      table === "spots" ? spotsChain : visitorChain
-    ),
-  } as never);
-}
 
 // ─── getVisitorReservationsAction ─────────────────────────────────────────────
 
 describe("getVisitorReservationsAction", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("devuelve success:false si no hay usuario autenticado", async () => {
@@ -193,12 +150,24 @@ describe("createVisitorReservation", () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
   });
 
   it("happy path: crea reserva y devuelve { id }", async () => {
-    setupSupabaseMock();
+    // 1. select spot
+    setupSelectMock([
+      {
+        label: "V-01",
+        entityId: null,
+        type: "visitor",
+        resourceType: "parking",
+      },
+    ]);
+    // 2. insert visitor reservation
+    setupInsertMock([{ id: VISITOR_ID }]);
+    // 3. update notificationSent (non-blocking, called in try/catch)
+    setupUpdateMock([]);
 
     const result = await createVisitorReservation(validInput);
 
@@ -207,11 +176,18 @@ describe("createVisitorReservation", () => {
   });
 
   it("error 23505: plaza ya reservada ese día devuelve mensaje claro", async () => {
-    setupSupabaseMock({
-      insertResult: {
-        data: null,
-        error: { message: "duplicate key", code: "23505" },
+    // 1. select spot
+    setupSelectMock([
+      {
+        label: "V-01",
+        entityId: null,
+        type: "visitor",
+        resourceType: "parking",
       },
+    ]);
+    // 2. insert throws 23505
+    mockDb.insert.mockImplementationOnce(() => {
+      throw Object.assign(new Error("duplicate key"), { code: "23505" });
     });
 
     const result = await createVisitorReservation(validInput);
@@ -221,24 +197,15 @@ describe("createVisitorReservation", () => {
   });
 
   it("rechaza crear si el spot no es de tipo visitor", async () => {
-    const spotsChain = createQueryChain({ data: null, error: null });
-    (spotsChain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
-      data: {
+    // 1. select spot → standard type
+    setupSelectMock([
+      {
         label: "P-01",
-        entity_id: null,
+        entityId: null,
         type: "standard",
-        resource_type: "parking",
+        resourceType: "parking",
       },
-      error: null,
-    });
-
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn((table: string) =>
-        table === "spots"
-          ? spotsChain
-          : createQueryChain({ data: [{ id: VISITOR_ID }], error: null })
-      ),
-    } as never);
+    ]);
 
     const result = await createVisitorReservation(validInput);
 
@@ -261,12 +228,17 @@ describe("cancelVisitorReservation", () => {
   const validInput = { id: VISITOR_ID };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
   });
 
   it("happy path: cancela y devuelve { cancelled: true }", async () => {
-    setupSupabaseMock();
+    // 1. select reservation
+    setupSelectMock([DEFAULT_VISITOR_ROW]);
+    // 2. select spot (for label)
+    setupSelectMock([{ label: "V-01" }]);
+    // 3. update reservation (cancel)
+    setupUpdateMock([{ id: VISITOR_ID }]);
 
     const result = await cancelVisitorReservation(validInput);
 
@@ -275,7 +247,8 @@ describe("cancelVisitorReservation", () => {
   });
 
   it("lanza error si la reserva no se encuentra o no tiene permisos", async () => {
-    setupSupabaseMock({ visitorFetchData: null });
+    // 1. select reservation → empty
+    setupSelectMock([]);
 
     const result = await cancelVisitorReservation(validInput);
 
@@ -292,10 +265,16 @@ describe("cancelVisitorReservation", () => {
   });
 
   it("falla si la reserva fue cambiada y no se actualiza ninguna fila", async () => {
-    setupSupabaseMock({ updateData: [] });
+    // 1. select reservation → found
+    setupSelectMock([DEFAULT_VISITOR_ROW]);
+    // 2. select spot
+    setupSelectMock([{ label: "V-01" }]);
+    // 3. update returns empty (no rows affected)
+    setupUpdateMock([]);
 
     const result = await cancelVisitorReservation(validInput);
 
+    // The action checks if updatedRows.length === 0 and throws "ya cancelada"
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toContain("ya cancelada");
   });
@@ -314,13 +293,25 @@ describe("updateVisitorReservation", () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
     vi.mocked(getEffectiveEntityId).mockResolvedValue(null);
   });
 
   it("happy path: spot con entity_id null actualiza sin error", async () => {
-    setupSupabaseMock();
+    // 1. select spot
+    setupSelectMock([
+      {
+        label: "V-01",
+        entityId: null,
+        type: "visitor",
+        resourceType: "parking",
+      },
+    ]);
+    // 2. update visitor reservation
+    setupUpdateMock([{ id: VISITOR_ID }]);
+    // 3. update notificationSent (non-blocking)
+    setupUpdateMock([]);
 
     const result = await updateVisitorReservation(validInput);
 
@@ -329,25 +320,16 @@ describe("updateVisitorReservation", () => {
   });
 
   it("rechaza si el spot pertenece a una sede distinta a la activa", async () => {
-    const spotsChain = createQueryChain({ data: null, error: null });
-    (spotsChain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
-      data: {
-        label: "V-02",
-        entity_id: "entity-B",
-        type: "visitor",
-        resource_type: "parking",
-      },
-      error: null,
-    });
-
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn((table: string) =>
-        table === "spots"
-          ? spotsChain
-          : createQueryChain({ data: null, error: null })
-      ),
-    } as never);
     vi.mocked(getEffectiveEntityId).mockResolvedValue("entity-A");
+    // 1. select spot with different entityId
+    setupSelectMock([
+      {
+        label: "V-02",
+        entityId: "entity-B",
+        type: "visitor",
+        resourceType: "parking",
+      },
+    ]);
 
     const result = await updateVisitorReservation(validInput);
 
@@ -356,24 +338,15 @@ describe("updateVisitorReservation", () => {
   });
 
   it("rechaza editar si el spot no es de tipo visitor", async () => {
-    const spotsChain = createQueryChain({ data: null, error: null });
-    (spotsChain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
-      data: {
+    // 1. select spot → standard type
+    setupSelectMock([
+      {
         label: "P-01",
-        entity_id: null,
+        entityId: null,
         type: "standard",
-        resource_type: "parking",
+        resourceType: "parking",
       },
-      error: null,
-    });
-
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn((table: string) =>
-        table === "spots"
-          ? spotsChain
-          : createQueryChain({ data: [{ id: VISITOR_ID }], error: null })
-      ),
-    } as never);
+    ]);
 
     const result = await updateVisitorReservation(validInput);
 

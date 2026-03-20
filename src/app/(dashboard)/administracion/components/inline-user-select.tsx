@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Profile, Spot } from "@/lib/supabase/types";
+import type { Profile, Spot } from "@/lib/db/types";
 import { assignUserToSpot } from "../actions";
 
 const USER_NONE = "__none__";
@@ -39,8 +39,8 @@ export function InlineUserSelect({
   // Users already assigned to a different spot of the same resource_type
   const takenUserIds = new Set(
     allSpots
-      .filter((s) => s.id !== spotId && s.assigned_to)
-      .map((s) => s.assigned_to as string)
+      .filter((s) => s.id !== spotId && s.assignedTo)
+      .map((s) => s.assignedTo as string)
   );
 
   // Show: current user (always) + unassigned employees
@@ -76,7 +76,7 @@ export function InlineUserSelect({
         <SelectItem value={USER_NONE}>Sin asignar</SelectItem>
         {available.map((p) => (
           <SelectItem key={p.id} value={p.id}>
-            {p.full_name || p.email || p.id}
+            {p.fullName || p.email || p.id}
           </SelectItem>
         ))}
       </SelectContent>

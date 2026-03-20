@@ -1,6 +1,8 @@
 import { requireAuth } from "@/lib/auth/helpers";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { profiles, entities } from "@/lib/db/schema";
 import { getAllEntities } from "@/lib/queries/entities";
+import { eq } from "drizzle-orm";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -14,44 +16,45 @@ import { type DirectorioUser } from "./_components/directorio-schema";
 export default async function DirectorioPage() {
   const user = await requireAuth();
   const isAdmin = user.profile?.role === "admin";
-  const supabase = await createClient();
-  const userEntityId = user.profile?.entity_id ?? null;
-
-  let profilesQuery = supabase
-    .from("profiles")
-    .select(
-      "id, full_name, email, role, job_title, phone, entity_id, entities(name)"
-    )
-    .order("full_name");
+  const userEntityId = user.profile?.entityId ?? null;
 
   // Los empleados solo ven usuarios de su propia sede;
   // los administradores ven el directorio global.
-  if (!isAdmin && userEntityId) {
-    profilesQuery = profilesQuery.eq("entity_id", userEntityId);
-  }
+  const profilesQuery = db
+    .select({
+      id: profiles.id,
+      fullName: profiles.fullName,
+      email: profiles.email,
+      role: profiles.role,
+      jobTitle: profiles.jobTitle,
+      phone: profiles.phone,
+      entityId: profiles.entityId,
+      entityName: entities.name,
+    })
+    .from(profiles)
+    .leftJoin(entities, eq(profiles.entityId, entities.id))
+    .orderBy(profiles.fullName);
 
-  const [{ data: profiles }, entities] = await Promise.all([
-    profilesQuery,
+  const [profileRows, allEntities] = await Promise.all([
+    !isAdmin && userEntityId
+      ? profilesQuery.where(eq(profiles.entityId, userEntityId))
+      : profilesQuery,
     getAllEntities(),
   ]);
 
-  const directorioData: DirectorioUser[] = (profiles ?? []).map((p) => {
-    const entityName =
-      p.entities && !Array.isArray(p.entities) ? p.entities.name : "";
-    return {
-      id: p.id,
-      nombre: p.full_name,
-      correo: p.email,
-      rol: p.role ?? "employee",
-      puesto: p.job_title ?? "",
-      telefono: p.phone ?? "",
-      entity_id: p.entity_id ?? null,
-      entity_name: entityName,
-    };
-  });
+  const directorioData: DirectorioUser[] = profileRows.map((p) => ({
+    id: p.id,
+    nombre: p.fullName,
+    correo: p.email,
+    rol: p.role ?? "employee",
+    puesto: p.jobTitle ?? "",
+    telefono: p.phone ?? "",
+    entity_id: p.entityId ?? null,
+    entity_name: p.entityName ?? "",
+  }));
 
   return (
-    <DirectorioProvider isAdmin={isAdmin} entities={entities}>
+    <DirectorioProvider isAdmin={isAdmin} entities={allEntities}>
       <Header fixed>
         <Search />
         <div className="ms-auto flex items-center space-x-4">
@@ -70,7 +73,7 @@ export default async function DirectorioPage() {
           </div>
           <DirectorioPrimaryButtons />
         </div>
-        <DirectorioTable data={directorioData} entities={entities} />
+        <DirectorioTable data={directorioData} entities={allEntities} />
       </Main>
 
       <DirectorioDialogs />

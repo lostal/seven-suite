@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import useDialogState from "@/hooks/use-dialog-state";
-import type { Spot } from "@/lib/supabase/types";
+import type { Spot } from "@/lib/db/types";
 
 export type SpotsDialogType = "add" | "edit" | "delete";
 

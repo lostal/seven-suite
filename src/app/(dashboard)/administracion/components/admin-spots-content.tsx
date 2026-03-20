@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SpotsTable } from "./spots-table";
 import { SpotsPrimaryButtons } from "./spots-primary-buttons";
 import { useSpots } from "./spots-provider";
-import type { Profile, Spot } from "@/lib/supabase/types";
+import type { Profile, Spot } from "@/lib/db/types";
 
 interface AdminSpotsContentProps {
   parkingSpots: Spot[];

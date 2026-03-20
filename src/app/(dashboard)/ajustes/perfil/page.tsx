@@ -20,20 +20,12 @@ export default async function SettingsProfilePage() {
   }
 
   const { profile } = data;
-  const profileCompat = {
-    id: profile.id,
-    email: profile.email,
-    full_name: profile.fullName,
-    avatar_url: profile.avatarUrl,
-    role: profile.role,
-  };
-
   return (
     <ContentSection
       title="Información Personal"
       desc="Actualiza tu información de perfil y foto de usuario."
     >
-      <ProfileForm profile={profileCompat} />
+      <ProfileForm profile={profile} />
     </ContentSection>
   );
 }

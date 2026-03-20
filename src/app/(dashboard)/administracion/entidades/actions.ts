@@ -8,9 +8,11 @@
  */
 
 import { actionClient } from "@/lib/actions";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { entities, entityModules } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
 import {
   createEntitySchema,
   updateEntitySchema,
@@ -27,28 +29,32 @@ export const createEntity = actionClient
   .schema(createEntitySchema)
   .action(async ({ parsedInput }) => {
     await requireAdmin();
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("entities")
-      .insert({
-        name: parsedInput.name,
-        short_code: parsedInput.short_code.toUpperCase(),
-        is_active: parsedInput.is_active ?? true,
-      })
-      .select("id")
-      .single();
-    if (error) {
-      if (error.code === "23505")
+    try {
+      const [entity] = await db
+        .insert(entities)
+        .values({
+          name: parsedInput.name,
+          shortCode: parsedInput.short_code.toUpperCase(),
+          isActive: parsedInput.is_active ?? true,
+        })
+        .returning({ id: entities.id });
+
+      if (!entity) throw new Error("Error al crear la sede");
+
+      revalidatePath("/administracion/entidades");
+      return { id: entity.id };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (
+        msg.includes("unique") ||
+        msg.includes("duplicate") ||
+        msg.includes("23505")
+      ) {
         throw new Error("Ya existe una sede con ese nombre o código");
-      console.error(
-        "[entities] createEntity DB error:",
-        error.message,
-        error.code
-      );
+      }
+      console.error("[entities] createEntity DB error:", msg);
       throw new Error("Error al crear la sede");
     }
-    revalidatePath("/administracion/entidades");
-    return { id: data.id };
   });
 
 /**
@@ -58,24 +64,30 @@ export const updateEntity = actionClient
   .schema(updateEntitySchema)
   .action(async ({ parsedInput }) => {
     await requireAdmin();
-    const supabase = await createClient();
     const { id, ...updates } = parsedInput;
-    if (updates.short_code)
-      updates.short_code = updates.short_code.toUpperCase();
-    const { error } = await supabase
-      .from("entities")
-      .update(updates)
-      .eq("id", id);
-    if (error) {
-      if (error.code === "23505")
+
+    const updateValues: Partial<typeof entities.$inferInsert> = {};
+    if (updates.name !== undefined) updateValues.name = updates.name;
+    if (updates.short_code !== undefined)
+      updateValues.shortCode = updates.short_code.toUpperCase();
+    if (updates.is_active !== undefined)
+      updateValues.isActive = updates.is_active;
+
+    try {
+      await db.update(entities).set(updateValues).where(eq(entities.id, id));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (
+        msg.includes("unique") ||
+        msg.includes("duplicate") ||
+        msg.includes("23505")
+      ) {
         throw new Error("Ya existe una sede con ese nombre o código");
-      console.error(
-        "[entities] updateEntity DB error:",
-        error.message,
-        error.code
-      );
+      }
+      console.error("[entities] updateEntity DB error:", msg);
       throw new Error("Error al actualizar la sede");
     }
+
     revalidatePath("/administracion/entidades");
     return { updated: true };
   });
@@ -87,17 +99,10 @@ export const deleteEntity = actionClient
   .schema(deleteEntitySchema)
   .action(async ({ parsedInput }) => {
     await requireAdmin();
-    const supabase = await createClient();
-    const { error } = await supabase
-      .from("entities")
-      .delete()
-      .eq("id", parsedInput.id);
-    if (error) {
-      console.error(
-        "[entities] deleteEntity DB error:",
-        error.message,
-        error.code
-      );
+    try {
+      await db.delete(entities).where(eq(entities.id, parsedInput.id));
+    } catch (err) {
+      console.error("[entities] deleteEntity DB error:", err);
       throw new Error("Error al eliminar la sede");
     }
     revalidatePath("/administracion/entidades");
@@ -111,20 +116,17 @@ export const toggleEntityModule = actionClient
   .schema(toggleEntityModuleSchema)
   .action(async ({ parsedInput }) => {
     await requireAdmin();
-    const supabase = await createClient();
     const { entity_id, module, enabled } = parsedInput;
-    const { error } = await supabase
-      .from("entity_modules")
-      .upsert(
-        { entity_id, module, enabled },
-        { onConflict: "entity_id,module" }
-      );
-    if (error) {
-      console.error(
-        "[entities] toggleEntityModule DB error:",
-        error.message,
-        error.code
-      );
+    try {
+      await db
+        .insert(entityModules)
+        .values({ entityId: entity_id, module, enabled })
+        .onConflictDoUpdate({
+          target: [entityModules.entityId, entityModules.module],
+          set: { enabled },
+        });
+    } catch (err) {
+      console.error("[entities] toggleEntityModule DB error:", err);
       throw new Error("Error al actualizar el módulo");
     }
     revalidatePath("/administracion/entidades");

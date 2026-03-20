@@ -10,7 +10,8 @@ import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { requireAuth } from "@/lib/auth/helpers";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { spots } from "@/lib/db/schema";
 import { ParkingCalendarView } from "./_components/parking-calendar-view";
 import { getResourceConfig } from "@/lib/config";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -24,22 +25,22 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
+import { eq, and } from "drizzle-orm";
 
 export default async function ParkingPage() {
   const user = await requireAuth();
 
-  const supabase = await createClient();
   const entityId = await getEffectiveEntityId();
-  const [assignedSpotResult, bookingEnabled] = await Promise.all([
-    supabase
-      .from("spots")
-      .select("*")
-      .eq("assigned_to", user.id)
-      .eq("resource_type", "parking")
-      .maybeSingle(),
+  const [[assignedParkingSpot], bookingEnabled] = await Promise.all([
+    db
+      .select()
+      .from(spots)
+      .where(
+        and(eq(spots.assignedTo, user.id), eq(spots.resourceType, "parking"))
+      )
+      .limit(1),
     getResourceConfig("parking", "booking_enabled", entityId),
   ]);
-  const assignedParkingSpot = assignedSpotResult.data;
 
   const title = "Parking";
   const description = assignedParkingSpot

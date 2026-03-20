@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { updateTheme } from "../actions";
-import type { ValidatedUserPreferences } from "@/lib/supabase/helpers";
+import type { ValidatedUserPreferences } from "@/lib/db/helpers";
 
 /**
  * Local schema for the preferences form.

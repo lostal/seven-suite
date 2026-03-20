@@ -3,7 +3,7 @@
 import { type Row } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Spot } from "@/lib/supabase/types";
+import type { Spot } from "@/lib/db/types";
 import { useSpots } from "./spots-provider";
 
 interface SpotRowActionsProps {

@@ -1,14 +1,11 @@
 /**
  * Global Type Definitions
  *
- * Re-exports domain types from the Supabase schema
+ * Re-exports domain types from the Drizzle schema
  * and adds app-specific derived types.
  */
 
-import type {
-  SpotType as SpotTypeEnum,
-  ResourceType,
-} from "@/lib/supabase/types";
+import type { SpotType as SpotTypeEnum, ResourceType } from "@/lib/db/types";
 
 // Re-export all DB types as the single source of truth
 export type {
@@ -26,10 +23,9 @@ export type {
   Alert,
   CessionRule,
   SystemConfig,
-  Database,
-} from "@/lib/supabase/types";
+} from "@/lib/db/types";
 
-// Re-export config types (ResourceType ya viene de supabase/types arriba)
+// Re-export config types
 export type {
   ResourceConfigValues,
   GlobalConfigValues,

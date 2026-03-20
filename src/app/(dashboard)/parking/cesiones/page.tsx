@@ -10,8 +10,10 @@ import Link from "next/link";
 import { ArrowRight, ParkingCircle } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/helpers";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { spots } from "@/lib/db/schema";
 import { getUserCessions } from "@/lib/queries/cessions";
+import { eq, and } from "drizzle-orm";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -28,20 +30,22 @@ export default async function ParkingCesionesPage() {
     redirect(ROUTES.DASHBOARD);
   }
 
-  const supabase = await createClient();
-
-  const [cessions, parkingSpotResult] = await Promise.all([
+  const [cessions, parkingSpotRows] = await Promise.all([
     getUserCessions(user.id, "parking"),
-    supabase
-      .from("spots")
-      .select("id")
-      .eq("assigned_to", user.id)
-      .eq("resource_type", "parking")
-      .eq("is_active", true)
-      .maybeSingle(),
+    db
+      .select({ id: spots.id })
+      .from(spots)
+      .where(
+        and(
+          eq(spots.assignedTo, user.id),
+          eq(spots.resourceType, "parking"),
+          eq(spots.isActive, true)
+        )
+      )
+      .limit(1),
   ]);
 
-  const hasParkingSpot = !!parkingSpotResult.data;
+  const hasParkingSpot = parkingSpotRows.length > 0;
 
   if (!hasParkingSpot) {
     redirect(ROUTES.PARKING_RESERVAS);

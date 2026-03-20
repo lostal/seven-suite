@@ -24,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTablePagination, DataTableToolbar } from "@/components/data-table";
-import type { Profile, Spot } from "@/lib/supabase/types";
+import type { Profile, Spot } from "@/lib/db/types";
 import { buildSpotsColumns, spotTypeOptions } from "./spots-columns";
 
 interface SpotsTableProps {
@@ -83,7 +83,7 @@ export function SpotsTable({
             options: spotTypeOptions.map((o) => ({ ...o })),
           },
           {
-            columnId: "is_active",
+            columnId: "isActive",
             title: "Estado",
             options: [
               { label: "Activa", value: "active" },

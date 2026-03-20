@@ -31,10 +31,6 @@ export default defineConfig({
         "src/**/*.test.{ts,tsx}",
         "src/**/*.spec.{ts,tsx}",
         "src/__tests__/**",
-        // Archivo auto-generado por Supabase CLI
-        "src/lib/supabase/database.types.ts",
-        // Tipos re-exportados sin lógica
-        "src/lib/supabase/types.ts",
       ],
       // Umbrales de cobertura — calibrados contra cobertura real (46% líneas, 38% ramas, 47% funciones)
       // Objetivo: detectar regresiones. Subir progresivamente al añadir tests.

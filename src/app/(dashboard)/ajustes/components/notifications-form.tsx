@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
-import type { ValidatedUserPreferences } from "@/lib/supabase/helpers";
+import type { ValidatedUserPreferences } from "@/lib/db/helpers";
 import {
   updateNotificationPreferences,
   testTeamsNotification,
@@ -22,14 +22,14 @@ import {
 interface NotificationsFormProps {
   preferences: Pick<
     ValidatedUserPreferences,
-    | "notification_channel"
-    | "notify_reservation_confirmed"
-    | "notify_reservation_reminder"
-    | "notify_cession_reserved"
-    | "notify_alert_triggered"
-    | "notify_visitor_confirmed"
-    | "notify_daily_digest"
-    | "daily_digest_time"
+    | "notificationChannel"
+    | "notifyReservationConfirmed"
+    | "notifyReservationReminder"
+    | "notifyCessionReserved"
+    | "notifyAlertTriggered"
+    | "notifyVisitorConfirmed"
+    | "notifyDailyDigest"
+    | "dailyDigestTime"
   >;
   microsoftConnected: boolean;
 }
@@ -50,14 +50,14 @@ export function NotificationsForm({
   } = useForm<UpdateNotificationPreferencesInput>({
     resolver: zodResolver(updateNotificationPreferencesSchema),
     defaultValues: {
-      notification_channel: preferences.notification_channel,
-      notify_reservation_confirmed: preferences.notify_reservation_confirmed,
-      notify_reservation_reminder: preferences.notify_reservation_reminder,
-      notify_cession_reserved: preferences.notify_cession_reserved,
-      notify_alert_triggered: preferences.notify_alert_triggered,
-      notify_visitor_confirmed: preferences.notify_visitor_confirmed,
-      notify_daily_digest: preferences.notify_daily_digest,
-      daily_digest_time: preferences.daily_digest_time || "09:00",
+      notification_channel: preferences.notificationChannel,
+      notify_reservation_confirmed: preferences.notifyReservationConfirmed,
+      notify_reservation_reminder: preferences.notifyReservationReminder,
+      notify_cession_reserved: preferences.notifyCessionReserved,
+      notify_alert_triggered: preferences.notifyAlertTriggered,
+      notify_visitor_confirmed: preferences.notifyVisitorConfirmed,
+      notify_daily_digest: preferences.notifyDailyDigest,
+      daily_digest_time: preferences.dailyDigestTime || "09:00",
     },
   });
 

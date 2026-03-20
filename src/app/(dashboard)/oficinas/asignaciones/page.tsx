@@ -10,47 +10,15 @@ import { SpotsProvider } from "@/app/(dashboard)/administracion/components/spots
 import { SpotsDialogs } from "@/app/(dashboard)/administracion/components/spots-dialogs";
 import { SpotsPrimaryButtons } from "@/app/(dashboard)/administracion/components/spots-primary-buttons";
 import { SpotsTable } from "@/app/(dashboard)/administracion/components/spots-table";
-import type { Profile, Spot } from "@/lib/supabase/types";
-
 export default async function OficinaAsignacionesPage() {
   await requireAdmin();
 
   const entityId = await getEffectiveEntityId();
 
-  const [spots, profiles] = await Promise.all([
+  const [spotsData, profilesData] = await Promise.all([
     getSpots("office", true, entityId),
     getProfiles(entityId),
   ]);
-
-  const spotsCompat: Spot[] = spots.map((spot) => ({
-    id: spot.id,
-    label: spot.label,
-    type: spot.type,
-    resource_type: spot.resourceType,
-    assigned_to: spot.assignedTo,
-    is_active: spot.isActive,
-    position_x: spot.positionX,
-    position_y: spot.positionY,
-    entity_id: spot.entityId,
-    created_at: spot.createdAt.toISOString(),
-    updated_at: spot.updatedAt.toISOString(),
-  }));
-
-  const profilesCompat: Profile[] = profiles.map((profile) => ({
-    id: profile.id,
-    email: profile.email,
-    full_name: profile.fullName,
-    avatar_url: profile.avatarUrl,
-    role: profile.role,
-    entity_id: profile.entityId,
-    dni: profile.dni,
-    manager_id: profile.managerId,
-    job_title: profile.jobTitle,
-    phone: profile.phone,
-    location: profile.location,
-    created_at: profile.createdAt.toISOString(),
-    updated_at: profile.updatedAt.toISOString(),
-  }));
 
   return (
     <SpotsProvider defaultResourceType="office">
@@ -73,7 +41,7 @@ export default async function OficinaAsignacionesPage() {
           </div>
           <SpotsPrimaryButtons />
         </div>
-        <SpotsTable spots={spotsCompat} profiles={profilesCompat} />
+        <SpotsTable spots={spotsData} profiles={profilesData} />
       </Main>
       <SpotsDialogs />
     </SpotsProvider>

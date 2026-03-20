@@ -23,16 +23,23 @@ import {
   getOfficeSpotsForDate,
   getOfficeTimeSlotsForSpot,
 } from "@/app/(dashboard)/oficinas/actions";
-import { createQueryChain } from "../../mocks/supabase";
+import {
+  mockDb,
+  resetDbMocks,
+  setupSelectMock,
+  setupInsertMock,
+  setupUpdateMock,
+} from "../../mocks/db";
 import { createMockAuthUser } from "../../mocks/factories";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(),
-}));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
 
-vi.mock("@/lib/supabase/auth", () => ({
+vi.mock("@/lib/auth/helpers", () => ({
   getCurrentUser: vi.fn(),
 }));
 
@@ -66,8 +73,11 @@ vi.mock("@/lib/queries/active-entity", () => ({
   getEffectiveEntityId: vi.fn().mockResolvedValue(null),
 }));
 
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/auth";
+vi.mock("@/lib/booking-validation", () => ({
+  validateBookingDate: vi.fn(),
+}));
+
+import { getCurrentUser } from "@/lib/auth/helpers";
 import { getAllResourceConfigs } from "@/lib/config";
 import {
   getOfficeAvailabilityForDate,
@@ -76,63 +86,6 @@ import {
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function setupSupabaseMock(
-  config: {
-    existingReservation?: { id: string } | null;
-    insertResult?: {
-      data: { id: string } | null;
-      error: { message: string; code?: string } | null;
-    };
-    updateData?: { id: string }[] | null;
-    updateError?: { message: string } | null;
-    spotData?: {
-      id: string;
-      resource_type: string;
-      entity_id: string | null;
-    } | null;
-  } = {}
-) {
-  const mockFrom = vi.fn((table: string) => {
-    switch (table) {
-      case "spots": {
-        const chain = createQueryChain({
-          data: null,
-          error: null,
-        });
-        (chain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
-          data:
-            config.spotData !== undefined
-              ? config.spotData
-              : { id: UUID, resource_type: "office", entity_id: null },
-          error: null,
-        });
-        return chain;
-      }
-      case "reservations": {
-        const chain = createQueryChain({
-          data: config.updateData ?? [{ id: "res-id" }],
-          error: config.updateError ?? null,
-        });
-        // Override maybeSingle para la comprobación de duplicado
-        (chain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
-          data: config.existingReservation ?? null,
-          error: null,
-        });
-        // Override single para el resultado del insert
-        (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue(
-          config.insertResult ?? { data: { id: "new-res-id" }, error: null }
-        );
-        return chain;
-      }
-      default:
-        return createQueryChain({ data: [], error: null });
-    }
-  });
-
-  vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
-  return mockFrom;
-}
 
 const UUID = "550e8400-e29b-41d4-a716-446655440000";
 
@@ -149,13 +102,16 @@ describe("createOfficeReservation", () => {
   });
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
     vi.mocked(getEffectiveEntityId).mockResolvedValue(null);
   });
 
   it("crea la reserva y devuelve el id", async () => {
-    setupSupabaseMock();
+    // 1. select spot
+    setupSelectMock([{ id: UUID, resourceType: "office", entityId: null }]);
+    // 2. insert reservation
+    setupInsertMock([{ id: "new-res-id" }]);
 
     const result = await createOfficeReservation({
       spot_id: UUID,
@@ -200,11 +156,11 @@ describe("createOfficeReservation", () => {
   });
 
   it("falla si el usuario ya tiene reserva de oficina ese día (constraint 23505)", async () => {
-    setupSupabaseMock({
-      insertResult: {
-        data: null,
-        error: { message: "duplicate key value", code: "23505" },
-      },
+    // 1. select spot succeeds
+    setupSelectMock([{ id: UUID, resourceType: "office", entityId: null }]);
+    // 2. insert throws 23505
+    mockDb.insert.mockImplementationOnce(() => {
+      throw Object.assign(new Error("duplicate key value"), { code: "23505" });
     });
 
     const result = await createOfficeReservation({
@@ -219,11 +175,11 @@ describe("createOfficeReservation", () => {
   });
 
   it("falla con error genérico si el insert devuelve un error no controlado", async () => {
-    setupSupabaseMock({
-      insertResult: {
-        data: null,
-        error: { message: "timeout", code: "PGRST999" },
-      },
+    // 1. select spot succeeds
+    setupSelectMock([{ id: UUID, resourceType: "office", entityId: null }]);
+    // 2. insert throws generic error
+    mockDb.insert.mockImplementationOnce(() => {
+      throw new Error("timeout");
     });
 
     const result = await createOfficeReservation({
@@ -244,7 +200,7 @@ describe("createOfficeReservation", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
+    expect(mockDb.select).not.toHaveBeenCalled();
   });
 
   it("rechaza fecha con formato incorrecto (validación Zod)", async () => {
@@ -254,18 +210,15 @@ describe("createOfficeReservation", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
+    expect(mockDb.select).not.toHaveBeenCalled();
   });
 
   it("rechaza reservar un puesto de otra sede", async () => {
     vi.mocked(getEffectiveEntityId).mockResolvedValue("entity-A");
-    setupSupabaseMock({
-      spotData: {
-        id: UUID,
-        resource_type: "office",
-        entity_id: "entity-B",
-      },
-    });
+    // 1. select spot with different entityId
+    setupSelectMock([
+      { id: UUID, resourceType: "office", entityId: "entity-B" },
+    ]);
 
     const result = await createOfficeReservation({
       spot_id: UUID,
@@ -281,15 +234,12 @@ describe("createOfficeReservation", () => {
 
 describe("cancelOfficeReservation", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
   });
 
   it("cancela la reserva con éxito cuando se afecta una fila", async () => {
-    const mockFrom = vi.fn(() =>
-      createQueryChain({ data: [{ id: UUID }], error: null })
-    );
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
+    setupUpdateMock([{ id: UUID }]);
 
     const result = await cancelOfficeReservation({ id: UUID });
 
@@ -307,8 +257,8 @@ describe("cancelOfficeReservation", () => {
   });
 
   it("falla si no se afectan filas (reserva no pertenece al usuario)", async () => {
-    const mockFrom = vi.fn(() => createQueryChain({ data: [], error: null }));
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
+    // update returns empty array → no rows affected
+    setupUpdateMock([]);
 
     const result = await cancelOfficeReservation({ id: UUID });
 
@@ -318,13 +268,9 @@ describe("cancelOfficeReservation", () => {
   });
 
   it("falla si la BD devuelve error al actualizar", async () => {
-    const mockFrom = vi.fn(() =>
-      createQueryChain({
-        data: null,
-        error: { message: "DB error" },
-      })
-    );
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
+    mockDb.update.mockImplementationOnce(() => {
+      throw new Error("DB error");
+    });
 
     const result = await cancelOfficeReservation({ id: UUID });
 
@@ -337,7 +283,7 @@ describe("cancelOfficeReservation", () => {
     const result = await cancelOfficeReservation({ id: "no-es-uuid" });
 
     expect(result.success).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 });
 
@@ -345,7 +291,7 @@ describe("cancelOfficeReservation", () => {
 
 describe("getOfficeSpotsForDate", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
     vi.mocked(getEffectiveEntityId).mockResolvedValue(null);
     vi.mocked(getAllResourceConfigs).mockResolvedValue({
@@ -444,7 +390,7 @@ describe("getOfficeTimeSlotsForSpot", () => {
   const SPOT_UUID = "770e8400-e29b-41d4-a716-446655440002";
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
     vi.mocked(getEffectiveEntityId).mockResolvedValue(null);
     vi.mocked(getAllResourceConfigs).mockResolvedValue({

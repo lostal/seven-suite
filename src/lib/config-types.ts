@@ -6,7 +6,7 @@
  * para evitar que Turbopack los incluya en el bundle del cliente.
  */
 
-import type { ResourceType } from "@/lib/supabase/types";
+import type { ResourceType } from "@/lib/db/types";
 
 // ─── Claves de configuración ──────────────────────────────────
 

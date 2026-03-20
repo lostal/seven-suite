@@ -15,33 +15,10 @@ import type { Profile } from "@/lib/db/types";
 
 import { auth } from "./config";
 
-type CompatProfile = Profile & {
-  full_name: Profile["fullName"];
-  avatar_url: Profile["avatarUrl"];
-  entity_id: Profile["entityId"];
-  manager_id: Profile["managerId"];
-  job_title: Profile["jobTitle"];
-  created_at: Profile["createdAt"];
-  updated_at: Profile["updatedAt"];
-};
-
-function toCompatProfile(profile: Profile): CompatProfile {
-  return {
-    ...profile,
-    full_name: profile.fullName,
-    avatar_url: profile.avatarUrl,
-    entity_id: profile.entityId,
-    manager_id: profile.managerId,
-    job_title: profile.jobTitle,
-    created_at: profile.createdAt,
-    updated_at: profile.updatedAt,
-  };
-}
-
 export interface AuthUser {
   id: string;
   email: string;
-  profile: CompatProfile | null;
+  profile: Profile | null;
 }
 
 /**
@@ -64,7 +41,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   return {
     id: session.user.id,
     email: session.user.email ?? "",
-    profile: profile ? toCompatProfile(profile) : null,
+    profile: profile ?? null,
   };
 }
 

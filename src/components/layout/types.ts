@@ -5,7 +5,7 @@
  * Adapted from shadcn-admin for Next.js App Router.
  */
 
-import type { UserRole } from "@/lib/supabase/types";
+import type { UserRole } from "@/lib/db/types";
 
 type BaseNavItem = {
   title: string;

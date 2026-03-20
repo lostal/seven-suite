@@ -9,7 +9,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { CommandMenu } from "@/components/command-menu";
-import type { UserRole } from "@/lib/supabase/types";
+import type { UserRole } from "@/lib/db/types";
 
 type SearchContextType = {
   open: boolean;

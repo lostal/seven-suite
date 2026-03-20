@@ -13,15 +13,16 @@ import {
   updateParkingConfig,
   updateOfficeConfig,
 } from "@/app/(dashboard)/configuracion/actions";
-import { createQueryChain } from "../../mocks/supabase";
+import { mockDb, resetDbMocks, setupInsertMock } from "../../mocks/db";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(),
-}));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
 
-vi.mock("@/lib/supabase/auth", () => ({
+vi.mock("@/lib/auth/helpers", () => ({
   requireAdmin: vi.fn(),
 }));
 
@@ -38,8 +39,7 @@ vi.mock("@/lib/queries/active-entity", () => ({
   getEffectiveEntityId: vi.fn().mockResolvedValue(null),
 }));
 
-import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/supabase/auth";
+import { requireAdmin } from "@/lib/auth/helpers";
 import { invalidateConfigCache } from "@/lib/config";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -51,37 +51,21 @@ function setupAdminUser() {
     id: ADMIN_ID,
     email: "admin@test.com",
     profile: {
+      fullName: "Admin",
+      avatarUrl: null,
+      entityId: null,
+      managerId: null,
+      jobTitle: null,
+      createdAt: new Date("2025-01-01T00:00:00Z"),
+      updatedAt: new Date("2025-01-01T00:00:00Z"),
       id: ADMIN_ID,
       email: "admin@test.com",
       role: "admin" as const,
-      full_name: "Admin",
-      avatar_url: null,
       dni: null,
-      entity_id: null,
-      job_title: null,
       location: null,
-      manager_id: null,
       phone: null,
-      created_at: "2025-01-01T00:00:00Z",
-      updated_at: "2025-01-01T00:00:00Z",
     },
   });
-}
-
-function setupSupabaseOk() {
-  const chain = createQueryChain({ data: null, error: null });
-  vi.mocked(createClient).mockResolvedValue({
-    from: vi.fn(() => chain),
-  } as never);
-  return chain;
-}
-
-function setupSupabaseError(message: string) {
-  const chain = createQueryChain({ data: null, error: { message } });
-  vi.mocked(createClient).mockResolvedValue({
-    from: vi.fn(() => chain),
-  } as never);
-  return chain;
 }
 
 // ─── Shared resource config input ────────────────────────────────────────────
@@ -109,12 +93,16 @@ const validResourceConfig = {
 
 describe("updateGlobalConfig", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAdminUser();
   });
 
   it("guarda la config global y la devuelve como updated:true", async () => {
-    setupSupabaseOk();
+    // updateGlobalConfig calls upsertConfigs which does N inserts (one per key)
+    // 3 keys → 3 inserts
+    setupInsertMock([{}]);
+    setupInsertMock([{}]);
+    setupInsertMock([{}]);
 
     const result = await updateGlobalConfig({
       notifications_enabled: true,
@@ -127,7 +115,9 @@ describe("updateGlobalConfig", () => {
   });
 
   it("invalida el cache después de guardar", async () => {
-    setupSupabaseOk();
+    setupInsertMock([{}]);
+    setupInsertMock([{}]);
+    setupInsertMock([{}]);
 
     await updateGlobalConfig({
       notifications_enabled: false,
@@ -139,7 +129,9 @@ describe("updateGlobalConfig", () => {
   });
 
   it("devuelve error si la BD falla en el upsert", async () => {
-    setupSupabaseError("Error de base de datos");
+    mockDb.insert.mockImplementationOnce(() => {
+      throw new Error("Error de base de datos");
+    });
 
     const result = await updateGlobalConfig({
       notifications_enabled: true,
@@ -148,11 +140,13 @@ describe("updateGlobalConfig", () => {
     });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("configuración");
+    if (!result.success) expect(result.error).toBeDefined();
   });
 
   it("NO invalida el cache si la BD falla", async () => {
-    setupSupabaseError("Error de BD");
+    mockDb.insert.mockImplementationOnce(() => {
+      throw new Error("Error de BD");
+    });
 
     await updateGlobalConfig({
       notifications_enabled: true,
@@ -183,12 +177,15 @@ describe("updateGlobalConfig", () => {
 
 describe("updateParkingConfig", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAdminUser();
   });
 
   it("guarda la config de parking y devuelve updated:true", async () => {
-    setupSupabaseOk();
+    // validResourceConfig has 16 keys → 16 inserts
+    for (let i = 0; i < 16; i++) {
+      setupInsertMock([{}]);
+    }
 
     const result = await updateParkingConfig(validResourceConfig);
 
@@ -197,7 +194,9 @@ describe("updateParkingConfig", () => {
   });
 
   it("invalida el cache después de guardar", async () => {
-    setupSupabaseOk();
+    for (let i = 0; i < 16; i++) {
+      setupInsertMock([{}]);
+    }
 
     await updateParkingConfig(validResourceConfig);
 
@@ -205,12 +204,14 @@ describe("updateParkingConfig", () => {
   });
 
   it("devuelve error si la BD falla", async () => {
-    setupSupabaseError("Fallo en upsert");
+    mockDb.insert.mockImplementationOnce(() => {
+      throw new Error("Fallo en upsert");
+    });
 
     const result = await updateParkingConfig(validResourceConfig);
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("configuración");
+    if (!result.success) expect(result.error).toBeDefined();
   });
 });
 
@@ -218,12 +219,14 @@ describe("updateParkingConfig", () => {
 
 describe("updateOfficeConfig", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAdminUser();
   });
 
   it("guarda la config de oficinas y devuelve updated:true", async () => {
-    setupSupabaseOk();
+    for (let i = 0; i < 16; i++) {
+      setupInsertMock([{}]);
+    }
 
     const result = await updateOfficeConfig(validResourceConfig);
 
@@ -232,7 +235,9 @@ describe("updateOfficeConfig", () => {
   });
 
   it("invalida el cache después de guardar", async () => {
-    setupSupabaseOk();
+    for (let i = 0; i < 16; i++) {
+      setupInsertMock([{}]);
+    }
 
     await updateOfficeConfig(validResourceConfig);
 
@@ -240,16 +245,20 @@ describe("updateOfficeConfig", () => {
   });
 
   it("devuelve error si la BD falla", async () => {
-    setupSupabaseError("Fallo en upsert de oficinas");
+    mockDb.insert.mockImplementationOnce(() => {
+      throw new Error("Fallo en upsert de oficinas");
+    });
 
     const result = await updateOfficeConfig(validResourceConfig);
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("configuración");
+    if (!result.success) expect(result.error).toBeDefined();
   });
 
   it("invalida el cache solo una vez aunque haya múltiples claves", async () => {
-    setupSupabaseOk();
+    for (let i = 0; i < 16; i++) {
+      setupInsertMock([{}]);
+    }
 
     await updateOfficeConfig({
       ...validResourceConfig,

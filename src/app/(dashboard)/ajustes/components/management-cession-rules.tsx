@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { updateCessionRules } from "../actions";
-import type { ValidatedUserPreferences } from "@/lib/supabase/helpers";
+import type { ValidatedUserPreferences } from "@/lib/db/helpers";
 import {
   updateCessionRulesSchema,
   type UpdateCessionRulesInput,
@@ -18,7 +18,7 @@ import {
 interface ManagementCessionRulesProps {
   preferences: Pick<
     ValidatedUserPreferences,
-    "auto_cede_on_ooo" | "auto_cede_notify" | "auto_cede_days"
+    "autoCedeOnOoo" | "autoCedeNotify" | "autoCedeDays"
   >;
   spotInfo: {
     spot: {
@@ -61,9 +61,9 @@ export function ManagementCessionRules({
   } = useForm<UpdateCessionRulesInput>({
     resolver: zodResolver(updateCessionRulesSchema),
     defaultValues: {
-      auto_cede_on_ooo: preferences.auto_cede_on_ooo,
-      auto_cede_notify: preferences.auto_cede_notify,
-      auto_cede_days: preferences.auto_cede_days,
+      auto_cede_on_ooo: preferences.autoCedeOnOoo,
+      auto_cede_notify: preferences.autoCedeNotify,
+      auto_cede_days: preferences.autoCedeDays,
     },
   });
 

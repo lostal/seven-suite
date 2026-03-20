@@ -21,7 +21,7 @@ import { AppTitle } from "./app-title";
 import { EntitySwitcher } from "./entity-switcher";
 import { NavGroup } from "./nav-group";
 import { NavUser } from "./nav-user";
-import type { UserRole } from "@/lib/supabase/types";
+import type { UserRole } from "@/lib/db/types";
 import type { Entity } from "@/lib/queries/entities";
 
 interface AppSidebarProps {

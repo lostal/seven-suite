@@ -173,27 +173,22 @@ export async function getTopSpots(
     lte(reservationsTable.date, lastOfMonth),
   ];
 
+  if (resourceType) {
+    conditions.push(eq(spotsTable.resourceType, resourceType));
+  }
+  if (entityId) {
+    conditions.push(eq(spotsTable.entityId, entityId));
+  }
+
   const rows = await db
-    .select({
-      spotLabel: spotsTable.label,
-      spotResourceType: spotsTable.resourceType,
-      spotEntityId: spotsTable.entityId,
-    })
+    .select({ spotLabel: spotsTable.label })
     .from(reservationsTable)
     .innerJoin(spotsTable, eq(reservationsTable.spotId, spotsTable.id))
     .where(and(...conditions));
 
-  let filtered = rows;
-  if (resourceType) {
-    filtered = filtered.filter((r) => r.spotResourceType === resourceType);
-  }
-  if (entityId) {
-    filtered = filtered.filter((r) => r.spotEntityId === entityId);
-  }
-
   // Agrupar por plaza
   const countBySpot = new Map<string, number>();
-  for (const r of filtered) {
+  for (const r of rows) {
     const label = r.spotLabel ?? "—";
     countBySpot.set(label, (countBySpot.get(label) ?? 0) + 1);
   }
@@ -258,7 +253,7 @@ export async function getMovementDistribution(
   // Con filtro de sede — join con spots para filtrar por entity_id
   const [resRows, cesRows, visRows] = await Promise.all([
     db
-      .select({ spotEntityId: spotsTable.entityId })
+      .select({ id: reservationsTable.id })
       .from(reservationsTable)
       .innerJoin(spotsTable, eq(reservationsTable.spotId, spotsTable.id))
       .where(
@@ -270,7 +265,7 @@ export async function getMovementDistribution(
         )
       ),
     db
-      .select({ spotEntityId: spotsTable.entityId })
+      .select({ id: cessionsTable.id })
       .from(cessionsTable)
       .innerJoin(spotsTable, eq(cessionsTable.spotId, spotsTable.id))
       .where(
@@ -282,7 +277,7 @@ export async function getMovementDistribution(
         )
       ),
     db
-      .select({ spotEntityId: spotsTable.entityId })
+      .select({ id: visitorReservationsTable.id })
       .from(visitorReservationsTable)
       .innerJoin(spotsTable, eq(visitorReservationsTable.spotId, spotsTable.id))
       .where(
@@ -296,18 +291,9 @@ export async function getMovementDistribution(
   ]);
 
   return [
-    {
-      name: "Reservas empleados",
-      value: resRows.filter((r) => r.spotEntityId === entityId).length,
-    },
-    {
-      name: "Cesiones dirección",
-      value: cesRows.filter((r) => r.spotEntityId === entityId).length,
-    },
-    {
-      name: "Visitantes",
-      value: visRows.filter((r) => r.spotEntityId === entityId).length,
-    },
+    { name: "Reservas empleados", value: resRows.length },
+    { name: "Cesiones dirección", value: cesRows.length },
+    { name: "Visitantes", value: visRows.length },
   ];
 }
 
@@ -348,21 +334,12 @@ export async function getMonthlyReservationCount(
   }
 
   const rows = await db
-    .select({
-      spotResourceType: spotsTable.resourceType,
-      spotEntityId: spotsTable.entityId,
-    })
+    .select({ id: reservationsTable.id })
     .from(reservationsTable)
     .innerJoin(spotsTable, eq(reservationsTable.spotId, spotsTable.id))
-    .where(and(...conditions));
+    .where(and(...joinConditions));
 
-  const filtered = rows.filter((r) => {
-    if (resourceType && r.spotResourceType !== resourceType) return false;
-    if (entityId && r.spotEntityId !== entityId) return false;
-    return true;
-  });
-
-  return filtered.length;
+  return rows.length;
 }
 
 export interface RecentActivity {

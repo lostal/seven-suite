@@ -10,8 +10,10 @@ import Link from "next/link";
 import { ArrowRight, Building2 } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/helpers";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { spots } from "@/lib/db/schema";
 import { getUserCessions } from "@/lib/queries/cessions";
+import { eq, and } from "drizzle-orm";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -28,20 +30,22 @@ export default async function OfficeCesionesPage() {
     redirect(ROUTES.DASHBOARD);
   }
 
-  const supabase = await createClient();
-
-  const [cessions, officeSpotResult] = await Promise.all([
+  const [cessions, officeSpotRows] = await Promise.all([
     getUserCessions(user.id, "office"),
-    supabase
-      .from("spots")
-      .select("id")
-      .eq("assigned_to", user.id)
-      .eq("resource_type", "office")
-      .eq("is_active", true)
-      .maybeSingle(),
+    db
+      .select({ id: spots.id })
+      .from(spots)
+      .where(
+        and(
+          eq(spots.assignedTo, user.id),
+          eq(spots.resourceType, "office"),
+          eq(spots.isActive, true)
+        )
+      )
+      .limit(1),
   ]);
 
-  const hasOfficeSpot = !!officeSpotResult.data;
+  const hasOfficeSpot = officeSpotRows.length > 0;
 
   if (!hasOfficeSpot) {
     redirect(ROUTES.OFFICES_RESERVAS);

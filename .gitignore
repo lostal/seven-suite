@@ -48,9 +48,6 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 
-# supabase
-/supabase/.temp/
-
 # coverage
 /coverage/
 

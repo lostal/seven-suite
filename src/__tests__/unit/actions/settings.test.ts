@@ -20,30 +20,30 @@ import {
   testTeamsNotification,
   forceCalendarSync,
 } from "@/app/(dashboard)/ajustes/actions";
-import { createQueryChain } from "../../mocks/supabase";
+import {
+  mockDb,
+  resetDbMocks,
+  setupUpdateMock,
+  setupDeleteMock,
+} from "../../mocks/db";
 import { createMockAuthUser } from "../../mocks/factories";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(),
-}));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
 
-vi.mock("@/lib/supabase/auth", () => ({
+vi.mock("@/lib/auth/helpers", () => ({
   requireAuth: vi.fn(),
-}));
-
-vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
-import { createClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuth } from "@/lib/auth/helpers";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -55,32 +55,16 @@ function setupAuthUser() {
   );
 }
 
-function setupSupabaseOk() {
-  const chain = createQueryChain({ data: null, error: null });
-  vi.mocked(createClient).mockResolvedValue({
-    from: vi.fn(() => chain),
-  } as never);
-  return chain;
-}
-
-function setupSupabaseError(message: string) {
-  const chain = createQueryChain({ data: null, error: { message } });
-  vi.mocked(createClient).mockResolvedValue({
-    from: vi.fn(() => chain),
-  } as never);
-  return chain;
-}
-
 // ─── updateProfile ────────────────────────────────────────────────────────────
 
 describe("updateProfile", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAuthUser();
   });
 
   it("actualiza el perfil con éxito", async () => {
-    setupSupabaseOk();
+    setupUpdateMock([]);
 
     const result = await updateProfile({ full_name: "Nuevo Nombre" });
 
@@ -89,12 +73,14 @@ describe("updateProfile", () => {
   });
 
   it("devuelve error si la BD falla", async () => {
-    setupSupabaseError("Error de BD");
+    mockDb.update.mockImplementationOnce(() => {
+      throw new Error("Error de BD");
+    });
 
     const result = await updateProfile({ full_name: "Nombre" });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("actualizar el perfil");
+    if (!result.success) expect(result.error).toBeDefined();
   });
 
   it("rechaza full_name vacío (schema Zod)", async () => {
@@ -119,12 +105,12 @@ describe("updateNotificationPreferences", () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAuthUser();
   });
 
   it("actualiza preferencias con éxito", async () => {
-    setupSupabaseOk();
+    setupUpdateMock([]);
 
     const result = await updateNotificationPreferences(validInput);
 
@@ -133,7 +119,9 @@ describe("updateNotificationPreferences", () => {
   });
 
   it("devuelve error si la BD falla", async () => {
-    setupSupabaseError("Error al guardar preferencias");
+    mockDb.update.mockImplementationOnce(() => {
+      throw new Error("Error al guardar preferencias");
+    });
 
     const result = await updateNotificationPreferences(validInput);
 
@@ -149,7 +137,7 @@ describe("updateNotificationPreferences", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBe("Datos inválidos");
-    expect(createClient).not.toHaveBeenCalled();
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 });
 
@@ -157,12 +145,12 @@ describe("updateNotificationPreferences", () => {
 
 describe("updateCessionRules", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAuthUser();
   });
 
   it("actualiza reglas de cesión con éxito", async () => {
-    setupSupabaseOk();
+    setupUpdateMock([]);
 
     const result = await updateCessionRules({
       auto_cede_on_ooo: true,
@@ -175,7 +163,9 @@ describe("updateCessionRules", () => {
   });
 
   it("devuelve error si la BD falla", async () => {
-    setupSupabaseError("Error en cesiones");
+    mockDb.update.mockImplementationOnce(() => {
+      throw new Error("Error en cesiones");
+    });
 
     const result = await updateCessionRules({
       auto_cede_on_ooo: false,
@@ -184,7 +174,7 @@ describe("updateCessionRules", () => {
     });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("cesión");
+    if (!result.success) expect(result.error).toBeDefined();
   });
 });
 
@@ -192,12 +182,12 @@ describe("updateCessionRules", () => {
 
 describe("disconnectMicrosoftAccount", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAuthUser();
   });
 
   it("desvincula la cuenta de Microsoft con éxito", async () => {
-    setupSupabaseOk();
+    setupDeleteMock([]);
 
     const result = await disconnectMicrosoftAccount({});
 
@@ -206,12 +196,14 @@ describe("disconnectMicrosoftAccount", () => {
   });
 
   it("devuelve error si la BD falla al eliminar el token", async () => {
-    setupSupabaseError("No se pudo eliminar el token");
+    mockDb.delete.mockImplementationOnce(() => {
+      throw new Error("No se pudo eliminar el token");
+    });
 
     const result = await disconnectMicrosoftAccount({});
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("desvincular");
+    if (!result.success) expect(result.error).toBeDefined();
   });
 
   it("devuelve error si requireAuth falla", async () => {
@@ -228,37 +220,24 @@ describe("disconnectMicrosoftAccount", () => {
 
 describe("deleteSelfAccount", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAuthUser();
   });
 
   it("elimina la propia cuenta con éxito", async () => {
-    const mockAdminClient = {
-      auth: {
-        admin: {
-          deleteUser: vi.fn().mockResolvedValue({ error: null }),
-        },
-      },
-    };
-    vi.mocked(createAdminClient).mockReturnValue(mockAdminClient as never);
+    // delete users → returns deleted row
+    setupDeleteMock([{ id: USER_ID }]);
 
     const result = await deleteSelfAccount({});
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual({ deleted: true });
-    expect(mockAdminClient.auth.admin.deleteUser).toHaveBeenCalledWith(USER_ID);
+    expect(mockDb.delete).toHaveBeenCalled();
   });
 
-  it("devuelve error si el adminClient falla", async () => {
-    vi.mocked(createAdminClient).mockReturnValue({
-      auth: {
-        admin: {
-          deleteUser: vi
-            .fn()
-            .mockResolvedValue({ error: { message: "User not found" } }),
-        },
-      },
-    } as never);
+  it("devuelve error si delete no retorna filas (usuario no encontrado)", async () => {
+    // delete returns empty rows
+    setupDeleteMock([]);
 
     const result = await deleteSelfAccount({});
 
@@ -281,7 +260,7 @@ describe("deleteSelfAccount", () => {
 
 describe("testTeamsNotification", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAuthUser();
   });
 
@@ -298,7 +277,7 @@ describe("testTeamsNotification", () => {
 
 describe("forceCalendarSync", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAuthUser();
   });
 

@@ -11,10 +11,16 @@ import { z } from "zod/v4";
 
 const DEFAULT_OUTLOOK_CALENDAR_NAME = "Reservas";
 import { actionClient } from "@/lib/actions";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { db } from "@/lib/db";
+import {
+  profiles,
+  userPreferences,
+  userMicrosoftTokens,
+  users,
+} from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
 import {
   updateProfileSchema,
   updateNotificationPreferencesSchema,
@@ -29,22 +35,16 @@ export const updateProfile = actionClient
   .schema(updateProfileSchema)
   .action(async ({ parsedInput }) => {
     const user = await requireAuth();
-    const supabase = await createClient();
 
-    const updates: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
+    const updates: Partial<typeof profiles.$inferInsert> = {
+      updatedAt: new Date(),
     };
     if (parsedInput.full_name !== undefined)
-      updates.full_name = parsedInput.full_name;
+      updates.fullName = parsedInput.full_name;
     if (parsedInput.avatar_url !== undefined)
-      updates.avatar_url = parsedInput.avatar_url;
+      updates.avatarUrl = parsedInput.avatar_url;
 
-    const { error } = await supabase
-      .from("profiles")
-      .update(updates)
-      .eq("id", user.id);
-
-    if (error) throw new Error("No se pudo actualizar el perfil");
+    await db.update(profiles).set(updates).where(eq(profiles.id, user.id));
 
     revalidatePath("/ajustes");
     return { updated: true };
@@ -56,24 +56,21 @@ export const updateNotificationPreferences = actionClient
   .schema(updateNotificationPreferencesSchema)
   .action(async ({ parsedInput }) => {
     const user = await requireAuth();
-    const supabase = await createClient();
 
-    const { error } = await supabase
-      .from("user_preferences")
-      .update({
-        notification_channel: parsedInput.notification_channel,
-        notify_reservation_confirmed: parsedInput.notify_reservation_confirmed,
-        notify_reservation_reminder: parsedInput.notify_reservation_reminder,
-        notify_cession_reserved: parsedInput.notify_cession_reserved,
-        notify_alert_triggered: parsedInput.notify_alert_triggered,
-        notify_visitor_confirmed: parsedInput.notify_visitor_confirmed,
-        notify_daily_digest: parsedInput.notify_daily_digest,
-        daily_digest_time: parsedInput.daily_digest_time || null,
-        updated_at: new Date().toISOString(),
+    await db
+      .update(userPreferences)
+      .set({
+        notificationChannel: parsedInput.notification_channel,
+        notifyReservationConfirmed: parsedInput.notify_reservation_confirmed,
+        notifyReservationReminder: parsedInput.notify_reservation_reminder,
+        notifyCessionReserved: parsedInput.notify_cession_reserved,
+        notifyAlertTriggered: parsedInput.notify_alert_triggered,
+        notifyVisitorConfirmed: parsedInput.notify_visitor_confirmed,
+        notifyDailyDigest: parsedInput.notify_daily_digest,
+        dailyDigestTime: parsedInput.daily_digest_time || null,
+        updatedAt: new Date(),
       })
-      .eq("user_id", user.id);
-
-    if (error) throw new Error("No se pudieron actualizar las preferencias");
+      .where(eq(userPreferences.userId, user.id));
 
     revalidatePath("/ajustes");
     return { updated: true };
@@ -85,22 +82,18 @@ export const updateOutlookPreferences = actionClient
   .schema(updateOutlookPreferencesSchema)
   .action(async ({ parsedInput }) => {
     const user = await requireAuth();
-    const supabase = await createClient();
 
-    const { error } = await supabase
-      .from("user_preferences")
-      .update({
-        outlook_create_events: parsedInput.outlook_create_events,
-        outlook_calendar_name:
+    await db
+      .update(userPreferences)
+      .set({
+        outlookCreateEvents: parsedInput.outlook_create_events,
+        outlookCalendarName:
           parsedInput.outlook_calendar_name || DEFAULT_OUTLOOK_CALENDAR_NAME,
-        outlook_sync_enabled: parsedInput.outlook_sync_enabled,
-        outlook_sync_interval: parsedInput.outlook_sync_interval ?? 15,
-        updated_at: new Date().toISOString(),
+        outlookSyncEnabled: parsedInput.outlook_sync_enabled,
+        outlookSyncInterval: parsedInput.outlook_sync_interval ?? 15,
+        updatedAt: new Date(),
       })
-      .eq("user_id", user.id);
-
-    if (error)
-      throw new Error("No se pudieron actualizar las preferencias de Outlook");
+      .where(eq(userPreferences.userId, user.id));
 
     revalidatePath("/ajustes");
     return { updated: true };
@@ -112,20 +105,16 @@ export const updateCessionRules = actionClient
   .schema(updateCessionRulesSchema)
   .action(async ({ parsedInput }) => {
     const user = await requireAuth();
-    const supabase = await createClient();
 
-    const { error } = await supabase
-      .from("user_preferences")
-      .update({
-        auto_cede_on_ooo: parsedInput.auto_cede_on_ooo,
-        auto_cede_notify: parsedInput.auto_cede_notify,
-        auto_cede_days: parsedInput.auto_cede_days,
-        updated_at: new Date().toISOString(),
+    await db
+      .update(userPreferences)
+      .set({
+        autoCedeOnOoo: parsedInput.auto_cede_on_ooo,
+        autoCedeNotify: parsedInput.auto_cede_notify,
+        autoCedeDays: parsedInput.auto_cede_days,
+        updatedAt: new Date(),
       })
-      .eq("user_id", user.id);
-
-    if (error)
-      throw new Error("No se pudieron actualizar las reglas de cesión");
+      .where(eq(userPreferences.userId, user.id));
 
     revalidatePath("/ajustes");
     return { updated: true };
@@ -137,16 +126,10 @@ export const disconnectMicrosoftAccount = actionClient
   .schema(z.object({}))
   .action(async () => {
     const user = await requireAuth();
-    const supabase = await createClient();
 
-    const { error } = await supabase
-      .from("user_microsoft_tokens")
-      .delete()
-      .eq("user_id", user.id);
-
-    if (error) {
-      throw new Error("No se pudo desvincular la cuenta de Microsoft");
-    }
+    await db
+      .delete(userMicrosoftTokens)
+      .where(eq(userMicrosoftTokens.userId, user.id));
 
     revalidatePath("/ajustes");
     return { disconnected: true };
@@ -176,17 +159,14 @@ export const updateTheme = actionClient
   .schema(updateThemeSchema)
   .action(async ({ parsedInput }) => {
     const user = await requireAuth();
-    const supabase = await createClient();
 
-    const { error } = await supabase
-      .from("user_preferences")
-      .update({
+    await db
+      .update(userPreferences)
+      .set({
         theme: parsedInput.theme,
-        updated_at: new Date().toISOString(),
+        updatedAt: new Date(),
       })
-      .eq("user_id", user.id);
-
-    if (error) throw new Error("No se pudo actualizar el tema");
+      .where(eq(userPreferences.userId, user.id));
 
     revalidatePath("/ajustes");
     return { updated: true };
@@ -198,12 +178,15 @@ export const deleteSelfAccount = actionClient
   .schema(z.object({}))
   .action(async () => {
     const user = await requireAuth();
-    const adminClient = createAdminClient();
 
-    const { error } = await adminClient.auth.admin.deleteUser(user.id);
+    // Delete the user record — cascade will remove profile and all related data
+    const deleted = await db
+      .delete(users)
+      .where(eq(users.id, user.id))
+      .returning({ id: users.id });
 
-    if (error) {
-      throw new Error(`Error al eliminar la cuenta: ${error.message}`);
+    if (!deleted || deleted.length === 0) {
+      throw new Error("Error al eliminar la cuenta: usuario no encontrado");
     }
 
     return { deleted: true };

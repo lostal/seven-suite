@@ -32,7 +32,7 @@ export function ProfileDropdown() {
   const { profile, loading } = useUser();
   const [open, setOpen] = useDialogState();
 
-  const displayName = profile?.full_name ?? "";
+  const displayName = profile?.fullName ?? "";
   const displayEmail = profile?.email || "";
   const initials = displayName
     .split(" ")

@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { type SidebarData } from "../types";
-import type { UserRole } from "@/lib/supabase/types";
+import type { UserRole } from "@/lib/db/types";
 
 interface SidebarDataParams {
   hasParkingSpot: boolean;

@@ -1,82 +1,72 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
+vi.mock("@/lib/db", () => ({ db: mockDb }));
 
-import { createClient } from "@/lib/supabase/server";
-import { createQueryChain } from "../../mocks/supabase";
+import { mockDb, resetDbMocks, setupSelectMock } from "../../mocks/db";
 import {
   getUpcomingVisitorReservations,
   getAvailableVisitorSpotsForDate,
 } from "@/lib/queries/visitor-reservations";
 
-// Helper to build a visitor reservation join row
-function makeVisitorRow(overrides: {
-  id?: string;
-  spot_id?: string;
-  status?: string;
-  date?: string;
-  visitor_name?: string;
-  spots?: { label: string; entity_id: string | null } | null;
-  profiles?: { full_name: string } | null;
-  reserved_by?: string;
-}) {
+// ─── Helpers de datos en camelCase (formato Drizzle) ─────────────────────────
+
+/**
+ * Shape returned by getUpcomingVisitorReservations Drizzle select:
+ * { id, spotId, reservedBy, date, visitorName, visitorCompany, visitorEmail,
+ *   status, notificationSent, notes, createdAt, updatedAt,
+ *   spot_label, spot_entity_id, reserved_by_name }
+ */
+function makeVisitorJoinRow(overrides?: Record<string, unknown>) {
   return {
-    id: overrides.id ?? "vis-1",
-    spot_id: overrides.spot_id ?? "spot-1",
-    status: overrides.status ?? "confirmed",
-    date: overrides.date ?? "2026-04-01",
-    visitor_name: overrides.visitor_name ?? "Visitante Test",
-    visitor_email: null,
-    visitor_company: null,
+    id: "vis-1",
+    spotId: "spot-1",
+    reservedBy: "user-1",
+    date: "2026-04-01",
+    visitorName: "Visitante Test",
+    visitorCompany: "",
+    visitorEmail: "",
+    status: "confirmed",
+    notificationSent: false,
     notes: null,
-    reserved_by: overrides.reserved_by ?? "user-1",
-    created_at: "2026-01-01T00:00:00Z",
-    updated_at: "2026-01-01T00:00:00Z",
-    spots:
-      overrides.spots !== undefined
-        ? overrides.spots
-        : { label: "V-01", entity_id: null },
-    profiles:
-      overrides.profiles !== undefined
-        ? overrides.profiles
-        : { full_name: "Test User" },
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    updatedAt: new Date("2026-01-01T00:00:00Z"),
+    spot_label: "V-01",
+    spot_entity_id: null,
+    reserved_by_name: "Test User",
+    ...overrides,
   };
 }
 
 describe("getUpcomingVisitorReservations", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
+  // getUpcomingVisitorReservations makes 1 select (join query)
+  // then filters in JS by entityId
+
   it("empty result → returns []", async () => {
-    const chain = createQueryChain({ data: [], error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([]);
 
     const result = await getUpcomingVisitorReservations();
     expect(result).toEqual([]);
   });
 
   it("2 rows, no entityId → returns both mapped with spot_label and reserved_by_name", async () => {
-    const rows = [
-      makeVisitorRow({
+    setupSelectMock([
+      makeVisitorJoinRow({
         id: "vis-1",
-        spots: { label: "V-01", entity_id: null },
-        profiles: { full_name: "User One" },
+        spot_label: "V-01",
+        spot_entity_id: null,
+        reserved_by_name: "User One",
       }),
-      makeVisitorRow({
+      makeVisitorJoinRow({
         id: "vis-2",
-        spots: { label: "V-02", entity_id: "ent-1" },
-        profiles: { full_name: "User Two" },
+        spot_label: "V-02",
+        spot_entity_id: "ent-1",
+        reserved_by_name: "User Two",
       }),
-    ];
-    const chain = createQueryChain({ data: rows, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    ]);
 
     const result = await getUpcomingVisitorReservations();
     expect(result).toHaveLength(2);
@@ -87,17 +77,9 @@ describe("getUpcomingVisitorReservations", () => {
   });
 
   it("entityId filter: row with matching entity_id → included", async () => {
-    const rows = [
-      makeVisitorRow({
-        id: "vis-1",
-        spots: { label: "V-01", entity_id: "ent-target" },
-      }),
-    ];
-    const chain = createQueryChain({ data: rows, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      makeVisitorJoinRow({ id: "vis-1", spot_entity_id: "ent-target" }),
+    ]);
 
     const result = await getUpcomingVisitorReservations(
       undefined,
@@ -108,17 +90,9 @@ describe("getUpcomingVisitorReservations", () => {
   });
 
   it("entityId filter: row with null entity_id → included (global spots)", async () => {
-    const rows = [
-      makeVisitorRow({
-        id: "vis-1",
-        spots: { label: "V-01", entity_id: null },
-      }),
-    ];
-    const chain = createQueryChain({ data: rows, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      makeVisitorJoinRow({ id: "vis-1", spot_entity_id: null }),
+    ]);
 
     const result = await getUpcomingVisitorReservations(
       undefined,
@@ -128,17 +102,9 @@ describe("getUpcomingVisitorReservations", () => {
   });
 
   it("entityId filter: row with other entity_id → excluded", async () => {
-    const rows = [
-      makeVisitorRow({
-        id: "vis-1",
-        spots: { label: "V-01", entity_id: "ent-other" },
-      }),
-    ];
-    const chain = createQueryChain({ data: rows, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      makeVisitorJoinRow({ id: "vis-1", spot_entity_id: "ent-other" }),
+    ]);
 
     const result = await getUpcomingVisitorReservations(
       undefined,
@@ -148,25 +114,11 @@ describe("getUpcomingVisitorReservations", () => {
   });
 
   it("entityId filter: mixed rows → returns only matching and null entity_id", async () => {
-    const rows = [
-      makeVisitorRow({
-        id: "vis-1",
-        spots: { label: "V-01", entity_id: "ent-target" },
-      }),
-      makeVisitorRow({
-        id: "vis-2",
-        spots: { label: "V-02", entity_id: null },
-      }),
-      makeVisitorRow({
-        id: "vis-3",
-        spots: { label: "V-03", entity_id: "ent-other" },
-      }),
-    ];
-    const chain = createQueryChain({ data: rows, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      makeVisitorJoinRow({ id: "vis-1", spot_entity_id: "ent-target" }),
+      makeVisitorJoinRow({ id: "vis-2", spot_entity_id: null }),
+      makeVisitorJoinRow({ id: "vis-3", spot_entity_id: "ent-other" }),
+    ]);
 
     const result = await getUpcomingVisitorReservations(
       undefined,
@@ -177,38 +129,31 @@ describe("getUpcomingVisitorReservations", () => {
   });
 
   it("DB error → throws", async () => {
-    const chain = createQueryChain({
-      data: null as never,
-      error: { message: "DB connection failed" },
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("No se pudieron obtener las reservas de visitantes");
     });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     await expect(getUpcomingVisitorReservations()).rejects.toThrow(
       "No se pudieron obtener las reservas de visitantes"
     );
   });
 
-  it("userId filter → query is called with userId", async () => {
-    const chain = createQueryChain({ data: [], error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  it("userId filter → query is called and returns results", async () => {
+    setupSelectMock([]); // userId filter passed to query, returns empty
 
-    await getUpcomingVisitorReservations("user-specific-123");
-    expect(client.from).toHaveBeenCalledWith("visitor_reservations");
+    const result = await getUpcomingVisitorReservations("user-specific-123");
+    expect(result).toEqual([]);
+    expect(mockDb.select).toHaveBeenCalled();
   });
 
-  it("row with null spots → mapped with empty spot_label", async () => {
-    const rows = [makeVisitorRow({ id: "vis-1", spots: null, profiles: null })];
-    const chain = createQueryChain({ data: rows, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  it("row with null reserved_by_name → mapped with empty string", async () => {
+    setupSelectMock([
+      makeVisitorJoinRow({
+        id: "vis-1",
+        spot_label: "",
+        reserved_by_name: null,
+      }),
+    ]);
 
     const result = await getUpcomingVisitorReservations();
     expect(result[0]?.spot_label).toBe("");
@@ -218,45 +163,19 @@ describe("getUpcomingVisitorReservations", () => {
 
 describe("getAvailableVisitorSpotsForDate", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
-  function buildClientForAvailability(opts: {
-    spots: { id: string; label: string }[];
-    reservedSpotIds: { spot_id: string }[];
-    spotsError?: { message: string } | null;
-    reservedError?: { message: string } | null;
-  }) {
-    const spotsChain = createQueryChain({
-      data: opts.spots,
-      error: opts.spotsError ?? null,
-    });
-    const reservedChain = createQueryChain({
-      data: opts.reservedSpotIds,
-      error: opts.reservedError ?? null,
-    });
-
-    const client = {
-      from: vi.fn((table: string) => {
-        if (table === "spots") return spotsChain;
-        if (table === "visitor_reservations") return reservedChain;
-        return createQueryChain({ data: [], error: null });
-      }),
-    };
-    return client;
-  }
+  // getAvailableVisitorSpotsForDate makes 2 parallel selects:
+  // 1. spots → { id, label }
+  // 2. visitor_reservations → { spotId }
 
   it("all spots available → returns all spots", async () => {
-    const client = buildClientForAvailability({
-      spots: [
-        { id: "spot-1", label: "V-01" },
-        { id: "spot-2", label: "V-02" },
-      ],
-      reservedSpotIds: [],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      { id: "spot-1", label: "V-01" },
+      { id: "spot-2", label: "V-02" },
+    ]); // spots
+    setupSelectMock([]); // no reserved spots
 
     const result = await getAvailableVisitorSpotsForDate("2026-04-01");
     expect(result).toHaveLength(2);
@@ -265,16 +184,11 @@ describe("getAvailableVisitorSpotsForDate", () => {
   });
 
   it("1 spot reserved → excludes it, returns remaining spots", async () => {
-    const client = buildClientForAvailability({
-      spots: [
-        { id: "spot-1", label: "V-01" },
-        { id: "spot-2", label: "V-02" },
-      ],
-      reservedSpotIds: [{ spot_id: "spot-1" }],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      { id: "spot-1", label: "V-01" },
+      { id: "spot-2", label: "V-02" },
+    ]);
+    setupSelectMock([{ spotId: "spot-1" }]); // spot-1 reserved
 
     const result = await getAvailableVisitorSpotsForDate("2026-04-01");
     expect(result).toHaveLength(1);
@@ -282,49 +196,28 @@ describe("getAvailableVisitorSpotsForDate", () => {
   });
 
   it("all spots reserved → returns []", async () => {
-    const client = buildClientForAvailability({
-      spots: [
-        { id: "spot-1", label: "V-01" },
-        { id: "spot-2", label: "V-02" },
-      ],
-      reservedSpotIds: [{ spot_id: "spot-1" }, { spot_id: "spot-2" }],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      { id: "spot-1", label: "V-01" },
+      { id: "spot-2", label: "V-02" },
+    ]);
+    setupSelectMock([{ spotId: "spot-1" }, { spotId: "spot-2" }]);
 
     const result = await getAvailableVisitorSpotsForDate("2026-04-01");
     expect(result).toHaveLength(0);
   });
 
   it("no spots in DB → returns []", async () => {
-    const client = buildClientForAvailability({
-      spots: [],
-      reservedSpotIds: [],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([]); // no spots
+    setupSelectMock([]); // no reserved
 
     const result = await getAvailableVisitorSpotsForDate("2026-04-01");
     expect(result).toEqual([]);
   });
 
   it("spots query error → throws", async () => {
-    const spotsChain = createQueryChain({
-      data: null as never,
-      error: { message: "DB error" },
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("No se pudieron obtener las plazas de visitantes");
     });
-    const reservedChain = createQueryChain({ data: [], error: null });
-    const client = {
-      from: vi.fn((table: string) => {
-        if (table === "spots") return spotsChain;
-        return reservedChain;
-      }),
-    };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     await expect(getAvailableVisitorSpotsForDate("2026-04-01")).rejects.toThrow(
       "No se pudieron obtener las plazas de visitantes"
@@ -332,45 +225,33 @@ describe("getAvailableVisitorSpotsForDate", () => {
   });
 
   it("reserved query error → throws", async () => {
-    const client = buildClientForAvailability({
-      spots: [{ id: "spot-1", label: "V-01" }],
-      reservedSpotIds: [],
-      reservedError: { message: "DB error" },
+    // First select (spots) succeeds
+    setupSelectMock([{ id: "spot-1", label: "V-01" }]);
+    // Second select (reserved) throws
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("No se pudieron obtener las plazas de visitantes");
     });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     await expect(getAvailableVisitorSpotsForDate("2026-04-01")).rejects.toThrow(
       "No se pudieron obtener las plazas de visitantes"
     );
   });
 
-  it("excludeReservationId → passes to reserved query (query is still called)", async () => {
-    const client = buildClientForAvailability({
-      spots: [{ id: "spot-1", label: "V-01" }],
-      reservedSpotIds: [],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  it("excludeReservationId → still calls DB and returns available spots", async () => {
+    setupSelectMock([{ id: "spot-1", label: "V-01" }]);
+    setupSelectMock([]); // no reserved spots
 
     const result = await getAvailableVisitorSpotsForDate(
       "2026-04-01",
       "exclude-this-res-id"
     );
     expect(result).toHaveLength(1);
-    expect(client.from).toHaveBeenCalledWith("visitor_reservations");
+    expect(mockDb.select).toHaveBeenCalled();
   });
 
-  it("with entityId → spots query is called and includes entity filter", async () => {
-    const client = buildClientForAvailability({
-      spots: [{ id: "spot-1", label: "V-01" }],
-      reservedSpotIds: [],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  it("with entityId → returns spots matching entity filter", async () => {
+    setupSelectMock([{ id: "spot-1", label: "V-01" }]);
+    setupSelectMock([]);
 
     const result = await getAvailableVisitorSpotsForDate(
       "2026-04-01",
@@ -378,6 +259,6 @@ describe("getAvailableVisitorSpotsForDate", () => {
       "ent-1"
     );
     expect(result).toHaveLength(1);
-    expect(client.from).toHaveBeenCalledWith("spots");
+    expect(mockDb.select).toHaveBeenCalled();
   });
 });

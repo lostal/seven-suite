@@ -3,12 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Optimización de imágenes
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "*.supabase.co",
-      },
-    ],
+    remotePatterns: [],
   },
 
   // Cabeceras de seguridad
@@ -20,12 +15,12 @@ const nextConfig: NextConfig = {
       "script-src 'self' 'unsafe-inline'",
       // Estilos: propios + inline (Tailwind, shadcn, framer-motion inyectan estilos en runtime)
       "style-src 'self' 'unsafe-inline'",
-      // Imágenes: propio dominio + Supabase Storage + data URIs
-      "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in",
+      // Imágenes: propio dominio + data URIs + blobs
+      "img-src 'self' data: blob:",
       // Fuentes: solo propias
       "font-src 'self'",
-      // Conexiones: propio + Supabase REST/Realtime + Microsoft Graph
-      "connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://graph.microsoft.com",
+      // Conexiones: propio + Microsoft Graph
+      "connect-src 'self' https://graph.microsoft.com",
       // Frames bloqueados (X-Frame-Options hace lo mismo, pero CSP cubre iframes incrustados)
       "frame-src 'none'",
       // Manifiestos y workers: solo propios

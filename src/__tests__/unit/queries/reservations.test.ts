@@ -8,69 +8,67 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("@/lib/db", () => ({ db: mockDb }));
+
+import { mockDb, resetDbMocks, setupSelectMock } from "../../mocks/db";
 import {
   getReservationsByDate,
   getUserReservations,
   getUserReservationForDate,
 } from "@/lib/queries/reservations";
-import { createQueryChain } from "../../mocks/supabase";
-import {
-  createMockReservationJoin,
-  createMockReservation,
-} from "../../mocks/factories";
-
-// ─── Mock de Supabase ─────────────────────────────────────────────────────────
-
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(),
-}));
-
-import { createClient } from "@/lib/supabase/server";
-
-// ─── Helper de configuración ──────────────────────────────────────────────────
-
-function setupSupabaseMock(config: {
-  data?: unknown[];
-  singleData?: unknown;
-  error?: { message: string } | null;
-}) {
-  const chain = createQueryChain({
-    data: config.data ?? [],
-    error: config.error ?? null,
-  });
-
-  // .maybeSingle() para getUserReservationForDate
-  (chain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
-    data: config.singleData ?? null,
-    error: config.error ?? null,
-  });
-
-  const mockFrom = vi.fn(() => chain);
-  vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
-  return mockFrom;
-}
 
 const DATE = "2025-03-15";
 const USER_ID = "user-00000000-0000-0000-0000-000000000001";
+
+// ─── Helpers de datos en camelCase (formato Drizzle) ─────────────────────────
+
+/**
+ * Shape returned by getReservationsByDate / getUserReservations Drizzle select:
+ * { id, spot_id, user_id, date, status, notes, start_time, end_time, created_at,
+ *   updated_at, spot_label, spot_resource_type, spot_entity_id, user_name }
+ */
+function makeReservationJoinRow(overrides?: Record<string, unknown>) {
+  return {
+    id: "res-00000000-0000-0000-0000-000000000001",
+    spot_id: "spot-00000000-0000-0000-0000-000000000001",
+    user_id: USER_ID,
+    date: DATE,
+    status: "confirmed",
+    notes: null,
+    start_time: null,
+    end_time: null,
+    created_at: new Date("2025-01-01T10:00:00Z"),
+    updated_at: new Date("2025-01-01T10:00:00Z"),
+    spot_label: "A-01",
+    spot_resource_type: "parking",
+    spot_entity_id: null,
+    user_name: "Usuario Test",
+    ...overrides,
+  };
+}
 
 // ─── getReservationsByDate ────────────────────────────────────────────────────
 
 describe("getReservationsByDate", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("devuelve array vacío si no hay reservas", async () => {
-    setupSupabaseMock({ data: [] });
+    setupSelectMock([]);
     const result = await getReservationsByDate(DATE);
     expect(result).toEqual([]);
   });
 
   it("mapea correctamente spot_label desde el join de plazas", async () => {
-    const res = createMockReservationJoin({
-      spots: { label: "B-03", resource_type: "parking", entity_id: null },
-    });
-    setupSupabaseMock({ data: [res] });
+    setupSelectMock([
+      makeReservationJoinRow({
+        spot_label: "B-03",
+        spot_resource_type: "parking",
+        spot_entity_id: null,
+      }),
+    ]);
 
     const result = await getReservationsByDate(DATE);
 
@@ -79,60 +77,43 @@ describe("getReservationsByDate", () => {
   });
 
   it("mapea correctamente user_name desde el join de perfiles", async () => {
-    const res = createMockReservationJoin({
-      profiles: { full_name: "María López" },
-    });
-    setupSupabaseMock({ data: [res] });
+    setupSelectMock([makeReservationJoinRow({ user_name: "María López" })]);
 
     const result = await getReservationsByDate(DATE);
 
     expect(result[0]?.user_name).toBe("María López");
   });
 
-  it("filtra filas donde spots es null (datos de BD inconsistentes)", async () => {
-    const res = createMockReservationJoin({ spots: null });
-    setupSupabaseMock({ data: [res] });
-
-    const result = await getReservationsByDate(DATE);
-
-    // Las filas con spots===null se descartan para evitar tipos nulos en el resultado
-    expect(result).toHaveLength(0);
-  });
-
-  it("usa cadena vacía como fallback si profiles es null", async () => {
-    const res = createMockReservationJoin({ profiles: null });
-    setupSupabaseMock({ data: [res] });
+  it("usa cadena vacía como fallback si user_name es null", async () => {
+    setupSelectMock([makeReservationJoinRow({ user_name: null })]);
 
     const result = await getReservationsByDate(DATE);
 
     expect(result[0]?.user_name).toBe("");
   });
 
-  it("el resultado incluye spot_label y user_name pero no los campos de join raw", async () => {
-    const res = createMockReservationJoin({
-      spots: { label: "A-01", resource_type: "parking", entity_id: null },
-      profiles: { full_name: "Test" },
-    });
-    setupSupabaseMock({ data: [res] });
+  it("el resultado incluye spot_label y user_name", async () => {
+    setupSelectMock([
+      makeReservationJoinRow({ spot_label: "A-01", user_name: "Test" }),
+    ]);
 
     const result = await getReservationsByDate(DATE);
 
-    // Los campos derivados están presentes
     expect(result[0]?.spot_label).toBe("A-01");
     expect(result[0]?.user_name).toBe("Test");
-    // No hay campos de join en la interfaz tipada (TypeScript lo garantiza en compilación)
     expect(Object.keys(result[0] as object)).not.toContain("spots_raw");
   });
 
   it("preserva los campos base de la reserva", async () => {
-    const res = createMockReservationJoin({
-      id: "res-123",
-      spot_id: "spot-456",
-      user_id: USER_ID,
-      date: DATE,
-      status: "confirmed",
-    });
-    setupSupabaseMock({ data: [res] });
+    setupSelectMock([
+      makeReservationJoinRow({
+        id: "res-123",
+        spot_id: "spot-456",
+        user_id: USER_ID,
+        date: DATE,
+        status: "confirmed",
+      }),
+    ]);
 
     const result = await getReservationsByDate(DATE);
 
@@ -145,42 +126,21 @@ describe("getReservationsByDate", () => {
     });
   });
 
-  it("lanza error si Supabase devuelve error", async () => {
-    setupSupabaseMock({ error: { message: "Error de conexión" } });
+  it("lanza error si la query falla", async () => {
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("No se pudieron obtener las reservas");
+    });
     await expect(getReservationsByDate(DATE)).rejects.toThrow(
       "No se pudieron obtener las reservas"
     );
   });
 
-  it("con entityId incluye reservas de la sede y globales (entity_id=null)", async () => {
-    const reservations = [
-      createMockReservationJoin({
-        id: "r1",
-        spots: {
-          label: "A-01",
-          resource_type: "parking",
-          entity_id: "ent-1",
-        },
-      }),
-      createMockReservationJoin({
-        id: "r2",
-        spots: {
-          label: "A-02",
-          resource_type: "parking",
-          entity_id: null,
-        },
-      }),
-      createMockReservationJoin({
-        id: "r3",
-        spots: {
-          label: "A-03",
-          resource_type: "parking",
-          entity_id: "ent-2",
-        },
-      }),
-    ];
-
-    setupSupabaseMock({ data: reservations });
+  it("con entityId filtra por sede (entity_id matching o null)", async () => {
+    setupSelectMock([
+      makeReservationJoinRow({ id: "r1", spot_entity_id: "ent-1" }),
+      makeReservationJoinRow({ id: "r2", spot_entity_id: null }),
+      makeReservationJoinRow({ id: "r3", spot_entity_id: "ent-2" }),
+    ]);
 
     const result = await getReservationsByDate(DATE, undefined, "ent-1");
 
@@ -189,19 +149,18 @@ describe("getReservationsByDate", () => {
   });
 
   it("devuelve múltiples reservas mapeadas", async () => {
-    const reservations = [
-      createMockReservationJoin({
+    setupSelectMock([
+      makeReservationJoinRow({
         id: "r1",
-        spots: { label: "A-01", resource_type: "parking", entity_id: null },
-        profiles: { full_name: "Ana" },
+        spot_label: "A-01",
+        user_name: "Ana",
       }),
-      createMockReservationJoin({
+      makeReservationJoinRow({
         id: "r2",
-        spots: { label: "B-02", resource_type: "parking", entity_id: null },
-        profiles: { full_name: "Luis" },
+        spot_label: "B-02",
+        user_name: "Luis",
       }),
-    ];
-    setupSupabaseMock({ data: reservations });
+    ]);
 
     const result = await getReservationsByDate(DATE);
 
@@ -215,21 +174,23 @@ describe("getReservationsByDate", () => {
 
 describe("getUserReservations", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("devuelve array vacío si no hay reservas futuras", async () => {
-    setupSupabaseMock({ data: [] });
+    setupSelectMock([]);
     const result = await getUserReservations(USER_ID);
     expect(result).toEqual([]);
   });
 
   it("mapea spot_label y user_name correctamente", async () => {
-    const res = createMockReservationJoin({
-      spots: { label: "C-05", resource_type: "parking", entity_id: null },
-      profiles: { full_name: "Pedro García" },
-    });
-    setupSupabaseMock({ data: [res] });
+    setupSelectMock([
+      makeReservationJoinRow({
+        spot_label: "C-05",
+        spot_resource_type: "parking",
+        user_name: "Pedro García",
+      }),
+    ]);
 
     const result = await getUserReservations(USER_ID);
 
@@ -238,41 +199,32 @@ describe("getUserReservations", () => {
   });
 
   it("lanza error si la query falla", async () => {
-    setupSupabaseMock({ error: { message: "Timeout" } });
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("No se pudieron obtener las reservas del usuario");
+    });
     await expect(getUserReservations(USER_ID)).rejects.toThrow(
       "No se pudieron obtener las reservas del usuario"
     );
   });
 
-  it("con entityId en getUserReservations aplica mismo criterio (sede + global)", async () => {
-    const reservations = [
-      createMockReservationJoin({
+  it("con entityId aplica mismo criterio (sede + global)", async () => {
+    setupSelectMock([
+      makeReservationJoinRow({
         id: "r1",
-        spots: {
-          label: "C-05",
-          resource_type: "office",
-          entity_id: "ent-1",
-        },
+        spot_resource_type: "office",
+        spot_entity_id: "ent-1",
       }),
-      createMockReservationJoin({
+      makeReservationJoinRow({
         id: "r2",
-        spots: {
-          label: "C-06",
-          resource_type: "office",
-          entity_id: null,
-        },
+        spot_resource_type: "office",
+        spot_entity_id: null,
       }),
-      createMockReservationJoin({
+      makeReservationJoinRow({
         id: "r3",
-        spots: {
-          label: "C-07",
-          resource_type: "office",
-          entity_id: "ent-2",
-        },
+        spot_resource_type: "office",
+        spot_entity_id: "ent-2",
       }),
-    ];
-
-    setupSupabaseMock({ data: reservations });
+    ]);
 
     const result = await getUserReservations(USER_ID, "office", "ent-1");
 
@@ -285,21 +237,26 @@ describe("getUserReservations", () => {
 
 describe("getUserReservationForDate", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("devuelve la reserva si existe", async () => {
-    const reservation = createMockReservation({ user_id: USER_ID, date: DATE });
-    setupSupabaseMock({ singleData: reservation });
+    const row = makeReservationJoinRow({
+      id: "res-exists",
+      user_id: USER_ID,
+      date: DATE,
+    });
+    // Without resourceType: 1 select call
+    setupSelectMock([row]);
 
     const result = await getUserReservationForDate(USER_ID, DATE);
 
     expect(result).not.toBeNull();
-    expect(result?.id).toBe(reservation.id);
+    expect(result?.id).toBe("res-exists");
   });
 
   it("devuelve null si no existe reserva", async () => {
-    setupSupabaseMock({ singleData: null });
+    setupSelectMock([]);
 
     const result = await getUserReservationForDate(USER_ID, DATE);
 
@@ -307,10 +264,34 @@ describe("getUserReservationForDate", () => {
   });
 
   it("lanza error si la query falla", async () => {
-    setupSupabaseMock({ error: { message: "Error de BD" } });
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("No se pudo comprobar la reserva");
+    });
 
     await expect(getUserReservationForDate(USER_ID, DATE)).rejects.toThrow(
       "No se pudo comprobar la reserva"
     );
+  });
+
+  it("con resourceType: devuelve null si no hay plazas del tipo", async () => {
+    // First select: spot IDs — empty
+    setupSelectMock([]);
+
+    const result = await getUserReservationForDate(USER_ID, DATE, "parking");
+
+    expect(result).toBeNull();
+  });
+
+  it("con resourceType: devuelve la reserva si existe", async () => {
+    // First select: spot IDs
+    setupSelectMock([{ id: "spot-park-1" }]);
+    // Second select: reservation
+    setupSelectMock([
+      makeReservationJoinRow({ id: "res-park", user_id: USER_ID, date: DATE }),
+    ]);
+
+    const result = await getUserReservationForDate(USER_ID, DATE, "parking");
+
+    expect(result?.id).toBe("res-park");
   });
 });

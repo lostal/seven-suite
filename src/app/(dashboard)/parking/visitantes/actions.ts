@@ -13,7 +13,8 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { spots, visitorReservations } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   createVisitorReservationSchema,
@@ -37,6 +38,7 @@ import {
 } from "@/lib/queries/visitor-reservations";
 import { getResourceConfig } from "@/lib/config";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
+import { eq, and } from "drizzle-orm";
 
 // ─── Funciones de consulta ────────────────────────────────────
 
@@ -78,12 +80,12 @@ export async function getAvailableVisitorSpotsAction(
     if (!user) return error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
-    const spots = await getAvailableVisitorSpotsForDate(
+    const availableSpots = await getAvailableVisitorSpotsForDate(
       date,
       excludeReservationId,
       entityId
     );
-    return success(spots);
+    return success(availableSpots);
   } catch (err) {
     console.error("[visitantes] getAvailableVisitorSpots error:", err);
     return error(
@@ -165,59 +167,67 @@ export const createVisitorReservation = actionClient
       );
     }
 
-    const supabase = await createClient();
-
-    const { data: spotData } = await supabase
-      .from("spots")
-      .select("label, entity_id, type, resource_type")
-      .eq("id", parsedInput.spot_id)
-      .maybeSingle();
+    const [spotData] = await db
+      .select({
+        label: spots.label,
+        entityId: spots.entityId,
+        type: spots.type,
+        resourceType: spots.resourceType,
+      })
+      .from(spots)
+      .where(eq(spots.id, parsedInput.spot_id))
+      .limit(1);
 
     if (!spotData) {
       throw new Error("La plaza seleccionada no existe");
     }
-    if (spotData.type !== "visitor" || spotData.resource_type !== "parking") {
+    if (spotData.type !== "visitor" || spotData.resourceType !== "parking") {
       throw new Error("La plaza seleccionada no es una plaza de visitantes");
     }
 
     // Verificar que la plaza pertenece a la sede activa
     if (
       entityId &&
-      spotData.entity_id !== null &&
-      spotData.entity_id !== entityId
+      spotData.entityId !== null &&
+      spotData.entityId !== entityId
     ) {
       throw new Error("La plaza seleccionada no pertenece a la sede activa");
     }
 
     const spotLabel = spotData.label;
-    const reservedByName = user.profile?.full_name ?? user.email;
+    const reservedByName = user.profile?.fullName ?? user.email;
 
-    const { data, error: insertError } = await supabase
-      .from("visitor_reservations")
-      .insert({
-        spot_id: parsedInput.spot_id,
-        reserved_by: user.id,
-        date: parsedInput.date,
-        visitor_name: parsedInput.visitor_name,
-        visitor_company: parsedInput.visitor_company,
-        visitor_email: parsedInput.visitor_email,
-        notes: parsedInput.notes ?? null,
-      })
-      .select("id")
-      .single();
+    let reservationId: string;
+    try {
+      const [inserted] = await db
+        .insert(visitorReservations)
+        .values({
+          spotId: parsedInput.spot_id,
+          reservedBy: user.id,
+          date: parsedInput.date,
+          visitorName: parsedInput.visitor_name,
+          visitorCompany: parsedInput.visitor_company,
+          visitorEmail: parsedInput.visitor_email,
+          notes: parsedInput.notes ?? null,
+        })
+        .returning({ id: visitorReservations.id });
 
-    if (insertError) {
-      if (insertError.code === "23505") {
+      if (!inserted)
+        throw new Error("No se pudo crear la reserva de visitante");
+      reservationId = inserted.id;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (
+        msg.includes("23505") ||
+        msg.includes("unique") ||
+        msg.includes("duplicate")
+      ) {
         throw new Error(
           "Esta plaza ya tiene una reserva de visitante para este día"
         );
       }
-      throw new Error(
-        `Error al crear reserva de visitante: ${insertError.message}`
-      );
+      throw new Error(`Error al crear reserva de visitante: ${msg}`);
     }
-
-    const reservationId = data.id;
 
     try {
       await sendConfirmationEmail({
@@ -231,10 +241,10 @@ export const createVisitorReservation = actionClient
         notes: parsedInput.notes,
       });
 
-      await supabase
-        .from("visitor_reservations")
-        .update({ notification_sent: true })
-        .eq("id", reservationId);
+      await db
+        .update(visitorReservations)
+        .set({ notificationSent: true })
+        .where(eq(visitorReservations.id, reservationId));
     } catch (emailErr) {
       console.error(
         "[visitantes] sendConfirmationEmail failed (reserva creada correctamente):",
@@ -261,65 +271,80 @@ export const updateVisitorReservation = actionClient
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
 
-    const supabase = await createClient();
     const isAdmin = user.profile?.role === "admin";
 
-    // Obtener spot label y entity_id de la nueva plaza
-    const { data: spotData } = await supabase
-      .from("spots")
-      .select("label, entity_id, type, resource_type")
-      .eq("id", parsedInput.spot_id)
-      .maybeSingle();
+    // Obtener spot label y entityId de la nueva plaza
+    const [spotData] = await db
+      .select({
+        label: spots.label,
+        entityId: spots.entityId,
+        type: spots.type,
+        resourceType: spots.resourceType,
+      })
+      .from(spots)
+      .where(eq(spots.id, parsedInput.spot_id))
+      .limit(1);
 
     if (!spotData) {
       throw new Error("La plaza seleccionada no existe");
     }
-    if (spotData.type !== "visitor" || spotData.resource_type !== "parking") {
+    if (spotData.type !== "visitor" || spotData.resourceType !== "parking") {
       throw new Error("La plaza seleccionada no es una plaza de visitantes");
     }
 
     const entityId = await getEffectiveEntityId();
     if (
       entityId &&
-      spotData.entity_id !== null &&
-      spotData.entity_id !== entityId
+      spotData.entityId !== null &&
+      spotData.entityId !== entityId
     ) {
       throw new Error("La plaza seleccionada no pertenece a la sede activa");
     }
 
     const spotLabel = spotData.label;
-    const reservedByName = user.profile?.full_name ?? user.email;
+    const reservedByName = user.profile?.fullName ?? user.email;
 
     // Actualizar la reserva (solo el creador o admin pueden hacerlo)
-    const baseQuery = supabase
-      .from("visitor_reservations")
-      .update({
-        spot_id: parsedInput.spot_id,
-        date: parsedInput.date,
-        visitor_name: parsedInput.visitor_name,
-        visitor_company: parsedInput.visitor_company,
-        visitor_email: parsedInput.visitor_email,
-        notes: parsedInput.notes ?? null,
-        notification_sent: false,
-      })
-      .eq("id", parsedInput.id)
-      .eq("status", "confirmed")
-      .select("id");
+    const whereConditions = isAdmin
+      ? and(
+          eq(visitorReservations.id, parsedInput.id),
+          eq(visitorReservations.status, "confirmed")
+        )
+      : and(
+          eq(visitorReservations.id, parsedInput.id),
+          eq(visitorReservations.status, "confirmed"),
+          eq(visitorReservations.reservedBy, user.id)
+        );
 
-    const { error: updateError, data: updatedRows } = await (isAdmin
-      ? baseQuery
-      : baseQuery.eq("reserved_by", user.id));
-
-    if (updateError) {
-      if (updateError.code === "23505") {
+    let updatedRows: { id: string }[];
+    try {
+      updatedRows = await db
+        .update(visitorReservations)
+        .set({
+          spotId: parsedInput.spot_id,
+          date: parsedInput.date,
+          visitorName: parsedInput.visitor_name,
+          visitorCompany: parsedInput.visitor_company,
+          visitorEmail: parsedInput.visitor_email,
+          notes: parsedInput.notes ?? null,
+          notificationSent: false,
+        })
+        .where(whereConditions)
+        .returning({ id: visitorReservations.id });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (
+        msg.includes("23505") ||
+        msg.includes("unique") ||
+        msg.includes("duplicate")
+      ) {
         throw new Error(
           "Esta plaza ya tiene una reserva de visitante para ese día"
         );
       }
-      throw new Error(
-        `Error al actualizar reserva de visitante: ${updateError.message}`
-      );
+      throw new Error(`Error al actualizar reserva de visitante: ${msg}`);
     }
+
     if (!updatedRows || updatedRows.length === 0) {
       throw new Error(
         "Reserva no encontrada, ya cancelada o sin permisos para editarla"
@@ -339,10 +364,10 @@ export const updateVisitorReservation = actionClient
         notes: parsedInput.notes,
       });
 
-      await supabase
-        .from("visitor_reservations")
-        .update({ notification_sent: true })
-        .eq("id", parsedInput.id);
+      await db
+        .update(visitorReservations)
+        .set({ notificationSent: true })
+        .where(eq(visitorReservations.id, parsedInput.id));
     } catch (emailErr) {
       console.error(
         "[visitantes] sendConfirmationEmail (update) failed (reserva actualizada correctamente):",
@@ -363,59 +388,73 @@ export const updateVisitorReservation = actionClient
  * Cancela una reserva de visitante y envía email de cancelación.
  * Solo puede cancelar el empleado que la creó o un administrador.
  */
-/** Tipo interno para la query pre-cancelación de visitante */
-type VisitorReservationForCancel = {
-  visitor_email: string;
-  visitor_name: string;
-  visitor_company: string;
-  date: string;
-  spots: { label: string } | null;
-};
-
 export const cancelVisitorReservation = actionClient
   .schema(cancelVisitorReservationSchema)
   .action(async ({ parsedInput }) => {
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
 
-    const supabase = await createClient();
     const isAdmin = user.profile?.role === "admin";
 
     // Obtener los detalles antes de cancelar (para el email)
-    const fetchBase = supabase
-      .from("visitor_reservations")
-      .select(
-        "visitor_email, visitor_name, visitor_company, date, spots!visitor_reservations_spot_id_fkey(label)"
-      )
-      .eq("id", parsedInput.id)
-      .eq("status", "confirmed");
+    const fetchConditions = isAdmin
+      ? and(
+          eq(visitorReservations.id, parsedInput.id),
+          eq(visitorReservations.status, "confirmed")
+        )
+      : and(
+          eq(visitorReservations.id, parsedInput.id),
+          eq(visitorReservations.status, "confirmed"),
+          eq(visitorReservations.reservedBy, user.id)
+        );
 
-    const { data: rawReservation } = await (
-      isAdmin ? fetchBase : fetchBase.eq("reserved_by", user.id)
-    ).maybeSingle();
-    const reservation = rawReservation as VisitorReservationForCancel | null;
+    const [reservation] = await db
+      .select({
+        visitorEmail: visitorReservations.visitorEmail,
+        visitorName: visitorReservations.visitorName,
+        visitorCompany: visitorReservations.visitorCompany,
+        date: visitorReservations.date,
+        spotId: visitorReservations.spotId,
+      })
+      .from(visitorReservations)
+      .where(fetchConditions)
+      .limit(1);
 
     if (!reservation) {
       throw new Error("Reserva no encontrada o sin permisos para cancelarla");
     }
 
+    // Obtener el label de la plaza
+    const [spotData] = await db
+      .select({ label: spots.label })
+      .from(spots)
+      .where(eq(spots.id, reservation.spotId))
+      .limit(1);
+
     // Cancelar la reserva
-    const updateBase = supabase
-      .from("visitor_reservations")
-      .update({ status: "cancelled" })
-      .eq("id", parsedInput.id)
-      .eq("status", "confirmed")
-      .select("id");
+    const cancelConditions = isAdmin
+      ? and(
+          eq(visitorReservations.id, parsedInput.id),
+          eq(visitorReservations.status, "confirmed")
+        )
+      : and(
+          eq(visitorReservations.id, parsedInput.id),
+          eq(visitorReservations.status, "confirmed"),
+          eq(visitorReservations.reservedBy, user.id)
+        );
 
-    const { error: updateError, data: updatedRows } = await (isAdmin
-      ? updateBase
-      : updateBase.eq("reserved_by", user.id));
-
-    if (updateError) {
-      throw new Error(
-        `Error al cancelar reserva de visitante: ${updateError.message}`
-      );
+    let updatedRows: { id: string }[];
+    try {
+      updatedRows = await db
+        .update(visitorReservations)
+        .set({ status: "cancelled" })
+        .where(cancelConditions)
+        .returning({ id: visitorReservations.id });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      throw new Error(`Error al cancelar reserva de visitante: ${msg}`);
     }
+
     if (!updatedRows || updatedRows.length === 0) {
       throw new Error(
         "Reserva no encontrada, ya cancelada o sin permisos para cancelarla"
@@ -424,13 +463,13 @@ export const cancelVisitorReservation = actionClient
 
     // Enviar email de cancelación con ICS METHOD:CANCEL (no bloqueante)
     try {
-      const spotLabel = reservation.spots?.label ?? "";
+      const spotLabel = spotData?.label ?? "";
       const formattedDate = format(
         new Date(reservation.date + "T00:00:00"),
         "EEEE, d 'de' MMMM 'de' yyyy",
         { locale: es }
       );
-      const cancelledByName = user.profile?.full_name ?? user.email;
+      const cancelledByName = user.profile?.fullName ?? user.email;
 
       const cancellationICS = generateCancellationICSBuffer({
         reservationId: parsedInput.id,
@@ -439,8 +478,8 @@ export const cancelVisitorReservation = actionClient
       });
 
       await sendVisitorCancellationEmail({
-        to: reservation.visitor_email,
-        visitorName: reservation.visitor_name,
+        to: reservation.visitorEmail,
+        visitorName: reservation.visitorName,
         spotLabel,
         date: formattedDate,
         cancelledByName,

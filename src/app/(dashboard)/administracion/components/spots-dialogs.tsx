@@ -211,8 +211,8 @@ function EditSpotDialog() {
       label: currentRow?.label ?? "",
       type: (currentRow?.type as EditForm["type"]) ?? "standard",
       resource_type:
-        (currentRow?.resource_type as EditForm["resource_type"]) ?? "parking",
-      is_active: currentRow?.is_active ?? true,
+        (currentRow?.resourceType as EditForm["resource_type"]) ?? "parking",
+      is_active: currentRow?.isActive ?? true,
     },
   });
 

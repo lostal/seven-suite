@@ -10,8 +10,10 @@ import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { requireAuth } from "@/lib/auth/helpers";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { spots } from "@/lib/db/schema";
 import { getAllResourceConfigs } from "@/lib/config";
+import { eq, and } from "drizzle-orm";
 import { OfficeCalendarView } from "./_components/office-calendar-view";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -28,18 +30,18 @@ import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 export default async function OficinasPage() {
   const user = await requireAuth();
 
-  const supabase = await createClient();
   const entityId = await getEffectiveEntityId();
-  const [assignedSpotResult, officeConfig] = await Promise.all([
-    supabase
-      .from("spots")
-      .select("id, label")
-      .eq("assigned_to", user.id)
-      .eq("resource_type", "office")
-      .maybeSingle(),
+  const [assignedSpotRows, officeConfig] = await Promise.all([
+    db
+      .select({ id: spots.id, label: spots.label })
+      .from(spots)
+      .where(
+        and(eq(spots.assignedTo, user.id), eq(spots.resourceType, "office"))
+      )
+      .limit(1),
     getAllResourceConfigs("office", entityId),
   ]);
-  const assignedSpot = assignedSpotResult.data;
+  const assignedSpot = assignedSpotRows[0] ?? null;
   const {
     booking_enabled: bookingEnabled,
     time_slots_enabled: timeSlotsEnabled,

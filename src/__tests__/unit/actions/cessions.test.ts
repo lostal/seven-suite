@@ -12,16 +12,23 @@ import {
   createCession,
   cancelCession,
 } from "@/app/(dashboard)/parking/cession-actions";
-import { createQueryChain } from "../../mocks/supabase";
+import {
+  mockDb,
+  resetDbMocks,
+  setupSelectMock,
+  setupInsertMock,
+  setupUpdateMock,
+} from "../../mocks/db";
 import { createMockAuthUser } from "../../mocks/factories";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(),
-}));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
 
-vi.mock("@/lib/supabase/auth", () => ({
+vi.mock("@/lib/auth/helpers", () => ({
   getCurrentUser: vi.fn(),
 }));
 
@@ -44,8 +51,7 @@ vi.mock("@/lib/queries/active-entity", () => ({
   getEffectiveEntityId: vi.fn().mockResolvedValue(null),
 }));
 
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/auth";
+import { getCurrentUser } from "@/lib/auth/helpers";
 import { getAllResourceConfigs } from "@/lib/config";
 import { isTooSoonForCession } from "@/lib/calendar/calendar-utils";
 
@@ -63,7 +69,7 @@ const FUTURE_DATE = "2025-01-13";
 
 describe("createCession", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(
       createMockAuthUser({ id: USER_ID }) as never
     );
@@ -74,33 +80,6 @@ describe("createCession", () => {
       cession_min_advance_hours: 0,
     } as never);
   });
-
-  function setupSpotMock(
-    spotData: unknown,
-    insertResult?: {
-      data: { id: string }[] | null;
-      error: { message: string; code?: string } | null;
-    }
-  ) {
-    const mockFrom = vi.fn((table: string) => {
-      if (table === "spots") {
-        const chain = createQueryChain({ data: null, error: null });
-        (chain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
-          data: spotData,
-          error: null, // null error: si no hay spot, la acción lo detecta con !spot
-        });
-        return chain;
-      }
-      if (table === "cessions") {
-        return createQueryChain(
-          insertResult ?? { data: [{ id: CESSION_UUID }], error: null }
-        );
-      }
-      return createQueryChain({ data: [], error: null });
-    });
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
-    return mockFrom;
-  }
 
   it("lanza error si las cesiones están deshabilitadas", async () => {
     vi.mocked(getAllResourceConfigs).mockResolvedValue({
@@ -117,7 +96,8 @@ describe("createCession", () => {
   });
 
   it("lanza error si la plaza no existe", async () => {
-    setupSpotMock(null);
+    // select returns empty
+    setupSelectMock([]);
 
     const result = await createCession({
       spot_id: SPOT_UUID,
@@ -129,11 +109,13 @@ describe("createCession", () => {
   });
 
   it("lanza error si la plaza no es de tipo parking", async () => {
-    setupSpotMock({
-      id: SPOT_UUID,
-      assigned_to: USER_ID,
-      resource_type: "office", // ← tipo incorrecto
-    });
+    setupSelectMock([
+      {
+        id: SPOT_UUID,
+        assignedTo: USER_ID,
+        resourceType: "office",
+      },
+    ]);
 
     const result = await createCession({
       spot_id: SPOT_UUID,
@@ -153,11 +135,13 @@ describe("createCession", () => {
       cession_min_advance_hours: 24,
     } as never);
 
-    setupSpotMock({
-      id: SPOT_UUID,
-      assigned_to: OTHER_USER_ID, // el usuario NO es el dueño
-      resource_type: "parking",
-    });
+    setupSelectMock([
+      {
+        id: SPOT_UUID,
+        assignedTo: OTHER_USER_ID, // el usuario NO es el dueño
+        resourceType: "parking",
+      },
+    ]);
 
     const result = await createCession({
       spot_id: SPOT_UUID,
@@ -173,11 +157,13 @@ describe("createCession", () => {
   });
 
   it("lanza error si el usuario no es el propietario de la plaza", async () => {
-    setupSpotMock({
-      id: SPOT_UUID,
-      assigned_to: OTHER_USER_ID,
-      resource_type: "parking",
-    });
+    setupSelectMock([
+      {
+        id: SPOT_UUID,
+        assignedTo: OTHER_USER_ID,
+        resourceType: "parking",
+      },
+    ]);
 
     const result = await createCession({
       spot_id: SPOT_UUID,
@@ -196,11 +182,13 @@ describe("createCession", () => {
       cession_min_advance_hours: 24,
     } as never);
 
-    setupSpotMock({
-      id: SPOT_UUID,
-      assigned_to: USER_ID, // el usuario ES el dueño
-      resource_type: "parking",
-    });
+    setupSelectMock([
+      {
+        id: SPOT_UUID,
+        assignedTo: USER_ID, // el usuario ES el dueño
+        resourceType: "parking",
+      },
+    ]);
 
     const result = await createCession({
       spot_id: SPOT_UUID,
@@ -213,10 +201,17 @@ describe("createCession", () => {
   });
 
   it("lanza error si ya existe una cesión para esa fecha (23505)", async () => {
-    setupSpotMock(
-      { id: SPOT_UUID, assigned_to: USER_ID, resource_type: "parking" },
-      { data: null, error: { code: "23505", message: "duplicate key" } }
-    );
+    setupSelectMock([
+      {
+        id: SPOT_UUID,
+        assignedTo: USER_ID,
+        resourceType: "parking",
+      },
+    ]);
+
+    mockDb.insert.mockImplementationOnce(() => {
+      throw Object.assign(new Error("duplicate key value"), { code: "23505" });
+    });
 
     const result = await createCession({
       spot_id: SPOT_UUID,
@@ -229,10 +224,14 @@ describe("createCession", () => {
   });
 
   it("crea la cesión con éxito y devuelve el count", async () => {
-    setupSpotMock(
-      { id: SPOT_UUID, assigned_to: USER_ID, resource_type: "parking" },
-      { data: [{ id: CESSION_UUID }], error: null }
-    );
+    setupSelectMock([
+      {
+        id: SPOT_UUID,
+        assignedTo: USER_ID,
+        resourceType: "parking",
+      },
+    ]);
+    setupInsertMock([{ id: CESSION_UUID }]);
 
     const result = await createCession({
       spot_id: SPOT_UUID,
@@ -248,86 +247,15 @@ describe("createCession", () => {
 
 describe("cancelCession", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(
       createMockAuthUser({ id: USER_ID }) as never
     );
   });
 
-  /**
-   * Configura el mock para cancelCession con múltiples queries por tabla.
-   *
-   * Flujo de DB:
-   * 1. cessions.select().single() → fetchCession
-   * 2. reservations.select().maybeSingle() → activeReservation
-   * 3. (si hay reserva activa) reservations.update().eq() → cancelReservation
-   * 4. cessions.update().eq() → cancelCession
-   */
-  function setupCancelMock(config: {
-    cession?: unknown;
-    cessionFetchError?: boolean;
-    activeReservation?: { id: string } | null;
-    reservationCancelError?: string;
-    cessionCancelError?: string;
-  }) {
-    let reservationsCallCount = 0;
-
-    const mockFrom = vi.fn((table: string) => {
-      if (table === "cessions") {
-        // Primera llamada: fetch cession. Subsiguientes: update.
-        const fetchChain = createQueryChain({ data: null, error: null });
-        (fetchChain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
-          data: config.cessionFetchError ? null : (config.cession ?? null),
-          error: config.cessionFetchError ? { message: "not found" } : null,
-        });
-        // La update de cessions (última llamada)
-        const updateChain = createQueryChain({
-          data: config.cessionCancelError ? null : [{ id: CESSION_UUID }],
-          error: config.cessionCancelError
-            ? { message: config.cessionCancelError }
-            : null,
-        });
-        // Retornar fetchChain para .select, updateChain para .update
-        // Creamos un wrapper dinámico:
-        const tableChain: Record<string, unknown> & PromiseLike<unknown> = {
-          select: vi.fn().mockReturnValue(fetchChain),
-          update: vi.fn().mockReturnValue(updateChain),
-          then: fetchChain.then.bind(fetchChain),
-        };
-        return tableChain;
-      }
-
-      if (table === "reservations") {
-        reservationsCallCount++;
-        if (reservationsCallCount === 1) {
-          // First call: check active reservation
-          const chain = createQueryChain({ data: null, error: null });
-          (chain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
-            data: config.activeReservation ?? null,
-            error: null,
-          });
-          return chain;
-        }
-        // Second call: cancel active reservation
-        return createQueryChain({
-          data: config.reservationCancelError
-            ? null
-            : [{ id: RESERVATION_UUID }],
-          error: config.reservationCancelError
-            ? { message: config.reservationCancelError }
-            : null,
-        });
-      }
-
-      return createQueryChain({ data: [], error: null });
-    });
-
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
-    return mockFrom;
-  }
-
   it("lanza error si la cesión no existe", async () => {
-    setupCancelMock({ cessionFetchError: true });
+    // select cession → empty
+    setupSelectMock([]);
 
     const result = await cancelCession({ id: CESSION_UUID });
 
@@ -337,15 +265,16 @@ describe("cancelCession", () => {
   });
 
   it("lanza error si el usuario no es el propietario", async () => {
-    setupCancelMock({
-      cession: {
+    // select cession → belongs to other user
+    setupSelectMock([
+      {
         id: CESSION_UUID,
-        user_id: OTHER_USER_ID, // otra persona
-        spot_id: SPOT_UUID,
+        userId: OTHER_USER_ID,
+        spotId: SPOT_UUID,
         date: FUTURE_DATE,
         status: "available",
       },
-    });
+    ]);
 
     const result = await cancelCession({ id: CESSION_UUID });
 
@@ -355,16 +284,18 @@ describe("cancelCession", () => {
   });
 
   it("lanza error para no-admin si hay una reserva activa", async () => {
-    setupCancelMock({
-      cession: {
+    // 1. select cession → owned by user
+    setupSelectMock([
+      {
         id: CESSION_UUID,
-        user_id: USER_ID, // el usuario owns the cession
-        spot_id: SPOT_UUID,
+        userId: USER_ID,
+        spotId: SPOT_UUID,
         date: FUTURE_DATE,
         status: "reserved",
       },
-      activeReservation: { id: RESERVATION_UUID },
-    });
+    ]);
+    // 2. select active reservation → exists
+    setupSelectMock([{ id: RESERVATION_UUID }]);
 
     const result = await cancelCession({ id: CESSION_UUID });
 
@@ -374,16 +305,20 @@ describe("cancelCession", () => {
   });
 
   it("cancela con éxito sin reserva activa", async () => {
-    setupCancelMock({
-      cession: {
+    // 1. select cession
+    setupSelectMock([
+      {
         id: CESSION_UUID,
-        user_id: USER_ID,
-        spot_id: SPOT_UUID,
+        userId: USER_ID,
+        spotId: SPOT_UUID,
         date: FUTURE_DATE,
         status: "available",
       },
-      activeReservation: null,
-    });
+    ]);
+    // 2. select active reservation → none
+    setupSelectMock([]);
+    // 3. update cession
+    setupUpdateMock([]);
 
     const result = await cancelCession({ id: CESSION_UUID });
 
@@ -403,16 +338,22 @@ describe("cancelCession", () => {
       }) as never
     );
 
-    setupCancelMock({
-      cession: {
+    // 1. select cession → owned by other user
+    setupSelectMock([
+      {
         id: CESSION_UUID,
-        user_id: OTHER_USER_ID, // la cesión es de otra persona
-        spot_id: SPOT_UUID,
+        userId: OTHER_USER_ID,
+        spotId: SPOT_UUID,
         date: FUTURE_DATE,
         status: "reserved",
       },
-      activeReservation: { id: RESERVATION_UUID },
-    });
+    ]);
+    // 2. select active reservation → exists
+    setupSelectMock([{ id: RESERVATION_UUID }]);
+    // 3. update reservation (cancel it)
+    setupUpdateMock([]);
+    // 4. update cession (cancel it)
+    setupUpdateMock([]);
 
     const result = await cancelCession({ id: CESSION_UUID });
 
@@ -428,6 +369,6 @@ describe("cancelCession", () => {
     const result = await cancelCession({ id: "no-es-uuid" });
 
     expect(result?.success).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
+    expect(mockDb.select).not.toHaveBeenCalled();
   });
 });

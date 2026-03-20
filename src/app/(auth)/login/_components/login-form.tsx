@@ -285,10 +285,12 @@ export function LoginForm({ entities }: LoginFormProps) {
             </button>
           </div>
 
-          <div className="bg-muted text-muted-foreground rounded-md p-3 text-xs">
-            <strong>MODO DESARROLLO:</strong> En producción se usará Microsoft
-            Teams para autenticación.
-          </div>
+          {process.env.NODE_ENV === "development" && (
+            <div className="bg-muted text-muted-foreground rounded-md p-3 text-xs">
+              <strong>MODO DESARROLLO:</strong> En producción se usará Microsoft
+              Teams para autenticación.
+            </div>
+          )}
         </div>
       </div>
 

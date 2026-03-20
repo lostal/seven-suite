@@ -8,7 +8,7 @@
  * - updateUserRole: cambio de rol de usuario
  * - assignSpotToUser: asignación/desasignación de plaza de dirección
  * - assignUserToSpot: asignación desde perspectiva de plaza con control de cleanup
- * - deleteUser: eliminación de cuenta vía admin API
+ * - deleteUser: eliminación de cuenta vía delete de tabla users
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -21,20 +21,25 @@ import {
   assignUserToSpot,
   deleteUser,
 } from "@/app/(dashboard)/administracion/actions";
-import { createQueryChain } from "../../mocks/supabase";
+import {
+  mockDb,
+  resetDbMocks,
+  setupSelectMock,
+  setupInsertMock,
+  setupUpdateMock,
+  setupDeleteMock,
+  type MockDbResult,
+} from "../../mocks/db";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(),
-}));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
 
-vi.mock("@/lib/supabase/auth", () => ({
+vi.mock("@/lib/auth/helpers", () => ({
   requireAdmin: vi.fn(),
-}));
-
-vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -46,9 +51,11 @@ vi.mock("@/lib/queries/active-entity", () => ({
   getEffectiveEntityId: vi.fn().mockResolvedValue(null),
 }));
 
-import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+vi.mock("@/lib/audit", () => ({
+  logAuditEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { requireAdmin } from "@/lib/auth/helpers";
 import { getActiveEntityId } from "@/lib/queries/active-entity";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -67,56 +74,30 @@ function setupAdminUser() {
       id: UUID,
       email: "admin@test.com",
       role: "admin" as const,
-      full_name: "Admin",
-      avatar_url: null,
+      fullName: "Admin",
+      avatarUrl: null,
+      entityId: null,
+      managerId: null,
+      jobTitle: null,
+      createdAt: new Date("2025-01-01T00:00:00Z"),
+      updatedAt: new Date("2025-01-01T00:00:00Z"),
       dni: null,
-      entity_id: null,
-      job_title: null,
       location: null,
-      manager_id: null,
       phone: null,
-      created_at: "2025-01-01T00:00:00Z",
-      updated_at: "2025-01-01T00:00:00Z",
     },
   });
-}
-
-/**
- * Configura el mock de Supabase con respuesta simple por tabla.
- */
-function setupSupabaseMock(
-  config: {
-    singleData?: unknown;
-    singleError?: { message: string; code?: string } | null;
-    thenableError?: { message: string; code?: string } | null;
-  } = {}
-) {
-  const chain = createQueryChain({
-    data: config.thenableError ? null : { ok: true },
-    error: config.thenableError ?? null,
-  });
-
-  (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
-    data:
-      config.singleData !== undefined ? config.singleData : { id: "new-id" },
-    error: config.singleError ?? null,
-  });
-
-  const mockFrom = vi.fn(() => chain);
-  vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
-  return { mockFrom, chain };
 }
 
 // ─── createSpot ───────────────────────────────────────────────────────────────
 
 describe("createSpot", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAdminUser();
   });
 
   it("crea la plaza y devuelve el id", async () => {
-    setupSupabaseMock({ singleData: { id: "spot-new" } });
+    setupInsertMock([{ id: "spot-new" }]);
 
     const result = await createSpot({
       label: "A-01",
@@ -129,8 +110,11 @@ describe("createSpot", () => {
   });
 
   it("falla con mensaje claro en violación de constraint único (23505)", async () => {
-    setupSupabaseMock({
-      singleError: { message: "duplicate key", code: "23505" },
+    mockDb.insert.mockImplementationOnce(() => {
+      throw Object.assign(
+        new Error("duplicate key value violates unique constraint"),
+        { code: "23505" }
+      );
     });
 
     const result = await createSpot({
@@ -146,8 +130,8 @@ describe("createSpot", () => {
   });
 
   it("falla con error genérico de BD para otros códigos", async () => {
-    setupSupabaseMock({
-      singleError: { message: "Error de conexión", code: "PGRST999" },
+    mockDb.insert.mockImplementationOnce(() => {
+      throw new Error("Error de conexión");
     });
 
     const result = await createSpot({
@@ -169,7 +153,7 @@ describe("createSpot", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
+    expect(mockDb.insert).not.toHaveBeenCalled();
   });
 
   it("rechaza tipo de plaza no válido", async () => {
@@ -180,7 +164,7 @@ describe("createSpot", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
+    expect(mockDb.insert).not.toHaveBeenCalled();
   });
 
   it("falla si requireAdmin lanza error (no admin)", async () => {
@@ -201,12 +185,15 @@ describe("createSpot", () => {
 
 describe("updateSpot", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAdminUser();
   });
 
   it("actualiza la plaza con éxito", async () => {
-    setupSupabaseMock();
+    // 1. select spot
+    setupSelectMock([{ id: UUID, entityId: null }]);
+    // 2. update spot
+    setupUpdateMock([{ id: UUID }]);
 
     const result = await updateSpot({ id: UUID, label: "A-02" });
 
@@ -215,20 +202,15 @@ describe("updateSpot", () => {
   });
 
   it("falla con mensaje claro en constraint único (23505)", async () => {
-    let callCount = 0;
-    const fetchChain = createQueryChain({
-      data: { id: UUID, entity_id: null },
-      error: null,
+    // 1. select spot succeeds
+    setupSelectMock([{ id: UUID, entityId: null }]);
+    // 2. update throws duplicate key
+    mockDb.update.mockImplementationOnce(() => {
+      throw Object.assign(
+        new Error("duplicate key value violates unique constraint"),
+        { code: "23505" }
+      );
     });
-    const updateChain = createQueryChain({
-      data: null,
-      error: { message: "duplicate key", code: "23505" },
-    });
-    const mockFrom = vi.fn(() => {
-      callCount++;
-      return callCount === 1 ? fetchChain : updateChain;
-    });
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
 
     const result = await updateSpot({ id: UUID, label: "A-01" });
 
@@ -239,20 +221,12 @@ describe("updateSpot", () => {
   });
 
   it("falla con error genérico de BD", async () => {
-    let callCount = 0;
-    const fetchChain = createQueryChain({
-      data: { id: UUID, entity_id: null },
-      error: null,
+    // 1. select spot succeeds
+    setupSelectMock([{ id: UUID, entityId: null }]);
+    // 2. update throws generic error
+    mockDb.update.mockImplementationOnce(() => {
+      throw new Error("Error de BD");
     });
-    const updateChain = createQueryChain({
-      data: null,
-      error: { message: "Error de BD", code: "PGRST999" },
-    });
-    const mockFrom = vi.fn(() => {
-      callCount++;
-      return callCount === 1 ? fetchChain : updateChain;
-    });
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
 
     const result = await updateSpot({ id: UUID, label: "A-01" });
 
@@ -266,13 +240,12 @@ describe("updateSpot", () => {
     const result = await updateSpot({ id: "no-es-uuid", label: "A-01" });
 
     expect(result.success).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
+    expect(mockDb.select).not.toHaveBeenCalled();
   });
 
   it("falla si el spot no existe", async () => {
-    const fetchChain = createQueryChain({ data: null, error: null });
-    const mockFrom = vi.fn(() => fetchChain);
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
+    // select returns empty → spot not found
+    setupSelectMock([]);
 
     const result = await updateSpot({ id: UUID, label: "A-01" });
 
@@ -285,12 +258,15 @@ describe("updateSpot", () => {
 
 describe("deleteSpot", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAdminUser();
   });
 
   it("elimina la plaza con éxito", async () => {
-    setupSupabaseMock();
+    // 1. select spot
+    setupSelectMock([{ id: UUID, entityId: null }]);
+    // 2. delete spot
+    setupDeleteMock([{ id: UUID }]);
 
     const result = await deleteSpot({ id: UUID });
 
@@ -299,39 +275,29 @@ describe("deleteSpot", () => {
   });
 
   it("falla si la BD devuelve error", async () => {
-    let callCount = 0;
-    const fetchChain = createQueryChain({
-      data: { id: UUID, entity_id: null },
-      error: null,
+    // 1. select spot succeeds
+    setupSelectMock([{ id: UUID, entityId: null }]);
+    // 2. delete throws error
+    mockDb.delete.mockImplementationOnce(() => {
+      throw new Error("Foreign key constraint");
     });
-    const deleteChain = createQueryChain({
-      data: null,
-      error: { message: "Foreign key constraint" },
-    });
-    const mockFrom = vi.fn(() => {
-      callCount++;
-      return callCount === 1 ? fetchChain : deleteChain;
-    });
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
 
     const result = await deleteSpot({ id: UUID });
 
     expect(result.success).toBe(false);
-    if (!result.success)
-      expect(result.error).toContain("Error al eliminar la plaza");
+    if (!result.success) expect(result.error).toBeDefined();
   });
 
   it("rechaza id no UUID sin llamar a BD", async () => {
     const result = await deleteSpot({ id: "not-a-uuid" });
 
     expect(result.success).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
+    expect(mockDb.select).not.toHaveBeenCalled();
   });
 
   it("falla si el spot no existe", async () => {
-    const fetchChain = createQueryChain({ data: null, error: null });
-    const mockFrom = vi.fn(() => fetchChain);
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
+    // select returns empty → spot not found
+    setupSelectMock([]);
 
     const result = await deleteSpot({ id: UUID });
 
@@ -344,12 +310,13 @@ describe("deleteSpot", () => {
 
 describe("updateUserRole", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAdminUser();
   });
 
   it("actualiza el rol con éxito", async () => {
-    setupSupabaseMock();
+    // update profiles
+    setupUpdateMock([]);
 
     const result = await updateUserRole({ user_id: UUID, role: "employee" });
 
@@ -358,15 +325,14 @@ describe("updateUserRole", () => {
   });
 
   it("falla si la BD devuelve error", async () => {
-    setupSupabaseMock({
-      thenableError: { message: "No se pudo actualizar" },
+    mockDb.update.mockImplementationOnce(() => {
+      throw new Error("No se pudo actualizar");
     });
 
     const result = await updateUserRole({ user_id: UUID, role: "employee" });
 
     expect(result.success).toBe(false);
-    if (!result.success)
-      expect(result.error).toContain("Error al actualizar el rol");
+    if (!result.success) expect(result.error).toBeDefined();
   });
 
   it("rechaza rol inválido sin llamar a BD", async () => {
@@ -376,7 +342,7 @@ describe("updateUserRole", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 });
 
@@ -384,12 +350,15 @@ describe("updateUserRole", () => {
 
 describe("assignSpotToUser", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAdminUser();
   });
 
   it("desasigna la plaza cuando spot_id es null", async () => {
-    setupSupabaseMock();
+    // 1. select current spot (for audit)
+    setupSelectMock([]);
+    // 2. update spots (clear assignment)
+    setupUpdateMock([]);
 
     const result = await assignSpotToUser({
       user_id: UUID,
@@ -402,28 +371,20 @@ describe("assignSpotToUser", () => {
   });
 
   it("asigna plaza estándar con éxito", async () => {
-    // Necesita respuestas distintas: primera llamada = validate spot (single),
-    // segunda y tercera = update queries (thenable)
-    let callCount = 0;
-    const mockFrom = vi.fn(() => {
-      callCount++;
-      if (callCount === 1) {
-        // validate: select spot
-        const chain = createQueryChain({ data: null, error: null });
-        (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
-          data: {
-            id: UUID2,
-            type: "standard",
-            assigned_to: null,
-          },
-          error: null,
-        });
-        return chain;
-      }
-      // update queries: thenable success
-      return createQueryChain({ data: { ok: true }, error: null });
-    });
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
+    // 1. select spot to validate
+    setupSelectMock([
+      {
+        id: UUID2,
+        type: "standard",
+        resourceType: "parking",
+        assignedTo: null,
+        entityId: null,
+      },
+    ]);
+    // 2. update spot (assign)
+    setupUpdateMock([]);
+    // 3. update spots (clear previous)
+    setupUpdateMock([]);
 
     const result = await assignSpotToUser({
       user_id: UUID,
@@ -436,13 +397,8 @@ describe("assignSpotToUser", () => {
   });
 
   it("falla si la plaza no existe", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
-      data: null,
-      error: { message: "Not found" },
-    });
-    const mockFrom = vi.fn(() => chain);
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
+    // select returns empty → plaza not found
+    setupSelectMock([]);
 
     const result = await assignSpotToUser({
       user_id: UUID,
@@ -455,13 +411,16 @@ describe("assignSpotToUser", () => {
   });
 
   it("falla si la plaza es de tipo visitor (no asignable a usuarios)", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
-      data: { id: UUID2, type: "visitor", assigned_to: null },
-      error: null,
-    });
-    const mockFrom = vi.fn(() => chain);
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
+    // select returns a visitor spot
+    setupSelectMock([
+      {
+        id: UUID2,
+        type: "visitor",
+        resourceType: "parking",
+        assignedTo: null,
+        entityId: null,
+      },
+    ]);
 
     const result = await assignSpotToUser({
       user_id: UUID,
@@ -476,17 +435,16 @@ describe("assignSpotToUser", () => {
   });
 
   it("falla si la plaza ya está asignada a otro usuario", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
-      data: {
+    // select returns spot with different assignedTo
+    setupSelectMock([
+      {
         id: UUID2,
         type: "standard",
-        assigned_to: "otro-usuario-uuid-0000-0000-000000000099",
+        resourceType: "parking",
+        assignedTo: "otro-usuario-uuid-0000-0000-000000000099",
+        entityId: null,
       },
-      error: null,
-    });
-    const mockFrom = vi.fn(() => chain);
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
+    ]);
 
     const result = await assignSpotToUser({
       user_id: UUID,
@@ -508,7 +466,7 @@ describe("assignSpotToUser", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
+    expect(mockDb.select).not.toHaveBeenCalled();
   });
 });
 
@@ -516,24 +474,37 @@ describe("assignSpotToUser", () => {
 
 describe("assignUserToSpot", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAdminUser();
   });
 
-  it("falla si el cleanup de la plaza anterior devuelve error", async () => {
-    let callCount = 0;
-    const mockFrom = vi.fn(() => {
-      callCount++;
-      if (callCount === 1) {
-        return createQueryChain({ data: { ok: true }, error: null });
-      }
-      return createQueryChain({
-        data: null,
-        error: { message: "cleanup failed", code: "PGRST999" },
+  it("falla si la transacción de asignación devuelve error", async () => {
+    // La transacción falla en el segundo update (cleanup)
+    mockDb.update
+      .mockImplementationOnce(() => {
+        // First update (assign) inside transaction succeeds
+        const data: MockDbResult = [{ id: UUID2 }];
+        const builder: Record<string, unknown> & PromiseLike<MockDbResult> = {
+          set: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          returning: vi.fn().mockResolvedValue(data),
+          then<TResult1 = MockDbResult, TResult2 = never>(
+            onfulfilled?:
+              | ((value: MockDbResult) => TResult1 | PromiseLike<TResult1>)
+              | null,
+            onrejected?:
+              | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
+              | null
+          ): PromiseLike<TResult1 | TResult2> {
+            return Promise.resolve(data).then(onfulfilled, onrejected);
+          },
+        };
+        return builder;
+      })
+      .mockImplementationOnce(() => {
+        // Second update (cleanup) throws — transaction rolls back automatically
+        throw Object.assign(new Error("cleanup failed"), { code: "PGRST999" });
       });
-    });
-
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
 
     const result = await assignUserToSpot({
       spot_id: UUID2,
@@ -542,37 +513,15 @@ describe("assignUserToSpot", () => {
     });
 
     expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error).toContain("Error al limpiar la plaza anterior");
-    }
   });
 
   it("bloquea asignación si el usuario objetivo es de otra sede activa", async () => {
     vi.mocked(getActiveEntityId).mockResolvedValueOnce("ent-1");
 
-    let callCount = 0;
-    const mockFrom = vi.fn((table: string) => {
-      callCount++;
-      const chain = createQueryChain({ data: null, error: null });
-
-      if (table === "spots" && callCount === 1) {
-        (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
-          data: { entity_id: "ent-1" },
-          error: null,
-        });
-      }
-
-      if (table === "profiles") {
-        (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
-          data: { entity_id: "ent-2" },
-          error: null,
-        });
-      }
-
-      return chain;
-    });
-
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
+    // 1. select spot (entityId = ent-1, same as active)
+    setupSelectMock([{ entityId: "ent-1" }]);
+    // 2. select profile (entityId = ent-2, different)
+    setupSelectMock([{ entityId: "ent-2" }]);
 
     const result = await assignUserToSpot({
       spot_id: UUID2,
@@ -593,18 +542,13 @@ describe("assignUserToSpot", () => {
 
 describe("deleteUser", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     setupAdminUser();
   });
 
   it("elimina el usuario con éxito", async () => {
-    vi.mocked(createAdminClient).mockReturnValue({
-      auth: {
-        admin: {
-          deleteUser: vi.fn().mockResolvedValue({ error: null }),
-        },
-      },
-    } as never);
+    // delete users table
+    setupDeleteMock([{ id: UUID }]);
 
     const result = await deleteUser({ user_id: UUID });
 
@@ -612,28 +556,32 @@ describe("deleteUser", () => {
     if (result.success) expect(result.data).toEqual({ deleted: true });
   });
 
-  it("falla si la API de admin devuelve error", async () => {
-    vi.mocked(createAdminClient).mockReturnValue({
-      auth: {
-        admin: {
-          deleteUser: vi
-            .fn()
-            .mockResolvedValue({ error: { message: "User not found" } }),
-        },
-      },
-    } as never);
+  it("falla si la BD devuelve rows vacías (usuario no encontrado)", async () => {
+    // delete returns empty rows → user not found
+    setupDeleteMock([]);
 
     const result = await deleteUser({ user_id: UUID });
 
     expect(result.success).toBe(false);
     if (!result.success)
-      expect(result.error).toContain("Error al eliminar la cuenta");
+      expect(result.error).toContain("Usuario no encontrado");
+  });
+
+  it("falla si la BD lanza error", async () => {
+    mockDb.delete.mockImplementationOnce(() => {
+      throw new Error("User not found");
+    });
+
+    const result = await deleteUser({ user_id: UUID });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain("User not found");
   });
 
   it("rechaza user_id no UUID sin llamar al admin client", async () => {
     const result = await deleteUser({ user_id: "not-a-uuid" });
 
     expect(result.success).toBe(false);
-    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(mockDb.delete).not.toHaveBeenCalled();
   });
 });

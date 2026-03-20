@@ -10,9 +10,11 @@ import Link from "next/link";
 import { ArrowRight, Car } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/helpers";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { spots } from "@/lib/db/schema";
 import { getUserReservations } from "@/lib/queries/reservations";
 import { getUserCessions } from "@/lib/queries/cessions";
+import { eq, and } from "drizzle-orm";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -29,21 +31,23 @@ export default async function ParkingReservasPage() {
     redirect(ROUTES.DASHBOARD);
   }
 
-  const supabase = await createClient();
-
-  const [reservations, cessions, parkingSpotResult] = await Promise.all([
+  const [reservations, cessions, parkingSpotRows] = await Promise.all([
     getUserReservations(user.id, "parking"),
     getUserCessions(user.id, "parking"),
-    supabase
-      .from("spots")
-      .select("id")
-      .eq("assigned_to", user.id)
-      .eq("resource_type", "parking")
-      .eq("is_active", true)
-      .maybeSingle(),
+    db
+      .select({ id: spots.id })
+      .from(spots)
+      .where(
+        and(
+          eq(spots.assignedTo, user.id),
+          eq(spots.resourceType, "parking"),
+          eq(spots.isActive, true)
+        )
+      )
+      .limit(1),
   ]);
 
-  const hasParkingSpot = !!parkingSpotResult.data;
+  const hasParkingSpot = parkingSpotRows.length > 0;
 
   // Usuarios con plaza van al calendario de cesiones de parking
   if (hasParkingSpot) {

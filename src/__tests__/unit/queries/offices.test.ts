@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
+vi.mock("@/lib/db", () => ({ db: mockDb }));
 
-import { createClient } from "@/lib/supabase/server";
-import { createQueryChain } from "../../mocks/supabase";
-import { createMockOfficeSpot } from "../../mocks/factories";
+import { mockDb, resetDbMocks, setupSelectMock } from "../../mocks/db";
 import {
   getOfficeSpots,
   getOfficeAvailabilityForDate,
@@ -12,18 +10,64 @@ import {
   getUserOfficeReservations,
 } from "@/lib/queries/offices";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers de datos en camelCase (formato Drizzle) ─────────────────────────
 
-function buildClient(
-  tableMap: Record<string, { data: unknown; error: { message: string } | null }>
-) {
+function makeSpot(overrides?: Record<string, unknown>) {
   return {
-    from: vi.fn((table: string) => {
-      const response = tableMap[table] ?? { data: [], error: null };
-      return createQueryChain(
-        response as { data: unknown; error: { message: string } | null }
-      );
-    }),
+    id: "spot-00000000-0000-0000-0000-000000000002",
+    label: "OF-01",
+    type: "visitor",
+    assignedTo: null,
+    resourceType: "office",
+    isActive: true,
+    positionX: 0,
+    positionY: 0,
+    entityId: null,
+    createdAt: new Date("2025-01-01T00:00:00Z"),
+    updatedAt: new Date("2025-01-01T00:00:00Z"),
+    ...overrides,
+  };
+}
+
+// Shape for reservations in getOfficeAvailabilityForDate:
+// { id, spotId, startTime, endTime }
+function makeReservationRow(overrides?: Record<string, unknown>) {
+  return {
+    id: "res-1",
+    spotId: "spot-00000000-0000-0000-0000-000000000002",
+    startTime: null,
+    endTime: null,
+    ...overrides,
+  };
+}
+
+// Shape for cessions in getOfficeAvailabilityForDate:
+// { id, spotId, status }
+function makeCessionRow(overrides?: Record<string, unknown>) {
+  return {
+    id: "ces-1",
+    spotId: "spot-00000000-0000-0000-0000-000000000002",
+    status: "available",
+    ...overrides,
+  };
+}
+
+// Shape for getUserOfficeReservations join rows
+function makeOfficeReservationJoinRow(overrides?: Record<string, unknown>) {
+  return {
+    id: "res-1",
+    spot_id: "spot-1",
+    user_id: "user-1",
+    date: "2026-04-15",
+    status: "confirmed",
+    notes: null,
+    start_time: null,
+    end_time: null,
+    created_at: new Date("2026-01-01T00:00:00Z"),
+    spot_label: "OF-01",
+    spot_resource_type: "office",
+    user_name: "Test User",
+    ...overrides,
   };
 }
 
@@ -31,18 +75,14 @@ function buildClient(
 
 describe("getOfficeSpots", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("returns active office spots from DB", async () => {
-    const spot1 = createMockOfficeSpot({ id: "spot-1", label: "OF-01" });
-    const spot2 = createMockOfficeSpot({ id: "spot-2", label: "OF-02" });
-    const client = buildClient({
-      spots: { data: [spot1, spot2], error: null },
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      makeSpot({ id: "spot-1", label: "OF-01" }),
+      makeSpot({ id: "spot-2", label: "OF-02" }),
+    ]);
 
     const result = await getOfficeSpots();
     expect(result).toHaveLength(2);
@@ -50,39 +90,24 @@ describe("getOfficeSpots", () => {
     expect(result[1]?.label).toBe("OF-02");
   });
 
-  it("with entityId → query is called on spots table", async () => {
-    const spot = createMockOfficeSpot({ entity_id: "ent-1" });
-    const client = buildClient({
-      spots: { data: [spot], error: null },
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  it("with entityId → query returns spots for entity", async () => {
+    setupSelectMock([makeSpot({ entityId: "ent-1" })]);
 
     const result = await getOfficeSpots("ent-1");
-    expect(client.from).toHaveBeenCalledWith("spots");
     expect(result).toHaveLength(1);
   });
 
   it("empty DB → returns []", async () => {
-    const client = buildClient({
-      spots: { data: [], error: null },
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([]);
 
     const result = await getOfficeSpots();
     expect(result).toEqual([]);
   });
 
   it("DB error → throws", async () => {
-    const client = buildClient({
-      spots: { data: null as never, error: { message: "DB error" } },
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("DB error");
     });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     await expect(getOfficeSpots()).rejects.toThrow(
       "No se pudieron obtener los puestos"
@@ -92,72 +117,21 @@ describe("getOfficeSpots", () => {
 
 // ─── getOfficeAvailabilityForDate ────────────────────────────────────────────
 
-/**
- * Creates a query chain that also supports `.in()` (not in the base mock).
- * The `getOfficeAvailabilityForDate` function uses `.in("spot_id", spotIds)`
- * on reservations and cessions sub-queries.
- */
-function createChainWithIn<T>(response: {
-  data: T;
-  error: { message: string } | null;
-}) {
-  const chain = createQueryChain(response) as Record<string, unknown> &
-    PromiseLike<{ data: T; error: { message: string } | null }>;
-  // Add `.in()` to the chain returning the chain itself
-  chain["in"] = vi.fn().mockReturnValue(chain);
-  return chain;
-}
-
-function buildAvailabilityClient(opts: {
-  spots: ReturnType<typeof createMockOfficeSpot>[];
-  spotsError?: { message: string } | null;
-  reservations: {
-    id: string;
-    spot_id: string;
-    start_time: string | null;
-    end_time: string | null;
-  }[];
-  cessions: { id: string; spot_id: string; status: string }[];
-}) {
-  const spotsChain = createChainWithIn({
-    data: opts.spots,
-    error: opts.spotsError ?? null,
-  });
-  const reservationsChain = createChainWithIn({
-    data: opts.reservations,
-    error: null,
-  });
-  const cessionsChain = createChainWithIn({ data: opts.cessions, error: null });
-
-  return {
-    from: vi.fn((table: string) => {
-      if (table === "spots") return spotsChain;
-      if (table === "reservations") return reservationsChain;
-      if (table === "cessions") return cessionsChain;
-      return createChainWithIn({ data: [], error: null });
-    }),
-  };
-}
-
 describe("getOfficeAvailabilityForDate", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
+  // getOfficeAvailabilityForDate makes:
+  // 1. select spots
+  // If spots found: 2. select reservations (parallel), 3. select cessions (parallel)
+
   it("no reservations → all visitor spots are 'free'", async () => {
-    const spot = createMockOfficeSpot({
-      id: "spot-1",
-      type: "visitor",
-      assigned_to: null,
-    });
-    const client = buildAvailabilityClient({
-      spots: [spot],
-      reservations: [],
-      cessions: [],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      makeSpot({ id: "spot-1", type: "visitor", assignedTo: null }),
+    ]);
+    setupSelectMock([]); // reservations
+    setupSelectMock([]); // cessions
 
     const result = await getOfficeAvailabilityForDate("2026-04-01");
     expect(result).toHaveLength(1);
@@ -165,128 +139,80 @@ describe("getOfficeAvailabilityForDate", () => {
   });
 
   it("visitor spot with reservation → status is 'occupied'", async () => {
-    const spot = createMockOfficeSpot({
-      id: "spot-1",
-      type: "visitor",
-      assigned_to: null,
-    });
-    const client = buildAvailabilityClient({
-      spots: [spot],
-      reservations: [
-        { id: "res-1", spot_id: "spot-1", start_time: null, end_time: null },
-      ],
-      cessions: [],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      makeSpot({ id: "spot-1", type: "visitor", assignedTo: null }),
+    ]);
+    setupSelectMock([makeReservationRow({ spotId: "spot-1" })]);
+    setupSelectMock([]);
 
     const result = await getOfficeAvailabilityForDate("2026-04-01");
     expect(result[0]?.status).toBe("occupied");
   });
 
   it("assigned spot with cession status='available' → status is 'ceded'", async () => {
-    const spot = createMockOfficeSpot({
-      id: "spot-1",
-      type: "standard",
-      assigned_to: "owner-user",
-    });
-    const client = buildAvailabilityClient({
-      spots: [spot],
-      reservations: [],
-      cessions: [{ id: "ces-1", spot_id: "spot-1", status: "available" }],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      makeSpot({ id: "spot-1", type: "standard", assignedTo: "owner-user" }),
+    ]);
+    setupSelectMock([]); // no reservations
+    setupSelectMock([
+      makeCessionRow({ id: "ces-1", spotId: "spot-1", status: "available" }),
+    ]);
 
     const result = await getOfficeAvailabilityForDate("2026-04-01");
     expect(result[0]?.status).toBe("ceded");
   });
 
   it("assigned spot without cession → status is 'occupied'", async () => {
-    const spot = createMockOfficeSpot({
-      id: "spot-1",
-      type: "standard",
-      assigned_to: "owner-user",
-    });
-    const client = buildAvailabilityClient({
-      spots: [spot],
-      reservations: [],
-      cessions: [],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      makeSpot({ id: "spot-1", type: "standard", assignedTo: "owner-user" }),
+    ]);
+    setupSelectMock([]); // no reservations
+    setupSelectMock([]); // no cessions
 
     const result = await getOfficeAvailabilityForDate("2026-04-01");
     expect(result[0]?.status).toBe("occupied");
   });
 
   it("assigned spot with cession but has reservation → status is 'occupied'", async () => {
-    const spot = createMockOfficeSpot({
-      id: "spot-1",
-      type: "standard",
-      assigned_to: "owner-user",
-    });
-    const client = buildAvailabilityClient({
-      spots: [spot],
-      reservations: [
-        { id: "res-1", spot_id: "spot-1", start_time: null, end_time: null },
-      ],
-      cessions: [{ id: "ces-1", spot_id: "spot-1", status: "available" }],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      makeSpot({ id: "spot-1", type: "standard", assignedTo: "owner-user" }),
+    ]);
+    setupSelectMock([makeReservationRow({ spotId: "spot-1" })]);
+    setupSelectMock([
+      makeCessionRow({ spotId: "spot-1", status: "available" }),
+    ]);
 
     // Has reservation → occupied even if cession is available
     const result = await getOfficeAvailabilityForDate("2026-04-01");
     expect(result[0]?.status).toBe("occupied");
   });
 
-  it("unassigned standard spot (assigned_to=null) → status is 'occupied'", async () => {
-    const spot = createMockOfficeSpot({
-      id: "spot-1",
-      type: "standard",
-      assigned_to: null,
-    });
-    const client = buildAvailabilityClient({
-      spots: [spot],
-      reservations: [],
-      cessions: [],
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  it("unassigned standard spot (assignedTo=null) → status is 'occupied'", async () => {
+    setupSelectMock([
+      makeSpot({ id: "spot-1", type: "standard", assignedTo: null }),
+    ]);
+    setupSelectMock([]);
+    setupSelectMock([]);
 
     const result = await getOfficeAvailabilityForDate("2026-04-01");
     expect(result[0]?.status).toBe("occupied");
   });
 
   it("empty spots → returns []", async () => {
-    const spotsChain = createChainWithIn({ data: [], error: null });
-    const client = { from: vi.fn().mockReturnValue(spotsChain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([]);
+    // No further selects needed since spots is empty
 
     const result = await getOfficeAvailabilityForDate("2026-04-01");
     expect(result).toEqual([]);
   });
 
   it("spots query error → throws", async () => {
-    const spotsChain = createChainWithIn({
-      data: null as never,
-      error: { message: "spots error" },
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("spots error");
     });
-    const client = { from: vi.fn().mockReturnValue(spotsChain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     await expect(getOfficeAvailabilityForDate("2026-04-01")).rejects.toThrow(
-      "No se pudieron obtener los puestos"
+      "spots error"
     );
   });
 });
@@ -295,17 +221,14 @@ describe("getOfficeAvailabilityForDate", () => {
 
 describe("getAvailableTimeSlots", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
-  it("no existing reservations → all slots available (8am-10am, 60min = 2 slots)", async () => {
-    const chain = createQueryChain({ data: [], error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  // getAvailableTimeSlots makes 1 select: { startTime, endTime } from reservations
 
-    // startHour=8, endHour=10, slotDurationMinutes=60
+  it("no existing reservations → all slots available (8am-10am, 60min = 2 slots)", async () => {
+    setupSelectMock([]); // no reservations
+
     const slots = await getAvailableTimeSlots(
       "spot-1",
       "2026-04-01",
@@ -327,12 +250,8 @@ describe("getAvailableTimeSlots", () => {
   });
 
   it("existing reservation at 08:00-09:00 → that slot is not available", async () => {
-    const reservations = [{ start_time: "08:00", end_time: "09:00" }];
-    const chain = createQueryChain({ data: reservations, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    // Query returns { startTime, endTime } in camelCase
+    setupSelectMock([{ startTime: "08:00", endTime: "09:00" }]);
 
     const slots = await getAvailableTimeSlots(
       "spot-1",
@@ -355,12 +274,7 @@ describe("getAvailableTimeSlots", () => {
   });
 
   it("all-day reservation (null start/end) → no slots available", async () => {
-    const reservations = [{ start_time: null, end_time: null }];
-    const chain = createQueryChain({ data: reservations, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([{ startTime: null, endTime: null }]);
 
     const slots = await getAvailableTimeSlots(
       "spot-1",
@@ -374,11 +288,7 @@ describe("getAvailableTimeSlots", () => {
   });
 
   it("8am-20am with 60min slots → 12 slots total", async () => {
-    const chain = createQueryChain({ data: [], error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([]);
 
     const slots = await getAvailableTimeSlots(
       "spot-1",
@@ -393,11 +303,7 @@ describe("getAvailableTimeSlots", () => {
   });
 
   it("30-minute slots 8am-10am → 4 slots", async () => {
-    const chain = createQueryChain({ data: [], error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([]);
 
     const slots = await getAvailableTimeSlots(
       "spot-1",
@@ -420,14 +326,9 @@ describe("getAvailableTimeSlots", () => {
   });
 
   it("DB error → throws", async () => {
-    const chain = createQueryChain({
-      data: null as never,
-      error: { message: "query failed" },
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("No se pudieron obtener las franjas");
     });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     await expect(
       getAvailableTimeSlots("spot-1", "2026-04-01", 8, 10, 60)
@@ -435,12 +336,7 @@ describe("getAvailableTimeSlots", () => {
   });
 
   it("overlapping reservation (09:00-10:00) blocks the 09:00-10:00 slot", async () => {
-    const reservations = [{ start_time: "09:00", end_time: "10:00" }];
-    const chain = createQueryChain({ data: reservations, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([{ startTime: "09:00", endTime: "10:00" }]);
 
     const slots = await getAvailableTimeSlots(
       "spot-1",
@@ -454,15 +350,10 @@ describe("getAvailableTimeSlots", () => {
   });
 
   it("all-day reservation with null start blocks even when there are other timed reservations", async () => {
-    const reservations = [
-      { start_time: null, end_time: null },
-      { start_time: "09:00", end_time: "10:00" },
-    ];
-    const chain = createQueryChain({ data: reservations, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([
+      { startTime: null, endTime: null },
+      { startTime: "09:00", endTime: "10:00" },
+    ]);
 
     const slots = await getAvailableTimeSlots(
       "spot-1",
@@ -479,31 +370,19 @@ describe("getAvailableTimeSlots", () => {
 
 describe("getUserOfficeReservations", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("returns future confirmed reservations with spot details", async () => {
-    const rows = [
-      {
+    setupSelectMock([
+      makeOfficeReservationJoinRow({
         id: "res-1",
-        spot_id: "spot-1",
-        user_id: "user-1",
         date: "2026-04-15",
-        status: "confirmed",
-        notes: null,
-        start_time: null,
-        end_time: null,
-        created_at: "2026-01-01T00:00:00Z",
-        updated_at: "2026-01-01T00:00:00Z",
-        spots: { label: "OF-01", resource_type: "office" },
-        profiles: { full_name: "Test User" },
-      },
-    ];
-    const chain = createQueryChain({ data: rows, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+        spot_label: "OF-01",
+        spot_resource_type: "office",
+        user_name: "Test User",
+      }),
+    ]);
 
     const result = await getUserOfficeReservations("user-1");
     expect(result).toHaveLength(1);
@@ -514,96 +393,50 @@ describe("getUserOfficeReservations", () => {
   });
 
   it("empty result → returns []", async () => {
-    const chain = createQueryChain({ data: [], error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([]);
 
     const result = await getUserOfficeReservations("user-1");
     expect(result).toEqual([]);
   });
 
   it("DB error → throws", async () => {
-    const chain = createQueryChain({
-      data: null as never,
-      error: { message: "DB error" },
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("No se pudieron obtener las reservas de oficina");
     });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     await expect(getUserOfficeReservations("user-1")).rejects.toThrow(
       "No se pudieron obtener las reservas de oficina"
     );
   });
 
-  it("filters out rows where spots.resource_type is not 'office'", async () => {
-    const rows = [
-      {
+  it("filters out rows where spot_resource_type is not 'office'", async () => {
+    setupSelectMock([
+      makeOfficeReservationJoinRow({
         id: "res-1",
-        spot_id: "spot-1",
-        user_id: "user-1",
-        date: "2026-04-15",
-        status: "confirmed",
-        notes: null,
-        start_time: null,
-        end_time: null,
-        created_at: "2026-01-01T00:00:00Z",
-        updated_at: "2026-01-01T00:00:00Z",
-        spots: { label: "OF-01", resource_type: "office" },
-        profiles: { full_name: "Test User" },
-      },
-      {
+        spot_resource_type: "office",
+      }),
+      makeOfficeReservationJoinRow({
         id: "res-2",
-        spot_id: "spot-2",
-        user_id: "user-1",
-        date: "2026-04-16",
-        status: "confirmed",
-        notes: null,
-        start_time: null,
-        end_time: null,
-        created_at: "2026-01-01T00:00:00Z",
-        updated_at: "2026-01-01T00:00:00Z",
-        spots: null, // No spots join — should be filtered out
-        profiles: { full_name: "Test User" },
-      },
-    ];
-    const chain = createQueryChain({ data: rows, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+        spot_resource_type: "parking",
+      }),
+    ]);
 
     const result = await getUserOfficeReservations("user-1");
-    // The row with spots=null is filtered since spots?.resource_type !== "office"
     expect(result).toHaveLength(1);
     expect(result[0]?.id).toBe("res-1");
   });
 
   it("maps start_time and end_time correctly for time-slot reservations", async () => {
-    const rows = [
-      {
+    setupSelectMock([
+      makeOfficeReservationJoinRow({
         id: "res-1",
-        spot_id: "spot-1",
-        user_id: "user-1",
-        date: "2026-04-15",
-        status: "confirmed",
         notes: "morning slot",
         start_time: "09:00",
         end_time: "10:00",
-        created_at: "2026-01-01T00:00:00Z",
-        updated_at: "2026-01-01T00:00:00Z",
-        spots: { label: "OF-02", resource_type: "office" },
-        profiles: { full_name: "Slot User" },
-      },
-    ];
-    const chain = createQueryChain({ data: rows, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+        spot_label: "OF-02",
+        user_name: "Slot User",
+      }),
+    ]);
 
     const result = await getUserOfficeReservations("user-1");
     expect(result[0]?.start_time).toBe("09:00");

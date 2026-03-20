@@ -9,7 +9,8 @@
 
 import { revalidatePath } from "next/cache";
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { spots, reservations } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   createOfficeReservationSchema,
@@ -25,6 +26,7 @@ import {
 } from "@/lib/queries/offices";
 import { getDayOfWeek } from "@/lib/utils";
 import { validateBookingDate } from "@/lib/booking-validation";
+import { eq, and } from "drizzle-orm";
 
 // ─── Queries ──────────────────────────────────────────────────
 
@@ -49,13 +51,13 @@ export async function getOfficeSpotsForDate(
     const dayOfWeek = getDayOfWeek(date);
     if (!config.allowed_days.includes(dayOfWeek)) return success([]);
 
-    const spots = await getOfficeAvailabilityForDate(
+    const officeSpots = await getOfficeAvailabilityForDate(
       date,
       startTime,
       endTime,
       entityId
     );
-    return success(spots);
+    return success(officeSpots);
   } catch (err) {
     console.error("[oficinas] getOfficeSpotsForDate error:", err);
     return error(
@@ -118,8 +120,8 @@ export async function getMyOfficeReservations(): Promise<
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
 
-    const reservations = await getUserOfficeReservations(user.id);
-    return success(reservations);
+    const officeReservations = await getUserOfficeReservations(user.id);
+    return success(officeReservations);
   } catch (err) {
     console.error("[oficinas] getMyOfficeReservations error:", err);
     return error(
@@ -186,57 +188,61 @@ export const createOfficeReservation = actionClient
       }
     }
 
-    const supabase = await createClient();
-
     // Verificar que el spot es de tipo oficina
-    const { data: spot } = await supabase
-      .from("spots")
-      .select("id, resource_type, entity_id")
-      .eq("id", parsedInput.spot_id)
-      .maybeSingle();
+    const [spot] = await db
+      .select({
+        id: spots.id,
+        resourceType: spots.resourceType,
+        entityId: spots.entityId,
+      })
+      .from(spots)
+      .where(eq(spots.id, parsedInput.spot_id))
+      .limit(1);
 
     if (!spot) throw new Error("Puesto no encontrado");
-    if (spot.resource_type !== "office") {
+    if (spot.resourceType !== "office") {
       throw new Error("Este puesto no es un espacio de oficina");
     }
-    if (entityId && spot.entity_id !== null && spot.entity_id !== entityId) {
+    if (entityId && spot.entityId !== null && spot.entityId !== entityId) {
       throw new Error("El puesto seleccionado no pertenece a la sede activa");
     }
 
     // Insertar reserva
-    const { data, error: insertError } = await supabase
-      .from("reservations")
-      .insert({
-        spot_id: parsedInput.spot_id,
-        user_id: user.id,
-        date: parsedInput.date,
-        start_time: parsedInput.start_time ?? null,
-        end_time: parsedInput.end_time ?? null,
-        notes: parsedInput.notes ?? null,
-      })
-      .select("id")
-      .single();
+    try {
+      const [inserted] = await db
+        .insert(reservations)
+        .values({
+          spotId: parsedInput.spot_id,
+          userId: user.id,
+          date: parsedInput.date,
+          startTime: parsedInput.start_time ?? null,
+          endTime: parsedInput.end_time ?? null,
+          notes: parsedInput.notes ?? null,
+        })
+        .returning({ id: reservations.id });
 
-    if (insertError) {
+      if (!inserted) throw new Error("No se pudo crear la reserva");
+
+      revalidatePath("/oficinas");
+      revalidatePath("/oficinas/reservas");
+      return { id: inserted.id };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
       // Handle exclusion constraint violation (solapamiento de franjas)
       if (
-        insertError.code === "23P01" ||
-        insertError.code === "23505" ||
-        insertError.message.includes("reservations_no_overlap")
+        msg.includes("23P01") ||
+        msg.includes("23505") ||
+        msg.includes("reservations_no_overlap") ||
+        msg.includes("unique") ||
+        msg.includes("duplicate")
       ) {
         throw new Error(
           "Esta franja horaria ya está reservada para este puesto"
         );
       }
-      console.error("[oficinas] createOfficeReservation insert error", {
-        code: insertError.code,
-      });
+      console.error("[oficinas] createOfficeReservation insert error", msg);
       throw new Error("No se pudo crear la reserva");
     }
-
-    revalidatePath("/oficinas");
-    revalidatePath("/oficinas/reservas");
-    return { id: data.id };
   });
 
 /**
@@ -248,26 +254,29 @@ export const cancelOfficeReservation = actionClient
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
 
-    const supabase = await createClient();
+    try {
+      const updated = await db
+        .update(reservations)
+        .set({ status: "cancelled" })
+        .where(
+          and(
+            eq(reservations.id, parsedInput.id),
+            eq(reservations.userId, user.id)
+          )
+        )
+        .returning({ id: reservations.id });
 
-    const { data, error } = await supabase
-      .from("reservations")
-      .update({ status: "cancelled" })
-      .eq("id", parsedInput.id)
-      .eq("user_id", user.id)
-      .select("id");
+      if (!updated || updated.length === 0) {
+        throw new Error("Reserva no encontrada o no pertenece a tu cuenta");
+      }
 
-    if (error) {
-      console.error("[oficinas] cancelOfficeReservation update error", {
-        code: error.code,
-      });
+      revalidatePath("/oficinas");
+      revalidatePath("/oficinas/reservas");
+      return { cancelled: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "Reserva no encontrada o no pertenece a tu cuenta") throw err;
+      console.error("[oficinas] cancelOfficeReservation update error", msg);
       throw new Error("No se pudo cancelar la reserva");
     }
-    if (!data || data.length === 0) {
-      throw new Error("Reserva no encontrada o no pertenece a tu cuenta");
-    }
-
-    revalidatePath("/oficinas");
-    revalidatePath("/oficinas/reservas");
-    return { cancelled: true };
   });

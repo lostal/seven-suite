@@ -49,6 +49,7 @@ export async function seedTestBaseData() {
 
   await db.insert(schema.profiles).values({
     id: userId,
+    email: "test@domain.com",
     entityId: entityId,
     role: "employee",
   });

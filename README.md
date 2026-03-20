@@ -4,9 +4,9 @@
 
 ![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=next.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white)
+![Drizzle ORM](https://img.shields.io/badge/Drizzle_ORM-C5F74F?style=for-the-badge&logo=drizzle&logoColor=black)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
 **ERP modular de reservas corporativas: plazas de parking y escritorios de oficina, con tres roles, integración Microsoft 365 y configuración por recurso**
 
@@ -49,7 +49,8 @@
 
 ### Backend & Data
 
-![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white)
+![Drizzle ORM](https://img.shields.io/badge/Drizzle_ORM-C5F74F?style=flat-square&logo=drizzle&logoColor=black)
+![Auth.js](https://img.shields.io/badge/Auth.js_v5-000000?style=flat-square&logo=authjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 ![Zod](https://img.shields.io/badge/Zod-3E67B1?style=flat-square&logo=zod&logoColor=white)
 ![Resend](https://img.shields.io/badge/Resend-000000?style=flat-square&logo=resend&logoColor=white)
@@ -59,18 +60,18 @@
 ![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=flat-square&logo=vitest&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=flat-square&logo=playwright&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
 
 </div>
 
 **Decisiones Clave:**
 
-| Elegí esto...       | En lugar de esto...  | ¿Por qué?                                                                |
-| ------------------- | -------------------- | ------------------------------------------------------------------------ |
-| Supabase + RLS      | Firebase             | PostgreSQL relacional + Row Level Security como RBAC real a nivel de BD  |
-| Server Actions      | API REST separada    | Mutaciones tipadas como funciones de servidor, sin capa API intermedia   |
-| Desarrollo a medida | SaaS (Parkalot, etc) | Integración profunda con M365 + lógica de cesión específica + coste cero |
-| SVG interactivo     | Canvas / WebGL       | Cada plaza es un elemento DOM accesible, clicable y estilizable con CSS  |
+| Elegí esto...         | En lugar de esto...  | ¿Por qué?                                                                |
+| --------------------- | -------------------- | ------------------------------------------------------------------------ |
+| Drizzle ORM + Auth.js | Firebase / Supabase  | PostgreSQL self-hosted, tipado end-to-end sin codegen, Auth.js v5 JWT    |
+| Server Actions        | API REST separada    | Mutaciones tipadas como funciones de servidor, sin capa API intermedia   |
+| Desarrollo a medida   | SaaS (Parkalot, etc) | Integración profunda con M365 + lógica de cesión específica + coste cero |
+| SVG interactivo       | Canvas / WebGL       | Cada plaza es un elemento DOM accesible, clicable y estilizable con CSS  |
 
 ---
 
@@ -82,10 +83,10 @@
 
 ### 🔐 Autenticación y Roles
 
-- ✅ Login con Microsoft Entra ID (Azure AD)
-- ✅ Dos roles: Empleado, Admin
-- ✅ RLS con ~30 policies a nivel de BD
-- ✅ Perfil automático vía trigger al signup
+- ✅ Login con credenciales (bcrypt) + Microsoft Entra ID (próximo)
+- ✅ Tres roles: Empleado, Manager/HR, Admin
+- ✅ Autorización en capa de servicio (Auth.js + helpers)
+- ✅ Perfil automático vía evento `createUser` de Auth.js
 
 </td>
 <td width="50%">
@@ -95,7 +96,7 @@
 - ✅ SVG del plano real del parking
 - ✅ Color por estado (libre, reservada, cedida...)
 - ✅ Clic en plaza → flujo de reserva
-- ✅ Actualización en tiempo real (Supabase Realtime)
+- ✅ Estado recalculado en servidor (Next.js revalidation)
 
 </td>
 </tr>
@@ -149,19 +150,19 @@
 
 ## 🧩 Retos Técnicos Superados
 
-### 🔥 Challenge #1: Seguridad RBAC a Nivel de Base de Datos
+### 🔥 Challenge #1: Seguridad RBAC a Nivel de Servicio
 
 **El problema:**
 Implementar control de acceso granular para tres roles con reglas complejas (ej: un directivo solo puede ceder SI tiene plaza asignada), sin depender de validaciones en el frontend que son bypasseables.
 
 **La solución:**
 
-- ~30 RLS policies que operan directamente en PostgreSQL
-- Funciones helper (`get_user_role()`, `is_admin()`, `management_has_spot()`) como building blocks
-- El frontend simplemente ejecuta queries — la BD se encarga de filtrar qué ve y qué puede hacer cada rol
-- Zero trust: incluso con acceso directo a Supabase, las policies protegen los datos
+- Capa de autorización en `src/lib/auth/authorize.ts` con helpers componibles (`assertAdmin()`, `assertOwner()`, `assertHasAssignedSpot()`)
+- Cada Server Action verifica permisos antes de ejecutar la mutación
+- `requireAuth()`, `requireAdmin()`, `requireManagerOrAbove()` en helpers de servidor como building blocks
+- Auth.js JWT embebe `role` y `entityId` — sin roundtrips adicionales a la BD por autenticación
 
-**Tech stack:** PostgreSQL • Supabase RLS • SQL Functions
+**Tech stack:** Auth.js v5 • Next.js Server Actions • TypeScript
 
 ---
 
@@ -176,7 +177,7 @@ Una cesión puede pasar de "available" a "reserved" cuando alguien reserva la pl
 - Sincronización dentro de la misma transacción (imposible estado inconsistente)
 - El código de aplicación no necesita coordinar ambas tablas manualmente
 
-**Tech stack:** PostgreSQL Triggers • Transacciones ACID • Supabase
+**Tech stack:** PostgreSQL Triggers • Transacciones ACID • Drizzle ORM
 
 ---
 
@@ -208,7 +209,7 @@ Parking y oficinas comparten el mismo modelo de datos (`spots`, `reservations`, 
 - Cada módulo activa sus propias features vía config — mismas queries, distintos parámetros
 - Módulos activables/desactivables desde el panel admin sin tocar código
 
-**Tech stack:** PostgreSQL • system_config table • Next.js unstable_cache
+**Tech stack:** PostgreSQL • Drizzle ORM • Next.js unstable_cache
 
 ---
 
@@ -231,22 +232,19 @@ flowchart TB
         C2 --> H
         D --> H
         E --> H
-        H --> I[Supabase Client SSR]
+        H --> I[Drizzle ORM]
     end
 
-    subgraph Data["Supabase"]
-        I --> J[(PostgreSQL + RLS)]
-        J --> K[Row Level Security]
-        J --> L[Realtime Subscriptions]
-        I --> M[Auth + Microsoft Entra ID]
+    subgraph Data["PostgreSQL Self-Hosted"]
+        I --> J[(PostgreSQL + Triggers)]
+        J --> K[Auth.js + JWT Sessions]
+        J --> L[DrizzleAdapter]
     end
 
     subgraph Servicios["Servicios Externos"]
         H --> N[📧 Resend - React Email]
-        M --> O[Microsoft Graph API]
+        K --> O[Microsoft Graph API]
     end
-
-    L -->|WebSocket| C
 ```
 
 **Módulos de la aplicación:**
@@ -265,7 +263,7 @@ flowchart TB
 
 ## 🎓 Lo Que Aprendí
 
-> Este proyecto me obligó a pensar la seguridad desde la base de datos hacia arriba, no al revés. Diseñar ~30 RLS policies me hizo entender que la autorización real vive en la capa de datos, no en el middleware. También descubrí que las Server Actions de Next.js eliminan una cantidad brutal de boilerplate cuando les pones un builder pattern encima — una sola función reemplaza controller + route + validación + error handling. Lo más gratificante fue ver cómo el trigger de sincronización cesión ↔ reserva hace imposible el estado inconsistente sin que el código de aplicación tenga que preocuparse por ello. Añadir el módulo de oficinas sobre la misma base de datos demostró que el diseño `resource_type` era la abstracción correcta desde el principio.
+> Este proyecto me obligó a migrar de Supabase (BaaS) a un stack self-hosted completo: Drizzle ORM + Auth.js v5 + PostgreSQL. La migración reveló cuánta lógica "gratis" da un BaaS — y cuánto más control ganas al construirlo tú. Diseñar la capa de autorización desde cero me hizo entender que la seguridad real vive en el servicio, no solo en el middleware. Las Server Actions con un builder pattern eliminan una cantidad brutal de boilerplate — una sola función reemplaza controller + route + validación + error handling. Lo más gratificante fue ver cómo el trigger de sincronización cesión ↔ reserva hace imposible el estado inconsistente sin que el código de aplicación tenga que preocuparse por ello. Añadir el módulo de oficinas sobre la misma base de datos demostró que el diseño `resource_type` era la abstracción correcta desde el principio.
 
 ---
 

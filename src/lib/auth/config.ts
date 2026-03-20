@@ -80,9 +80,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
-        session.user.role = token.role as string;
-        session.user.entityId = token.entityId as string | null;
-        session.user.fullName = token.fullName as string;
+        session.user.role = (token.role ?? "employee") as string;
+        session.user.entityId = (token.entityId ?? null) as string | null;
+        session.user.fullName = (token.fullName ?? "") as string;
       }
       return session;
     },

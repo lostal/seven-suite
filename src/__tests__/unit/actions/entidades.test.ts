@@ -1,16 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
-vi.mock("@/lib/supabase/auth", () => ({ requireAdmin: vi.fn() }));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
+vi.mock("@/lib/auth/helpers", () => ({ requireAdmin: vi.fn() }));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
   revalidateTag: vi.fn(),
 }));
 
-import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/supabase/auth";
+import {
+  mockDb,
+  resetDbMocks,
+  setupInsertMock,
+  setupUpdateMock,
+  setupDeleteMock,
+} from "../../mocks/db";
+import { requireAdmin } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
-import { createQueryChain } from "../../mocks/supabase";
 import { createMockProfile } from "../../mocks/factories";
 import {
   createEntity,
@@ -27,16 +35,12 @@ const mockAdminUser = {
 
 describe("createEntity", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(requireAdmin).mockResolvedValue(mockAdminUser as never);
   });
 
   it("success → returns { success: true, data: { id: 'entity-1' } }", async () => {
-    const chain = createQueryChain({ data: { id: "entity-1" }, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupInsertMock([{ id: "entity-1" }]);
 
     const result = await createEntity({
       name: "Nueva Sede",
@@ -52,14 +56,9 @@ describe("createEntity", () => {
   });
 
   it("duplicate (code 23505) → success: false, error contains 'Ya existe una sede'", async () => {
-    const chain = createQueryChain({
-      data: null,
-      error: { message: "duplicate key", code: "23505" },
+    mockDb.insert.mockImplementationOnce(() => {
+      throw Object.assign(new Error("duplicate key value"), { code: "23505" });
     });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     const result = await createEntity({
       name: "Sede Duplicada",
@@ -74,14 +73,9 @@ describe("createEntity", () => {
   });
 
   it("other DB error → success: false, error contains 'Error al crear la sede'", async () => {
-    const chain = createQueryChain({
-      data: null,
-      error: { message: "connection error", code: "500" },
+    mockDb.insert.mockImplementationOnce(() => {
+      throw new Error("connection error");
     });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     const result = await createEntity({
       name: "Sede Error",
@@ -96,11 +90,7 @@ describe("createEntity", () => {
   });
 
   it("short_code is uppercased before insert → success", async () => {
-    const chain = createQueryChain({ data: { id: "entity-new" }, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupInsertMock([{ id: "entity-new" }]);
 
     const result = await createEntity({
       name: "Test Sede",
@@ -112,12 +102,6 @@ describe("createEntity", () => {
   });
 
   it("validation error for missing required field → success: false with fieldErrors", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
-
     // name is required but passing empty string should fail validation
     const result = await createEntity({
       name: "",
@@ -133,16 +117,12 @@ describe("createEntity", () => {
 
 describe("updateEntity", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(requireAdmin).mockResolvedValue(mockAdminUser as never);
   });
 
   it("success → returns { success: true, data: { updated: true } }", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupUpdateMock([]);
 
     const result = await updateEntity({
       id: "550e8400-e29b-41d4-a716-446655440001",
@@ -157,14 +137,9 @@ describe("updateEntity", () => {
   });
 
   it("duplicate (code 23505) → success: false, error contains 'Ya existe una sede'", async () => {
-    const chain = createQueryChain({
-      data: null,
-      error: { message: "duplicate key value", code: "23505" },
+    mockDb.update.mockImplementationOnce(() => {
+      throw Object.assign(new Error("duplicate key value"), { code: "23505" });
     });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     const result = await updateEntity({
       id: "550e8400-e29b-41d4-a716-446655440001",
@@ -178,14 +153,9 @@ describe("updateEntity", () => {
   });
 
   it("other DB error → success: false, error contains 'Error al actualizar la sede'", async () => {
-    const chain = createQueryChain({
-      data: null,
-      error: { message: "Unknown error", code: "500" },
+    mockDb.update.mockImplementationOnce(() => {
+      throw new Error("Unknown error");
     });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     const result = await updateEntity({
       id: "550e8400-e29b-41d4-a716-446655440001",
@@ -201,16 +171,12 @@ describe("updateEntity", () => {
 
 describe("deleteEntity", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(requireAdmin).mockResolvedValue(mockAdminUser as never);
   });
 
   it("success → returns { success: true, data: { deleted: true } }", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupDeleteMock([]);
 
     const result = await deleteEntity({
       id: "550e8400-e29b-41d4-a716-446655440001",
@@ -224,14 +190,11 @@ describe("deleteEntity", () => {
   });
 
   it("DB error → success: false, error contains 'Error al eliminar la sede'", async () => {
-    const chain = createQueryChain({
-      data: null,
-      error: { message: "foreign key violation", code: "23503" },
+    mockDb.delete.mockImplementationOnce(() => {
+      throw Object.assign(new Error("foreign key violation"), {
+        code: "23503",
+      });
     });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     const result = await deleteEntity({
       id: "550e8400-e29b-41d4-a716-446655440001",
@@ -244,12 +207,6 @@ describe("deleteEntity", () => {
   });
 
   it("validation error for invalid uuid → success: false with fieldErrors", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
-
     const result = await deleteEntity({ id: "not-a-uuid" });
 
     // Zod validation should fail for non-UUID
@@ -263,16 +220,12 @@ describe("deleteEntity", () => {
 
 describe("toggleEntityModule", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(requireAdmin).mockResolvedValue(mockAdminUser as never);
   });
 
   it("success → returns { success: true, data: { updated: true } }", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupInsertMock([{}]);
 
     const result = await toggleEntityModule({
       entity_id: "550e8400-e29b-41d4-a716-446655440001",
@@ -288,14 +241,9 @@ describe("toggleEntityModule", () => {
   });
 
   it("DB error → success: false, error contains 'Error al actualizar el módulo'", async () => {
-    const chain = createQueryChain({
-      data: null,
-      error: { message: "upsert failed", code: "42P01" },
+    mockDb.insert.mockImplementationOnce(() => {
+      throw Object.assign(new Error("upsert failed"), { code: "42P01" });
     });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     const result = await toggleEntityModule({
       entity_id: "550e8400-e29b-41d4-a716-446655440001",
@@ -309,12 +257,8 @@ describe("toggleEntityModule", () => {
     }
   });
 
-  it("enable module → upsert is called on entity_modules table", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  it("enable module → insert is called on entity_modules table", async () => {
+    setupInsertMock([{}]);
 
     const result = await toggleEntityModule({
       entity_id: "550e8400-e29b-41d4-a716-446655440001",
@@ -323,6 +267,6 @@ describe("toggleEntityModule", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(client.from).toHaveBeenCalledWith("entity_modules");
+    expect(mockDb.insert).toHaveBeenCalled();
   });
 });

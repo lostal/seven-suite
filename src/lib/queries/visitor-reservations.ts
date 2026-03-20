@@ -16,19 +16,13 @@ import { eq, and, gte, ne, or, isNull, asc } from "drizzle-orm";
 /** Fila de reserva de visitante con detalles de plaza y creador */
 export interface VisitorReservationWithDetails {
   id: string;
-  spotId: string;
   spot_id: string;
-  reservedBy: string;
   reserved_by: string;
   date: string;
-  visitorName: string;
   visitor_name: string;
-  visitorCompany: string;
   visitor_company: string;
-  visitorEmail: string;
   visitor_email: string;
   status: string;
-  notificationSent: boolean;
   notification_sent: boolean;
   notes: string | null;
   createdAt: Date;
@@ -95,19 +89,13 @@ export async function getUpcomingVisitorReservations(
   return filtered.map(
     (r): VisitorReservationWithDetails => ({
       id: r.id,
-      spotId: r.spotId,
       spot_id: r.spotId,
-      reservedBy: r.reservedBy,
       reserved_by: r.reservedBy,
       date: r.date,
-      visitorName: r.visitorName,
       visitor_name: r.visitorName,
-      visitorCompany: r.visitorCompany,
       visitor_company: r.visitorCompany,
-      visitorEmail: r.visitorEmail,
       visitor_email: r.visitorEmail,
       status: r.status,
-      notificationSent: r.notificationSent,
       notification_sent: r.notificationSent,
       notes: r.notes,
       createdAt: r.createdAt,

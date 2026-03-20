@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
+vi.mock("@/lib/auth/config", () => ({ auth: vi.fn() }));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(() => {
     throw new Error("REDIRECT");
@@ -14,10 +18,9 @@ vi.mock("@/lib/constants", () => ({
   },
 }));
 
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
-import { createQueryChain } from "../../mocks/supabase";
-import { createMockProfile } from "../../mocks/factories";
+import { mockDb, resetDbMocks, setupSelectMock } from "../../mocks/db";
 import {
   getCurrentUser,
   requireAuth,
@@ -25,76 +28,63 @@ import {
   requireHR,
   requireManagerOrAbove,
   requireSpotOwner,
-} from "@/lib/supabase/auth";
+} from "@/lib/auth/helpers";
 
-type MockUser = { id: string; email: string };
-type MockSupabaseClient = {
-  auth: {
-    getUser: ReturnType<typeof vi.fn>;
-  };
-  from: ReturnType<typeof vi.fn>;
-};
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function buildSupabaseClient(
-  authUser: MockUser | null,
-  authError: { message: string } | null,
-  profile: ReturnType<typeof createMockProfile> | null,
-  spot: { id: string } | null = null
-): MockSupabaseClient {
-  const profileChain = createQueryChain({
-    data: profile,
-    error: null,
-  });
-  const spotChain = createQueryChain({
-    data: spot,
-    error: null,
-  });
-
-  return {
-    auth: {
-      getUser: vi.fn().mockResolvedValue({
-        data: { user: authUser },
-        error: authError,
-      }),
-    },
-    from: vi.fn((table: string) => {
-      if (table === "profiles") return profileChain;
-      if (table === "spots") return spotChain;
-      return createQueryChain({ data: null, error: null });
-    }),
-  };
+function mockSession(userId: string, email: string) {
+  vi.mocked(auth).mockResolvedValue({
+    user: { id: userId, email },
+  } as never);
 }
+
+function mockNoSession() {
+  vi.mocked(auth).mockResolvedValue(null as never);
+}
+
+function mockProfile(
+  id: string,
+  role: "employee" | "manager" | "hr" | "admin"
+) {
+  setupSelectMock([
+    {
+      id,
+      email: "test@example.com",
+      fullName: "Test User",
+      role,
+      avatarUrl: null,
+      dni: null,
+      entityId: null,
+      jobTitle: null,
+      location: null,
+      managerId: null,
+      phone: null,
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01"),
+    },
+  ]);
+}
+
+function mockNoProfile() {
+  setupSelectMock([]);
+}
+
+// ─── getCurrentUser ────────────────────────────────────────────────────────────
 
 describe("getCurrentUser", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
-  it("auth error → returns null", async () => {
-    const client = buildSupabaseClient(null, { message: "Auth error" }, null);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
-    const result = await getCurrentUser();
-    expect(result).toBeNull();
-  });
-
-  it("no user → returns null", async () => {
-    const client = buildSupabaseClient(null, null, null);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  it("no session → returns null", async () => {
+    mockNoSession();
     const result = await getCurrentUser();
     expect(result).toBeNull();
   });
 
   it("user with profile → returns AuthUser with id, email, profile", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "test@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "employee" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "test@example.com");
+    mockProfile("user-123", "employee");
 
     const result = await getCurrentUser();
     expect(result).not.toBeNull();
@@ -104,11 +94,8 @@ describe("getCurrentUser", () => {
   });
 
   it("user with no profile → returns AuthUser with profile=null", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "test@example.com" };
-    const client = buildSupabaseClient(mockUser, null, null);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "test@example.com");
+    mockNoProfile();
 
     const result = await getCurrentUser();
     expect(result).not.toBeNull();
@@ -116,70 +103,55 @@ describe("getCurrentUser", () => {
   });
 });
 
+// ─── requireAuth ──────────────────────────────────────────────────────────────
+
 describe("requireAuth", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("unauthenticated → calls redirect('/login')", async () => {
-    const client = buildSupabaseClient(null, null, null);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockNoSession();
 
     await expect(requireAuth()).rejects.toThrow("REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/login");
   });
 
   it("authenticated → returns user", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "test@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "test@example.com");
+    mockProfile("user-123", "employee");
 
     const user = await requireAuth();
     expect(user.id).toBe("user-123");
   });
 });
 
+// ─── requireAdmin ─────────────────────────────────────────────────────────────
+
 describe("requireAdmin", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("employee role → calls redirect('/parking')", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "test@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "employee" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "test@example.com");
+    mockProfile("user-123", "employee");
 
     await expect(requireAdmin()).rejects.toThrow("REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/parking");
   });
 
   it("hr role → calls redirect('/parking')", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "test@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "hr" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "test@example.com");
+    mockProfile("user-123", "hr");
 
     await expect(requireAdmin()).rejects.toThrow("REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/parking");
   });
 
   it("admin role → returns user", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "admin@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "admin" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "admin@example.com");
+    mockProfile("user-123", "admin");
 
     const user = await requireAdmin();
     expect(user.id).toBe("user-123");
@@ -187,181 +159,135 @@ describe("requireAdmin", () => {
   });
 });
 
+// ─── requireHR ────────────────────────────────────────────────────────────────
+
 describe("requireHR", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("employee role → redirect('/parking')", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "test@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "employee" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "test@example.com");
+    mockProfile("user-123", "employee");
 
     await expect(requireHR()).rejects.toThrow("REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/parking");
   });
 
   it("manager role → redirect('/parking')", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "test@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "manager" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "test@example.com");
+    mockProfile("user-123", "manager");
 
     await expect(requireHR()).rejects.toThrow("REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/parking");
   });
 
   it("hr role → returns user", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "hr@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "hr" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "hr@example.com");
+    mockProfile("user-123", "hr");
 
     const user = await requireHR();
     expect(user.profile?.role).toBe("hr");
   });
 
   it("admin role → returns user", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "admin@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "admin" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "admin@example.com");
+    mockProfile("user-123", "admin");
 
     const user = await requireHR();
     expect(user.profile?.role).toBe("admin");
   });
 });
 
+// ─── requireManagerOrAbove ────────────────────────────────────────────────────
+
 describe("requireManagerOrAbove", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("employee role → redirect('/parking')", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "test@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "employee" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "test@example.com");
+    mockProfile("user-123", "employee");
 
     await expect(requireManagerOrAbove()).rejects.toThrow("REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/parking");
   });
 
   it("manager role → returns user", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "mgr@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "manager" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "mgr@example.com");
+    mockProfile("user-123", "manager");
 
     const user = await requireManagerOrAbove();
     expect(user.profile?.role).toBe("manager");
   });
 
   it("hr role → returns user", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "hr@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "hr" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "hr@example.com");
+    mockProfile("user-123", "hr");
 
     const user = await requireManagerOrAbove();
     expect(user.profile?.role).toBe("hr");
   });
 
   it("admin role → returns user", async () => {
-    const mockUser: MockUser = { id: "user-123", email: "admin@example.com" };
-    const mockProfile = createMockProfile({ id: "user-123", role: "admin" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-123", "admin@example.com");
+    mockProfile("user-123", "admin");
 
     const user = await requireManagerOrAbove();
     expect(user.profile?.role).toBe("admin");
   });
 });
 
+// ─── requireSpotOwner ─────────────────────────────────────────────────────────
+
 describe("requireSpotOwner", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("admin role → bypasses spot check and returns user", async () => {
-    const mockUser: MockUser = { id: "admin-1", email: "admin@example.com" };
-    const mockProfile = createMockProfile({ id: "admin-1", role: "admin" });
-    // Spot query should not matter for admin
-    const client = buildSupabaseClient(mockUser, null, mockProfile, null);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("admin-1", "admin@example.com");
+    mockProfile("admin-1", "admin");
+    // No spot select should happen for admin
 
     const user = await requireSpotOwner("parking");
     expect(user.id).toBe("admin-1");
-    // Spot query from should not have been called for "spots" table
-    const fromCalls = (client.from as ReturnType<typeof vi.fn>).mock.calls;
-    const spotCalls = fromCalls.filter((args: string[]) => args[0] === "spots");
-    expect(spotCalls).toHaveLength(0);
+    // Only profile select was called, no second select for spots
+    expect(mockDb.select).toHaveBeenCalledTimes(1);
   });
 
   it("employee with assigned parking spot → returns user", async () => {
-    const mockUser: MockUser = { id: "user-1", email: "emp@example.com" };
-    const mockProfile = createMockProfile({ id: "user-1", role: "employee" });
-    const mockSpot = { id: "spot-1" };
-    const client = buildSupabaseClient(mockUser, null, mockProfile, mockSpot);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-1", "emp@example.com");
+    mockProfile("user-1", "employee");
+    setupSelectMock([{ id: "spot-1" }]); // spot exists
 
     const user = await requireSpotOwner("parking");
     expect(user.id).toBe("user-1");
   });
 
   it("employee without parking spot → redirect('/parking')", async () => {
-    const mockUser: MockUser = { id: "user-1", email: "emp@example.com" };
-    const mockProfile = createMockProfile({ id: "user-1", role: "employee" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile, null);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-1", "emp@example.com");
+    mockProfile("user-1", "employee");
+    setupSelectMock([]); // no spot
 
     await expect(requireSpotOwner("parking")).rejects.toThrow("REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/parking");
   });
 
   it("employee without office spot → redirect('/oficinas')", async () => {
-    const mockUser: MockUser = { id: "user-1", email: "emp@example.com" };
-    const mockProfile = createMockProfile({ id: "user-1", role: "employee" });
-    const client = buildSupabaseClient(mockUser, null, mockProfile, null);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-1", "emp@example.com");
+    mockProfile("user-1", "employee");
+    setupSelectMock([]); // no spot
 
     await expect(requireSpotOwner("office")).rejects.toThrow("REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/oficinas");
   });
 
   it("employee with assigned office spot → returns user", async () => {
-    const mockUser: MockUser = { id: "user-1", email: "emp@example.com" };
-    const mockProfile = createMockProfile({ id: "user-1", role: "employee" });
-    const mockSpot = { id: "office-spot-1" };
-    const client = buildSupabaseClient(mockUser, null, mockProfile, mockSpot);
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    mockSession("user-1", "emp@example.com");
+    mockProfile("user-1", "employee");
+    setupSelectMock([{ id: "office-spot-1" }]); // spot exists
 
     const user = await requireSpotOwner("office");
     expect(user.id).toBe("user-1");

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { updateOutlookPreferences, forceCalendarSync } from "../actions";
-import type { ValidatedUserPreferences } from "@/lib/supabase/helpers";
+import type { ValidatedUserPreferences } from "@/lib/db/helpers";
 import {
   updateOutlookPreferencesSchema,
   type UpdateOutlookPreferencesInput,
@@ -18,10 +18,10 @@ import {
 interface OutlookSyncFormProps {
   preferences: Pick<
     ValidatedUserPreferences,
-    | "outlook_create_events"
-    | "outlook_calendar_name"
-    | "outlook_sync_enabled"
-    | "outlook_sync_interval"
+    | "outlookCreateEvents"
+    | "outlookCalendarName"
+    | "outlookSyncEnabled"
+    | "outlookSyncInterval"
   >;
   microsoftConnected: boolean;
   lastSync: string | null;
@@ -44,10 +44,10 @@ export function OutlookSyncForm({
   } = useForm<UpdateOutlookPreferencesInput>({
     resolver: zodResolver(updateOutlookPreferencesSchema),
     defaultValues: {
-      outlook_create_events: preferences.outlook_create_events,
-      outlook_calendar_name: preferences.outlook_calendar_name || "Parking",
-      outlook_sync_enabled: preferences.outlook_sync_enabled,
-      outlook_sync_interval: preferences.outlook_sync_interval || 15,
+      outlook_create_events: preferences.outlookCreateEvents,
+      outlook_calendar_name: preferences.outlookCalendarName || "Parking",
+      outlook_sync_enabled: preferences.outlookSyncEnabled,
+      outlook_sync_interval: preferences.outlookSyncInterval || 15,
     },
   });
 

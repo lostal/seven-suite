@@ -10,9 +10,11 @@ import Link from "next/link";
 import { ArrowRight, Building2 } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/helpers";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { spots } from "@/lib/db/schema";
 import { getUserOfficeReservations } from "@/lib/queries/offices";
 import { getUserCessions } from "@/lib/queries/cessions";
+import { eq, and } from "drizzle-orm";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -29,21 +31,23 @@ export default async function OficinasReservasPage() {
     redirect(ROUTES.DASHBOARD);
   }
 
-  const supabase = await createClient();
-
-  const [officeReservations, cessions, officeSpotResult] = await Promise.all([
+  const [officeReservations, cessions, officeSpotRows] = await Promise.all([
     getUserOfficeReservations(user.id),
     getUserCessions(user.id, "office"),
-    supabase
-      .from("spots")
-      .select("id")
-      .eq("assigned_to", user.id)
-      .eq("resource_type", "office")
-      .eq("is_active", true)
-      .maybeSingle(),
+    db
+      .select({ id: spots.id })
+      .from(spots)
+      .where(
+        and(
+          eq(spots.assignedTo, user.id),
+          eq(spots.resourceType, "office"),
+          eq(spots.isActive, true)
+        )
+      )
+      .limit(1),
   ]);
 
-  const hasOfficeSpot = !!officeSpotResult.data;
+  const hasOfficeSpot = officeSpotRows.length > 0;
 
   // Usuarios con puesto asignado van al calendario de cesiones de oficina
   if (hasOfficeSpot) {

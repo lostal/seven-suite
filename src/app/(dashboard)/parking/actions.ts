@@ -9,7 +9,13 @@
 
 import { revalidatePath } from "next/cache";
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import {
+  spots,
+  reservations,
+  cessions,
+  visitorReservations,
+} from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   createReservationSchema,
@@ -24,20 +30,12 @@ import { getAllResourceConfigs } from "@/lib/config";
 import { getDayOfWeek } from "@/lib/utils";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { validateBookingDate } from "@/lib/booking-validation";
+import { eq, and, or, isNull, ne } from "drizzle-orm";
 
 // ─── Available spots ─────────────────────────────────────────
 
 /**
  * Obtiene las plazas disponibles de parking para una fecha dada.
- *
- * Lee la configuración del sistema para determinar:
- * - Si las reservas están habilitadas
- * - Si la fecha es un día permitido (según `parking.allowed_days`)
- *
- * Una plaza está "disponible" si:
- * - No tiene una reserva confirmada para esa fecha
- * - Si tiene dueño asignado (assigned_to ≠ null), debe existir una cesión activa
- * - Está activa y es de tipo 'parking'
  */
 export async function getAvailableSpotsForDate(
   date: string
@@ -47,107 +45,89 @@ export async function getAvailableSpotsForDate(
     if (!user) return error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
-    // Leer configuración del parking desde la BD
     const config = await getAllResourceConfigs("parking", entityId);
 
-    // Comprobar si las reservas están habilitadas
     if (!config.booking_enabled) return success([]);
 
-    // Comprobar si el día está permitido
     const dayOfWeek = getDayOfWeek(date);
     if (!config.allowed_days.includes(dayOfWeek)) return success([]);
 
-    const supabase = await createClient();
-
-    // Obtener todos los datos en paralelo
-    const [spotsResult, reservationsResult, cessionsResult, visitorResult] =
-      await Promise.all([
-        entityId
-          ? supabase
-              .from("spots")
-              .select("*")
-              .eq("is_active", true)
-              .eq("resource_type", "parking")
-              .or(`entity_id.eq.${entityId},entity_id.is.null`)
-              .order("label")
-          : supabase
-              .from("spots")
-              .select("*")
-              .eq("is_active", true)
-              .eq("resource_type", "parking")
-              .order("label"),
-        supabase
-          .from("reservations")
-          .select("id, spot_id")
-          .eq("date", date)
-          .eq("status", "confirmed"),
-        supabase
-          .from("cessions")
-          .select("id, spot_id, status")
-          .eq("date", date)
-          .neq("status", "cancelled"),
-        supabase
-          .from("visitor_reservations")
-          .select("id, spot_id")
-          .eq("date", date)
-          .eq("status", "confirmed"),
-      ]);
-
-    if (
-      spotsResult.error ||
-      reservationsResult.error ||
-      cessionsResult.error ||
-      visitorResult.error
-    ) {
-      console.error(
-        "[parking] getAvailableSpotsForDate availability queries error",
-        {
-          spotsCode: spotsResult.error?.code,
-          reservationsCode: reservationsResult.error?.code,
-          cessionsCode: cessionsResult.error?.code,
-          visitorCode: visitorResult.error?.code,
-        }
+    // Obtain all data in parallel
+    const spotsConditions = [
+      eq(spots.isActive, true),
+      eq(spots.resourceType, "parking"),
+    ];
+    if (entityId) {
+      spotsConditions.push(
+        or(eq(spots.entityId, entityId), isNull(spots.entityId))!
       );
-      return error("No se pudieron obtener las plazas disponibles");
     }
 
-    const spots = spotsResult.data;
-    const reservedSpotIds = new Set(
-      (reservationsResult.data ?? []).map((r) => r.spot_id)
-    );
-    const cessionBySpot = new Map(
-      (cessionsResult.data ?? []).map((c) => [c.spot_id, c])
-    );
-    const visitorSpotIds = new Set(
-      (visitorResult.data ?? []).map((v) => v.spot_id)
-    );
+    const [allSpots, reservedRows, cessionRows, visitorRows] =
+      await Promise.all([
+        db
+          .select()
+          .from(spots)
+          .where(and(...spotsConditions))
+          .orderBy(spots.label),
+        db
+          .select({ id: reservations.id, spotId: reservations.spotId })
+          .from(reservations)
+          .where(
+            and(
+              eq(reservations.date, date),
+              eq(reservations.status, "confirmed")
+            )
+          ),
+        db
+          .select({
+            id: cessions.id,
+            spotId: cessions.spotId,
+            status: cessions.status,
+          })
+          .from(cessions)
+          .where(
+            and(eq(cessions.date, date), ne(cessions.status, "cancelled"))
+          ),
+        db
+          .select({
+            id: visitorReservations.id,
+            spotId: visitorReservations.spotId,
+          })
+          .from(visitorReservations)
+          .where(
+            and(
+              eq(visitorReservations.date, date),
+              eq(visitorReservations.status, "confirmed")
+            )
+          ),
+      ]);
+
+    const reservedSpotIds = new Set(reservedRows.map((r) => r.spotId));
+    const cessionBySpot = new Map(cessionRows.map((c) => [c.spotId, c]));
+    const visitorSpotIds = new Set(visitorRows.map((v) => v.spotId));
 
     const available: SpotWithStatus[] = [];
 
-    for (const spot of spots) {
-      // Omitir plazas con reservas confirmadas
+    for (const spot of allSpots) {
       if (reservedSpotIds.has(spot.id)) continue;
-
-      // Omitir plazas con reservas de visitantes
       if (visitorSpotIds.has(spot.id)) continue;
 
       if (spot.type === "visitor") {
-        // Plazas de visitas: disponibles por defecto salvo reserva activa — no requieren cesión.
         available.push({
           id: spot.id,
           label: spot.label,
           type: spot.type,
           resource_type: "parking",
-          assigned_to: spot.assigned_to,
-          position_x: spot.position_x,
-          position_y: spot.position_y,
+          assigned_to: spot.assignedTo,
+          position_x: spot.positionX,
+          position_y: spot.positionY,
           status: "free",
         });
         continue;
       }
 
-      if (spot.assigned_to !== null) {
-        // Plaza con propietario: solo disponible si tiene cesión activa
+      if (spot.assignedTo !== null) {
         const cession = cessionBySpot.get(spot.id);
         if (!cession || cession.status !== "available") continue;
 
@@ -156,14 +136,12 @@ export async function getAvailableSpotsForDate(
           label: spot.label,
           type: spot.type,
           resource_type: "parking",
-          assigned_to: spot.assigned_to,
-          position_x: spot.position_x,
-          position_y: spot.position_y,
+          assigned_to: spot.assignedTo,
+          position_x: spot.positionX,
+          position_y: spot.positionY,
           status: "ceded",
         });
       }
-      // Sin propietario → no reservable en el nuevo modelo:
-      // solo las plazas cedidas activamente por su dueño son reservables.
     }
 
     return success(available);
@@ -177,7 +155,6 @@ export async function getAvailableSpotsForDate(
 
 /**
  * Obtiene las reservas confirmadas futuras del usuario actual.
- * Devuelve reservas desde hoy en adelante, con detalles de plaza.
  */
 export async function getMyParkingReservations(): Promise<
   ActionResult<ReservationRow[]>
@@ -186,8 +163,8 @@ export async function getMyParkingReservations(): Promise<
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
 
-    const reservations = await getUserReservations(user.id, "parking");
-    return success(reservations);
+    const reservationList = await getUserReservations(user.id, "parking");
+    return success(reservationList);
   } catch (err) {
     console.error("[parking] getMyParkingReservations error:", err);
     return error(
@@ -198,14 +175,6 @@ export async function getMyParkingReservations(): Promise<
 
 /**
  * Crea una nueva reserva de aparcamiento.
- *
- * Reglas de negocio (leídas desde system_config):
- * - El usuario debe estar autenticado
- * - Las reservas deben estar habilitadas (booking_enabled)
- * - La fecha debe ser un día permitido (allowed_days)
- * - La fecha no puede superar el límite de antelación (max_advance_days)
- * - Una reserva por usuario por día (garantizado por índice único de la BD)
- * - Una reserva por plaza por día (garantizado por índice único de la BD)
  */
 export const createReservation = actionClient
   .schema(createReservationSchema)
@@ -214,94 +183,100 @@ export const createReservation = actionClient
     if (!user) throw new Error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
-    // Leer configuración del parking
     const config = await getAllResourceConfigs("parking", entityId);
 
-    // Comprobar si las reservas están habilitadas
     if (!config.booking_enabled) {
       throw new Error(
         "Las reservas de parking están deshabilitadas actualmente"
       );
     }
 
-    // Comprobar día permitido, fechas pasadas y antelación máxima
     validateBookingDate(parsedInput.date, config);
 
-    const supabase = await createClient();
-
     // Verificar que el spot es de tipo parking
-    const { data: spot } = await supabase
-      .from("spots")
-      .select("id, resource_type, entity_id")
-      .eq("id", parsedInput.spot_id)
-      .maybeSingle();
+    const [spot] = await db
+      .select({
+        id: spots.id,
+        resourceType: spots.resourceType,
+        entityId: spots.entityId,
+      })
+      .from(spots)
+      .where(eq(spots.id, parsedInput.spot_id))
+      .limit(1);
 
     if (!spot) throw new Error("Plaza no encontrada");
-    if (spot.resource_type !== "parking") {
+    if (spot.resourceType !== "parking") {
       throw new Error("Esta plaza no es un espacio de parking");
     }
-    if (entityId && spot.entity_id !== null && spot.entity_id !== entityId) {
+    if (entityId && spot.entityId !== null && spot.entityId !== entityId) {
       throw new Error("La plaza seleccionada no pertenece a la sede activa");
     }
 
     // Check if user already has a reservation for this date
-    const { data: existing } = await supabase
-      .from("reservations")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("date", parsedInput.date)
-      .eq("status", "confirmed")
-      .maybeSingle();
+    const [existing] = await db
+      .select({ id: reservations.id })
+      .from(reservations)
+      .where(
+        and(
+          eq(reservations.userId, user.id),
+          eq(reservations.date, parsedInput.date),
+          eq(reservations.status, "confirmed")
+        )
+      )
+      .limit(1);
 
     if (existing) {
       throw new Error("Ya tienes una reserva para este día");
     }
 
-    // Insert reservation.
-    // El trigger trg_sync_cession_status en la BD sincroniza automáticamente
-    // cession.status → "reserved" dentro de la misma transacción.
-    const { data, error } = await supabase
-      .from("reservations")
-      .insert({
-        spot_id: parsedInput.spot_id,
-        user_id: user.id,
-        date: parsedInput.date,
-        notes: parsedInput.notes ?? null,
-      })
-      .select("id")
-      .single();
+    try {
+      const [inserted] = await db
+        .insert(reservations)
+        .values({
+          spotId: parsedInput.spot_id,
+          userId: user.id,
+          date: parsedInput.date,
+          notes: parsedInput.notes ?? null,
+        })
+        .returning({ id: reservations.id });
 
-    if (error) {
-      if (error.code === "23505") {
-        const { data: userDuplicate } = await supabase
-          .from("reservations")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("date", parsedInput.date)
-          .eq("status", "confirmed")
-          .maybeSingle();
+      if (!inserted) throw new Error("No se pudo crear la reserva");
+
+      revalidatePath("/parking");
+      revalidatePath("/parking/reservas");
+      return { id: inserted.id };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (
+        msg.includes("23505") ||
+        msg.includes("unique") ||
+        msg.includes("duplicate")
+      ) {
+        // Check if it's a user duplicate
+        const [userDuplicate] = await db
+          .select({ id: reservations.id })
+          .from(reservations)
+          .where(
+            and(
+              eq(reservations.userId, user.id),
+              eq(reservations.date, parsedInput.date),
+              eq(reservations.status, "confirmed")
+            )
+          )
+          .limit(1);
 
         if (userDuplicate) {
           throw new Error("Ya tienes una reserva para este día");
         }
         throw new Error("Esta plaza ya está reservada para este día");
       }
-      console.error("[parking] createReservation insert error", {
-        code: error.code,
-      });
+      console.error("[parking] createReservation insert error", msg);
       throw new Error("No se pudo crear la reserva");
     }
-
-    revalidatePath("/parking");
-    revalidatePath("/parking/reservas");
-    return { id: data.id };
   });
 
 /**
  * Cancela una reserva existente.
- *
- * El trigger trg_sync_cession_status revierte cession.status → "available"
- * automáticamente si era una plaza de dirección cedida.
  */
 export const cancelReservation = actionClient
   .schema(cancelReservationSchema)
@@ -309,22 +284,18 @@ export const cancelReservation = actionClient
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
 
-    const supabase = await createClient();
+    const updated = await db
+      .update(reservations)
+      .set({ status: "cancelled" })
+      .where(
+        and(
+          eq(reservations.id, parsedInput.id),
+          eq(reservations.userId, user.id)
+        )
+      )
+      .returning({ id: reservations.id });
 
-    const { data, error } = await supabase
-      .from("reservations")
-      .update({ status: "cancelled" })
-      .eq("id", parsedInput.id)
-      .eq("user_id", user.id)
-      .select("id");
-
-    if (error) {
-      console.error("[parking] cancelReservation update error", {
-        code: error.code,
-      });
-      throw new Error("No se pudo cancelar la reserva");
-    }
-    if (!data || data.length === 0) {
+    if (!updated || updated.length === 0) {
       throw new Error("Reserva no encontrada o no pertenece a tu cuenta");
     }
 

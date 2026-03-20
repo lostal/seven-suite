@@ -32,7 +32,7 @@ export default async function EntidadesPage() {
     }));
   } catch {
     tableError =
-      "La tabla de sedes no está disponible todavía. Aplica las migraciones 00002+00005 en Supabase y ejecuta pnpm db:types.";
+      "La tabla de sedes no está disponible. Comprueba que las migraciones están aplicadas (pnpm db:migrate).";
   }
 
   return (

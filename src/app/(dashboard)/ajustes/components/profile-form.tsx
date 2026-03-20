@@ -12,10 +12,10 @@ import {
   updateProfileSchema,
   type UpdateProfileInput,
 } from "@/lib/validations";
-import type { Profile } from "@/lib/supabase/types";
+import type { Profile } from "@/lib/db/types";
 
 interface ProfileFormProps {
-  profile: Pick<Profile, "id" | "email" | "full_name" | "avatar_url" | "role">;
+  profile: Pick<Profile, "id" | "email" | "fullName" | "avatarUrl" | "role">;
 }
 
 export function ProfileForm({ profile }: ProfileFormProps) {
@@ -28,8 +28,8 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   } = useForm<UpdateProfileInput>({
     resolver: zodResolver(updateProfileSchema),
     defaultValues: {
-      full_name: profile.full_name || "",
-      avatar_url: profile.avatar_url || "",
+      full_name: profile.fullName || "",
+      avatar_url: profile.avatarUrl || "",
     },
   });
 

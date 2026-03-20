@@ -7,10 +7,12 @@
  */
 
 import { actionClient } from "@/lib/actions";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { db } from "@/lib/db";
+import { profiles, users, userPreferences } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import {
   updateDirectorioUserSchema,
   createDirectorioUserSchema,
@@ -23,81 +25,76 @@ export const updateDirectorioUser = actionClient
   .schema(updateDirectorioUserSchema)
   .action(async ({ parsedInput }) => {
     await requireAdmin();
-    const supabase = await createClient();
 
-    const updates: Record<string, string | null> = {
-      full_name: parsedInput.nombre,
-      job_title: parsedInput.puesto || null,
-      phone: parsedInput.telefono || null,
-      entity_id: parsedInput.entity_id || null,
-    };
-
-    const { error } = await supabase
-      .from("profiles")
-      .update(updates)
-      .eq("id", parsedInput.user_id);
-
-    if (error) {
-      console.error(
-        "[directorio] updateDirectorioUser DB error:",
-        error.message,
-        error.code
-      );
-      throw new Error("Error al actualizar el usuario");
-    }
+    await db
+      .update(profiles)
+      .set({
+        fullName: parsedInput.nombre,
+        jobTitle: parsedInput.puesto || null,
+        phone: parsedInput.telefono || null,
+        entityId: parsedInput.entity_id || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(profiles.id, parsedInput.user_id));
 
     revalidatePath("/directorio");
     return { updated: true };
   });
 
 /**
- * Crea un nuevo usuario en auth + profile (vía trigger handle_new_user).
- * Requiere confirmación manual de email o que el usuario establezca contraseña.
+ * Crea un nuevo usuario con perfil y preferencias por defecto.
  */
 export const createDirectorioUser = actionClient
   .schema(createDirectorioUserSchema)
   .action(async ({ parsedInput }) => {
     await requireAdmin();
-    const adminClient = createAdminClient();
 
-    const { data, error } = await adminClient.auth.admin.createUser({
-      email: parsedInput.correo,
-      email_confirm: true,
-      user_metadata: {
-        full_name: parsedInput.nombre,
-        entity_id: parsedInput.entity_id || null,
+    // Check if user already exists
+    const [existing] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, parsedInput.correo))
+      .limit(1);
+
+    if (existing) {
+      throw new Error("Ya existe un usuario con ese correo electrónico.");
+    }
+
+    // Create a temporary hashed password (user should reset it)
+    const tempPassword = Math.random().toString(36).slice(-12);
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    // Create user
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: parsedInput.correo,
+        name: parsedInput.nombre,
+        password: hashedPassword,
+      })
+      .returning({ id: users.id });
+
+    if (!user) throw new Error("Error al crear el usuario");
+
+    // Create profile
+    await db
+      .insert(profiles)
+      .values({
+        id: user.id,
+        email: parsedInput.correo,
+        fullName: parsedInput.nombre,
+        jobTitle: parsedInput.puesto || null,
         phone: parsedInput.telefono || null,
-      },
-    });
+        entityId: parsedInput.entity_id || null,
+        role: "employee",
+      })
+      .onConflictDoNothing();
 
-    if (error) {
-      if (error.message.includes("already been registered")) {
-        throw new Error("Ya existe un usuario con ese correo electrónico.");
-      }
-      console.error(
-        "[directorio] createDirectorioUser auth error:",
-        error.message
-      );
-      throw new Error("Error al crear el usuario");
-    }
-
-    // Update job_title if provided (not in trigger metadata).
-    // The user is already created at this point; log a warning but do not throw
-    // if this secondary update fails (avoids leaving auth without a usable account).
-    if (parsedInput.puesto && data.user) {
-      const supabase = await createClient();
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ job_title: parsedInput.puesto })
-        .eq("id", data.user.id);
-
-      if (updateError) {
-        console.warn(
-          "[directorio] createDirectorioUser job_title update failed:",
-          { userId: data.user.id, error: updateError.message }
-        );
-      }
-    }
+    // Create default preferences
+    await db
+      .insert(userPreferences)
+      .values({ userId: user.id })
+      .onConflictDoNothing();
 
     revalidatePath("/directorio");
     return { created: true };

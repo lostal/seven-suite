@@ -4,18 +4,15 @@
     "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "jsx": "react-jsx",
-
     /* Modules */
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "allowJs": true,
-
     /* Emit */
     "noEmit": true,
     "incremental": true,
-
     /* Type Checking — Strict Mode */
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -24,19 +21,16 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
     "exactOptionalPropertyTypes": false,
-
     /* Interop */
     "esModuleInterop": true,
     "skipLibCheck": true,
     "verbatimModuleSyntax": true,
-
     /* Next.js Plugin */
     "plugins": [
       {
         "name": "next"
       }
     ],
-
     /* Path Aliases */
     "paths": {
       "@/*": ["./src/*"]
@@ -47,7 +41,6 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
   "exclude": ["node_modules", "shadcn-admin", ".agent", ".agents"]

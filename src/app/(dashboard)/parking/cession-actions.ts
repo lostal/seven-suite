@@ -9,7 +9,8 @@
 
 import { revalidatePath } from "next/cache";
 import { actionClient, success, error, type ActionResult } from "@/lib/actions";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { spots, reservations, cessions } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { createCessionSchema, cancelCessionSchema } from "@/lib/validations";
 import { getAllResourceConfigs } from "@/lib/config";
@@ -19,6 +20,7 @@ import {
   getUserCessions as queryUserCessions,
   type CessionWithDetails,
 } from "@/lib/queries/cessions";
+import { eq, and } from "drizzle-orm";
 
 /**
  * Crea cesiones para múltiples fechas.
@@ -41,23 +43,23 @@ export const createCession = actionClient
       throw new Error("Las cesiones de parking están deshabilitadas");
     }
 
-    const supabase = await createClient();
-
     // Verificar que el usuario es dueño de la plaza y que es de parking
     // (verificar ANTES del check de antelación para dar el error correcto)
-    const { data: spot, error: spotError } = await supabase
-      .from("spots")
-      .select("id, assigned_to, resource_type")
-      .eq("id", parsedInput.spot_id)
-      .maybeSingle();
+    const [spot] = await db
+      .select({
+        id: spots.id,
+        assignedTo: spots.assignedTo,
+        resourceType: spots.resourceType,
+      })
+      .from(spots)
+      .where(eq(spots.id, parsedInput.spot_id))
+      .limit(1);
 
-    if (spotError)
-      throw new Error(`Error al verificar plaza: ${spotError.message}`);
     if (!spot) throw new Error("Plaza no encontrada");
-    if (spot.resource_type !== "parking") {
+    if (spot.resourceType !== "parking") {
       throw new Error("Esta plaza no es un espacio de parking");
     }
-    if (spot.assigned_to !== user.id) {
+    if (spot.assignedTo !== user.id) {
       throw new Error("Solo puedes ceder tu propia plaza");
     }
 
@@ -74,18 +76,27 @@ export const createCession = actionClient
 
     // Insert one cession per date
     const rows = parsedInput.dates.map((date) => ({
-      spot_id: parsedInput.spot_id,
-      user_id: user.id,
+      spotId: parsedInput.spot_id,
+      userId: user.id,
       date,
     }));
 
-    const { data, error } = await supabase
-      .from("cessions")
-      .insert(rows)
-      .select("id");
+    try {
+      const inserted = await db
+        .insert(cessions)
+        .values(rows)
+        .returning({ id: cessions.id });
 
-    if (error) {
-      if (error.code === "23505") {
+      revalidatePath("/parking");
+      revalidatePath("/parking/cesiones");
+      return { count: inserted.length };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (
+        msg.includes("23505") ||
+        msg.includes("unique") ||
+        msg.includes("duplicate")
+      ) {
         throw new Error(
           "Ya existe una cesión para esta plaza en uno de los días seleccionados"
         );
@@ -94,14 +105,10 @@ export const createCession = actionClient
         userId: user.id,
         spotId: parsedInput.spot_id,
         dates: parsedInput.dates,
-        error: error.message,
+        error: msg,
       });
-      throw new Error(`Error al crear cesión: ${error.message}`);
+      throw new Error(`Error al crear cesión: ${msg}`);
     }
-
-    revalidatePath("/parking");
-    revalidatePath("/parking/cesiones");
-    return { count: data.length };
   });
 
 /**
@@ -117,20 +124,24 @@ export const cancelCession = actionClient
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
 
-    const supabase = await createClient();
-
     // Fetch the cession to check status
-    const { data: cession, error: fetchError } = await supabase
-      .from("cessions")
-      .select("id, status, user_id, spot_id, date")
-      .eq("id", parsedInput.id)
-      .single();
+    const [cession] = await db
+      .select({
+        id: cessions.id,
+        status: cessions.status,
+        userId: cessions.userId,
+        spotId: cessions.spotId,
+        date: cessions.date,
+      })
+      .from(cessions)
+      .where(eq(cessions.id, parsedInput.id))
+      .limit(1);
 
-    if (fetchError || !cession) {
+    if (!cession) {
       throw new Error("Cesión no encontrada");
     }
 
-    if (cession.user_id !== user.id && user.profile?.role !== "admin") {
+    if (cession.userId !== user.id && user.profile?.role !== "admin") {
       throw new Error("No puedes cancelar esta cesión");
     }
 
@@ -140,13 +151,17 @@ export const cancelCession = actionClient
     // "reserved" falló silenciosamente en createReservation. Usar solo
     // activeReservation como fuente de verdad evita que un directivo pueda
     // cancelar una cesión que ya tiene un empleado reservado.
-    const { data: activeReservation } = await supabase
-      .from("reservations")
-      .select("id")
-      .eq("spot_id", cession.spot_id)
-      .eq("date", cession.date)
-      .eq("status", "confirmed")
-      .maybeSingle();
+    const [activeReservation] = await db
+      .select({ id: reservations.id })
+      .from(reservations)
+      .where(
+        and(
+          eq(reservations.spotId, cession.spotId),
+          eq(reservations.date, cession.date),
+          eq(reservations.status, "confirmed")
+        )
+      )
+      .limit(1);
 
     if (activeReservation && user.profile?.role !== "admin") {
       throw new Error(
@@ -156,38 +171,35 @@ export const cancelCession = actionClient
 
     // Cancelar la reserva activa del empleado PRIMERO: si falla, la cesión
     // permanece intacta y no hay estado inconsistente.
-    // El directivo tiene permiso RLS (policy reservations_cancel_by_spot_owner)
-    // para cancelar reservas sobre su propia plaza asignada.
     if (activeReservation) {
-      const { error: reservationError } = await supabase
-        .from("reservations")
-        .update({ status: "cancelled" })
-        .eq("id", activeReservation.id);
-
-      if (reservationError) {
+      try {
+        await db
+          .update(reservations)
+          .set({ status: "cancelled" })
+          .where(eq(reservations.id, activeReservation.id));
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
         // La cesión NO se ha modificado → no hay estado inconsistente.
         throw new Error(
-          `No se pudo anular la reserva del empleado: ${reservationError.message}. La cesión no ha sido modificada.`
+          `No se pudo anular la reserva del empleado: ${msg}. La cesión no ha sido modificada.`
         );
       }
     }
 
-    // Cancelar la cesión con el cliente normal: el directivo es el propietario
-    // (user_id = auth.uid()) → la política RLS cessions_update_own lo permite.
-    // El adminClient no es necesario aquí y falla si SUPABASE_SERVICE_ROLE_KEY
-    // no está configurada.
-    const { error: cancelError } = await supabase
-      .from("cessions")
-      .update({ status: "cancelled" })
-      .eq("id", parsedInput.id);
-
-    if (cancelError) {
+    // Cancelar la cesión
+    try {
+      await db
+        .update(cessions)
+        .set({ status: "cancelled" })
+        .where(eq(cessions.id, parsedInput.id));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
       console.error("[parking] cancelCession DB error:", {
         userId: user.id,
         cessionId: parsedInput.id,
-        error: cancelError.message,
+        error: msg,
       });
-      throw new Error(`Error al cancelar cesión: ${cancelError.message}`);
+      throw new Error(`Error al cancelar cesión: ${msg}`);
     }
 
     revalidatePath("/parking");
@@ -206,8 +218,8 @@ export async function getMyParkingCessions(): Promise<
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
 
-    const cessions = await queryUserCessions(user.id, "parking");
-    return success(cessions);
+    const userCessions = await queryUserCessions(user.id, "parking");
+    return success(userCessions);
   } catch (err) {
     console.error("[parking] getMyParkingCessions error:", err);
     return error(

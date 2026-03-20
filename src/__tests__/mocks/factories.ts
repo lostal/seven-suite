@@ -6,18 +6,78 @@
  * razonables y se pueden sobreescribir con el parámetro `overrides`.
  */
 
-import type { Database } from "@/lib/supabase/database.types";
+// Local row types matching the database schema (snake_case, as stored in DB).
+// These are used in test factories and correspond to the Drizzle schema in
+// src/lib/db/schema.ts, but use snake_case for historical test compatibility.
 
-type SpotRow = Database["public"]["Tables"]["spots"]["Row"];
-type UserPreferencesRow =
-  Database["public"]["Tables"]["user_preferences"]["Row"];
-type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
-type ReservationRow = Database["public"]["Tables"]["reservations"]["Row"];
+type SpotRow = {
+  id: string;
+  label: string;
+  type: "standard" | "handicapped" | "electric" | "visitor" | "management";
+  assigned_to: string | null;
+  resource_type: "parking" | "office";
+  is_active: boolean;
+  position_x: number | null;
+  position_y: number | null;
+  entity_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
-// ─── Forward-compat types (added in migrations 00002-00006) ──────────────────
-// These tables don't exist in the DB until migrations are applied.
-// Defined locally to keep factories type-safe in the meantime.
-// Run `pnpm db:types` after applying migrations to replace these.
+type UserPreferencesRow = {
+  user_id: string;
+  theme: string;
+  locale: string;
+  default_view: string;
+  notification_channel: string;
+  favorite_spot_ids: string[] | null;
+  auto_cede_days: number[] | null;
+  auto_cede_notify: boolean;
+  auto_cede_on_ooo: boolean;
+  created_at: string;
+  updated_at: string;
+  daily_digest_time: string | null;
+  notify_alert_triggered: boolean;
+  notify_cession_reserved: boolean;
+  notify_daily_digest: boolean;
+  notify_reservation_confirmed: boolean;
+  notify_reservation_reminder: boolean;
+  notify_visitor_confirmed: boolean;
+  outlook_calendar_name: string | null;
+  outlook_create_events: boolean;
+  outlook_sync_enabled: boolean;
+  outlook_sync_interval: number | null;
+  usual_arrival_time: string | null;
+};
+
+type ProfileRow = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: "employee" | "manager" | "hr" | "admin";
+  avatar_url: string | null;
+  dni: string | null;
+  entity_id: string | null;
+  job_title: string | null;
+  location: string | null;
+  manager_id: string | null;
+  phone: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ReservationRow = {
+  id: string;
+  spot_id: string;
+  user_id: string;
+  date: string;
+  status: "confirmed" | "cancelled" | "pending";
+  notes: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 type EntityRow = {
   id: string;

@@ -13,7 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table";
-import type { Profile, Spot } from "@/lib/supabase/types";
+import type { Profile, Spot } from "@/lib/db/types";
 import { getSpotTypeLabel } from "@/lib/constants";
 import { SpotRowActions } from "./spot-row-actions";
 import { InlineUserSelect } from "./inline-user-select";
@@ -83,7 +83,7 @@ export function buildSpotsColumns(
       cell: ({ row }) => {
         const spot = row.original;
         const type = spot.type;
-        const resourceType = spot.resource_type as "parking" | "office";
+        const resourceType = spot.resourceType as "parking" | "office";
         const label = getSpotTypeLabel(type, resourceType);
         const Icon = getSpotTypeIcon(type, resourceType);
         const colorClass = getSpotTypeColor(type, resourceType);
@@ -101,10 +101,10 @@ export function buildSpotsColumns(
       enableSorting: false,
     },
     {
-      accessorKey: "resource_type",
+      accessorKey: "resourceType",
       header: "Recurso",
       cell: ({ row }) => {
-        const rt = row.getValue<string>("resource_type");
+        const rt = row.getValue<string>("resourceType");
         const config = resourceTypeOptions.find((o) => o.value === rt);
         return (
           <Badge
@@ -116,12 +116,12 @@ export function buildSpotsColumns(
         );
       },
       filterFn: (row, _id, value: string[]) =>
-        value.length === 0 || value.includes(row.getValue("resource_type")),
+        value.length === 0 || value.includes(row.getValue("resourceType")),
       enableSorting: false,
       meta: { className: "hidden @md/content:table-cell" },
     },
     {
-      id: "assigned_to",
+      id: "assignedTo",
       header: "Asignada a",
       cell: ({ row }) => {
         const spot = row.original;
@@ -133,8 +133,8 @@ export function buildSpotsColumns(
         return (
           <InlineUserSelect
             spotId={spot.id}
-            spotResourceType={spot.resource_type as "parking" | "office"}
-            currentUserId={spot.assigned_to}
+            spotResourceType={spot.resourceType as "parking" | "office"}
+            currentUserId={spot.assignedTo}
             profiles={profiles}
             allSpots={allSpots}
           />
@@ -144,10 +144,10 @@ export function buildSpotsColumns(
       meta: { className: "hidden @lg/content:table-cell" },
     },
     {
-      accessorKey: "is_active",
+      accessorKey: "isActive",
       header: "Estado",
       cell: ({ row }) => {
-        const active = row.getValue<boolean>("is_active");
+        const active = row.getValue<boolean>("isActive");
         return active ? (
           <div className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 size={14} />
@@ -162,7 +162,7 @@ export function buildSpotsColumns(
       },
       filterFn: (row, _id, value: string[]) => {
         if (value.length === 0) return true;
-        const active = row.getValue<boolean>("is_active");
+        const active = row.getValue<boolean>("isActive");
         return value.includes(active ? "active" : "inactive");
       },
       enableSorting: false,

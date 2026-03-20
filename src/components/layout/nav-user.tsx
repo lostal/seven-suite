@@ -43,7 +43,7 @@ export function NavUser() {
     });
   };
 
-  const displayName = profile?.full_name ?? "";
+  const displayName = profile?.fullName ?? "";
   const displayEmail = profile?.email || "";
   const initials = displayName
     .split(" ")

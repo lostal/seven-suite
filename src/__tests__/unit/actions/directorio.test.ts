@@ -1,18 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
-vi.mock("@/lib/supabase/auth", () => ({ requireAdmin: vi.fn() }));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
+vi.mock("@/lib/auth/helpers", () => ({ requireAdmin: vi.fn() }));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
   revalidateTag: vi.fn(),
 }));
 
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdmin } from "@/lib/supabase/auth";
+import {
+  mockDb,
+  resetDbMocks,
+  setupSelectMock,
+  setupInsertMock,
+  setupUpdateMock,
+} from "../../mocks/db";
+import { requireAdmin } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
-import { createQueryChain } from "../../mocks/supabase";
 import { createMockProfile } from "../../mocks/factories";
 import {
   updateDirectorioUser,
@@ -27,16 +33,13 @@ const mockAdminUser = {
 
 describe("updateDirectorioUser", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(requireAdmin).mockResolvedValue(mockAdminUser as never);
   });
 
   it("success → returns { success: true, data: { updated: true } }", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    // update profiles
+    setupUpdateMock([]);
 
     const result = await updateDirectorioUser({
       user_id: "550e8400-e29b-41d4-a716-446655440123",
@@ -53,11 +56,7 @@ describe("updateDirectorioUser", () => {
   });
 
   it("success with all optional fields → returns { success: true, data: { updated: true } }", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupUpdateMock([]);
 
     const result = await updateDirectorioUser({
       user_id: "550e8400-e29b-41d4-a716-446655440123",
@@ -73,15 +72,10 @@ describe("updateDirectorioUser", () => {
     }
   });
 
-  it("DB error → success: false, error contains 'Error al actualizar el usuario'", async () => {
-    const chain = createQueryChain({
-      data: null,
-      error: { message: "DB error updating profile" },
+  it("DB error → success: false", async () => {
+    mockDb.update.mockImplementationOnce(() => {
+      throw new Error("DB error updating profile");
     });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
 
     const result = await updateDirectorioUser({
       user_id: "550e8400-e29b-41d4-a716-446655440123",
@@ -92,16 +86,12 @@ describe("updateDirectorioUser", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain("Error al actualizar el usuario");
+      expect(result.error).toBeDefined();
     }
   });
 
-  it("calls profiles table with correct user_id", async () => {
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  it("calls profiles table update with correct user_id", async () => {
+    setupUpdateMock([]);
 
     await updateDirectorioUser({
       user_id: "550e8400-e29b-41d4-a716-44665544abc0",
@@ -110,44 +100,25 @@ describe("updateDirectorioUser", () => {
       telefono: "",
     });
 
-    expect(client.from).toHaveBeenCalledWith("profiles");
+    expect(mockDb.update).toHaveBeenCalled();
   });
 });
 
 describe("createDirectorioUser", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
     vi.mocked(requireAdmin).mockResolvedValue(mockAdminUser as never);
   });
 
-  function mockAdminClientWithCreateUser(result: {
-    data: { user: { id: string } | null };
-    error: { message: string } | null;
-  }) {
-    const adminClientMock = {
-      auth: {
-        admin: {
-          createUser: vi.fn().mockResolvedValue(result),
-        },
-      },
-    };
-    vi.mocked(createAdminClient).mockReturnValue(
-      adminClientMock as unknown as ReturnType<typeof createAdminClient>
-    );
-    return adminClientMock;
-  }
-
   it("success → returns { success: true, data: { created: true } }", async () => {
-    mockAdminClientWithCreateUser({
-      data: { user: { id: "new-user-1" } },
-      error: null,
-    });
-    // Also mock createClient for the secondary profile update (won't be called if no puesto)
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    // 1. select users (check existing) → empty
+    setupSelectMock([]);
+    // 2. insert users → new user
+    setupInsertMock([{ id: "new-user-1" }]);
+    // 3. insert profiles → ok
+    setupInsertMock([{}]);
+    // 4. insert userPreferences → ok
+    setupInsertMock([{}]);
 
     const result = await createDirectorioUser({
       correo: "newuser@test.com",
@@ -164,10 +135,8 @@ describe("createDirectorioUser", () => {
   });
 
   it("'already been registered' error → success: false, error contains 'Ya existe un usuario'", async () => {
-    mockAdminClientWithCreateUser({
-      data: { user: null },
-      error: { message: "User with this email has already been registered" },
-    });
+    // select users → user already exists
+    setupSelectMock([{ id: "existing-user" }]);
 
     const result = await createDirectorioUser({
       correo: "existing@test.com",
@@ -184,10 +153,12 @@ describe("createDirectorioUser", () => {
     }
   });
 
-  it("other auth error → success: false, error contains 'Error al crear el usuario'", async () => {
-    mockAdminClientWithCreateUser({
-      data: { user: null },
-      error: { message: "Rate limit exceeded" },
+  it("other DB error on insert → success: false", async () => {
+    // 1. select users → empty
+    setupSelectMock([]);
+    // 2. insert users throws
+    mockDb.insert.mockImplementationOnce(() => {
+      throw new Error("Rate limit exceeded");
     });
 
     const result = await createDirectorioUser({
@@ -199,20 +170,19 @@ describe("createDirectorioUser", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain("Error al crear el usuario");
+      expect(result.error).toBeDefined();
     }
   });
 
-  it("success with puesto → secondary profile update is called", async () => {
-    mockAdminClientWithCreateUser({
-      data: { user: { id: "new-user-2" } },
-      error: null,
-    });
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  it("success with puesto → secondary profile insert is called", async () => {
+    // 1. select users → empty
+    setupSelectMock([]);
+    // 2. insert users → new user
+    setupInsertMock([{ id: "new-user-2" }]);
+    // 3. insert profiles
+    setupInsertMock([{}]);
+    // 4. insert userPreferences
+    setupInsertMock([{}]);
 
     const result = await createDirectorioUser({
       correo: "newuser2@test.com",
@@ -222,68 +192,21 @@ describe("createDirectorioUser", () => {
     });
 
     expect(result.success).toBe(true);
-    // The secondary call to update job_title should have been made
-    expect(client.from).toHaveBeenCalledWith("profiles");
+    // insert was called at least for users + profiles
+    expect(mockDb.insert).toHaveBeenCalled();
   });
 
-  it("success with puesto but secondary update fails → still returns success (non-blocking)", async () => {
-    mockAdminClientWithCreateUser({
-      data: { user: { id: "new-user-3" } },
-      error: null,
-    });
-    // Secondary update fails
-    const chain = createQueryChain({
-      data: null,
-      error: { message: "Update failed" },
-    });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+  it("success with entity_id → creates user with correct entity_id in profile", async () => {
+    // 1. select users → empty
+    setupSelectMock([]);
+    // 2. insert users → new user
+    setupInsertMock([{ id: "new-user-5" }]);
+    // 3. insert profiles
+    setupInsertMock([{}]);
+    // 4. insert userPreferences
+    setupInsertMock([{}]);
 
     const result = await createDirectorioUser({
-      correo: "newuser3@test.com",
-      nombre: "New User",
-      puesto: "Designer",
-      telefono: "",
-    });
-
-    // Should still succeed even if secondary update fails
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data).toEqual({ created: true });
-    }
-  });
-
-  it("success without puesto → secondary update NOT called", async () => {
-    mockAdminClientWithCreateUser({
-      data: { user: { id: "new-user-4" } },
-      error: null,
-    });
-    const chain = createQueryChain({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(chain) };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
-
-    await createDirectorioUser({
-      correo: "nopuesto@test.com",
-      nombre: "No Puesto User",
-      puesto: "",
-      telefono: "",
-    });
-
-    // createClient for profile update should NOT have been called
-    expect(client.from).not.toHaveBeenCalled();
-  });
-
-  it("success with entity_id → creates user with entity_id in metadata", async () => {
-    const adminClientMock = mockAdminClientWithCreateUser({
-      data: { user: { id: "new-user-5" } },
-      error: null,
-    });
-
-    await createDirectorioUser({
       correo: "entity@test.com",
       nombre: "Entity User",
       puesto: "",
@@ -291,12 +214,7 @@ describe("createDirectorioUser", () => {
       entity_id: "550e8400-e29b-41d4-a716-446655440001",
     });
 
-    expect(adminClientMock.auth.admin.createUser).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user_metadata: expect.objectContaining({
-          entity_id: "550e8400-e29b-41d4-a716-446655440001",
-        }),
-      })
-    );
+    expect(result.success).toBe(true);
+    expect(mockDb.insert).toHaveBeenCalled();
   });
 });

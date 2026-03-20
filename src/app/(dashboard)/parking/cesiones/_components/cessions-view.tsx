@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-import type { Spot } from "@/lib/supabase/types";
+import type { Spot } from "@/lib/db/types";
 import type { CessionWithDetails } from "@/lib/queries/cessions";
 import {
   createCession,

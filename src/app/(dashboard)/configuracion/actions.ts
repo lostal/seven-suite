@@ -9,7 +9,8 @@
  */
 
 import { actionClient } from "@/lib/actions";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { systemConfig, entityConfig } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
 import { invalidateConfigCache } from "@/lib/config";
@@ -24,53 +25,57 @@ import {
 
 /**
  * Actualiza (o inserta) múltiples claves en system_config.
- * Usado para la configuración global que no es específica de sede.
  */
 async function upsertConfigs(
   entries: Array<{ key: string; value: unknown }>,
   adminUserId: string
 ): Promise<void> {
-  const supabase = await createClient();
-
-  const rows = entries.map(({ key, value }) => ({
-    key,
-    value: value as never,
-    updated_by: adminUserId,
-  }));
-
-  const { error } = await supabase
-    .from("system_config")
-    .upsert(rows, { onConflict: "key" });
-
-  if (error) {
-    throw new Error(`Error al guardar configuración: ${error.message}`);
+  for (const { key, value } of entries) {
+    await db
+      .insert(systemConfig)
+      .values({
+        key,
+        value: value as never,
+        updatedBy: adminUserId,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: systemConfig.key,
+        set: {
+          value: value as never,
+          updatedBy: adminUserId,
+          updatedAt: new Date(),
+        },
+      });
   }
 }
 
 /**
  * Actualiza (o inserta) múltiples claves en entity_config para la sede indicada.
- * Los cambios son específicos de la sede activa y no afectan al resto de sedes.
  */
 async function upsertEntityConfigs(
   entityId: string,
   entries: Array<{ key: string; value: unknown }>,
   adminUserId: string
 ): Promise<void> {
-  const supabase = await createClient();
-
-  const rows = entries.map(({ key, value }) => ({
-    entity_id: entityId,
-    key,
-    value: value as never,
-    updated_by: adminUserId,
-  }));
-
-  const { error } = await supabase
-    .from("entity_config")
-    .upsert(rows, { onConflict: "entity_id,key" });
-
-  if (error) {
-    throw new Error(`Error al guardar configuración de sede: ${error.message}`);
+  for (const { key, value } of entries) {
+    await db
+      .insert(entityConfig)
+      .values({
+        entityId,
+        key,
+        value: value as never,
+        updatedBy: adminUserId,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [entityConfig.entityId, entityConfig.key],
+        set: {
+          value: value as never,
+          updatedBy: adminUserId,
+          updatedAt: new Date(),
+        },
+      });
   }
 }
 

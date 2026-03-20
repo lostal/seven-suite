@@ -8,7 +8,8 @@
  */
 
 import { actionClient } from "@/lib/actions";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { spots, reservations, cessions } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { getAllResourceConfigs } from "@/lib/config";
 import type {
@@ -26,17 +27,7 @@ import { z } from "zod/v4";
 import { parseISO } from "date-fns";
 import { isPast, getDayOfWeek } from "@/lib/utils";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
-
-// ─── Types ───────────────────────────────────────────────────
-
-type MyOfficeReservationRow = {
-  id: string;
-  spot_id: string;
-  date: string;
-  start_time: string | null;
-  end_time: string | null;
-  spot: { label: string } | null;
-};
+import { eq, and, gte, lte, ne, or, isNull } from "drizzle-orm";
 
 // ─── Schema ──────────────────────────────────────────────────
 
@@ -54,7 +45,6 @@ export const getOfficeCalendarMonthData = actionClient
     if (!user) throw new Error("No autenticado");
 
     const monthStart = parseISO(parsedInput.monthStart);
-    const supabase = await createClient();
 
     const entityId = await getEffectiveEntityId();
     const config = await getAllResourceConfigs("office", entityId);
@@ -62,32 +52,42 @@ export const getOfficeCalendarMonthData = actionClient
     const { year, month, firstDay, lastDay } = buildMonthRange(monthStart);
 
     // Comprobar si el usuario tiene puesto asignado de oficina (en la sede activa)
-    let assignedSpotQuery = supabase
-      .from("spots")
-      .select("id, label")
-      .eq("assigned_to", user.id)
-      .eq("resource_type", "office");
+    const assignedSpotConditions = [
+      eq(spots.assignedTo, user.id),
+      eq(spots.resourceType, "office"),
+    ];
     if (entityId) {
-      assignedSpotQuery = assignedSpotQuery.or(
-        `entity_id.eq.${entityId},entity_id.is.null`
+      assignedSpotConditions.push(
+        or(eq(spots.entityId, entityId), isNull(spots.entityId))!
       );
     }
-    const { data: assignedSpot } = await assignedSpotQuery.maybeSingle();
+
+    const [assignedSpot] = await db
+      .select({ id: spots.id, label: spots.label })
+      .from(spots)
+      .where(and(...assignedSpotConditions))
+      .limit(1);
 
     if (assignedSpot) {
       // ── Usuario con puesto asignado: gestiona cesiones de oficina ──
-      const cessionsResult = await supabase
-        .from("cessions")
-        .select("id, date, status")
-        .eq("user_id", user.id)
-        .eq("spot_id", assignedSpot.id)
-        .gte("date", firstDay)
-        .lte("date", lastDay)
-        .neq("status", "cancelled");
+      const cessionRows = await db
+        .select({
+          id: cessions.id,
+          date: cessions.date,
+          status: cessions.status,
+        })
+        .from(cessions)
+        .where(
+          and(
+            eq(cessions.userId, user.id),
+            eq(cessions.spotId, assignedSpot.id),
+            gte(cessions.date, firstDay),
+            lte(cessions.date, lastDay),
+            ne(cessions.status, "cancelled")
+          )
+        );
 
-      const cessionsByDate = new Map(
-        (cessionsResult.data ?? []).map((c) => [c.date, c])
-      );
+      const cessionsByDate = new Map(cessionRows.map((c) => [c.date, c]));
 
       return Array.from(iterMonthDays(year, month)).map((dateStr) => {
         const cession = cessionsByDate.get(dateStr);
@@ -105,67 +105,103 @@ export const getOfficeCalendarMonthData = actionClient
       });
     } else {
       // ── Usuario sin puesto asignado: puestos disponibles + propias reservas ──
-      const [spotsData, reservationsData, cessionsData, myReservationsData] =
+      const spotsConditions = [
+        eq(spots.isActive, true),
+        eq(spots.resourceType, "office"),
+      ];
+      if (entityId) {
+        spotsConditions.push(
+          or(eq(spots.entityId, entityId), isNull(spots.entityId))!
+        );
+      }
+
+      const [allSpots, reservationRows, cessionRows, myReservationRows] =
         await Promise.all([
-          entityId
-            ? supabase
-                .from("spots")
-                .select("id, type, assigned_to")
-                .eq("is_active", true)
-                .eq("resource_type", "office")
-                .or(`entity_id.eq.${entityId},entity_id.is.null`)
-            : supabase
-                .from("spots")
-                .select("id, type, assigned_to")
-                .eq("is_active", true)
-                .eq("resource_type", "office"),
-          supabase
-            .from("reservations")
-            .select("spot_id, date")
-            .gte("date", firstDay)
-            .lte("date", lastDay)
-            .eq("status", "confirmed"),
-          supabase
-            .from("cessions")
-            .select("spot_id, date, status")
-            .gte("date", firstDay)
-            .lte("date", lastDay)
-            .neq("status", "cancelled"),
-          supabase
-            .from("reservations")
-            .select(
-              "id, spot_id, date, start_time, end_time, spot:spots(label)"
-            )
-            .eq("user_id", user.id)
-            .gte("date", firstDay)
-            .lte("date", lastDay)
-            .eq("status", "confirmed")
-            .eq("spots.resource_type", "office")
-            .returns<MyOfficeReservationRow[]>(),
+          db
+            .select({
+              id: spots.id,
+              type: spots.type,
+              assignedTo: spots.assignedTo,
+            })
+            .from(spots)
+            .where(and(...spotsConditions)),
+          db
+            .select({ spotId: reservations.spotId, date: reservations.date })
+            .from(reservations)
+            .where(
+              and(
+                gte(reservations.date, firstDay),
+                lte(reservations.date, lastDay),
+                eq(reservations.status, "confirmed")
+              )
+            ),
+          db
+            .select({
+              spotId: cessions.spotId,
+              date: cessions.date,
+              status: cessions.status,
+            })
+            .from(cessions)
+            .where(
+              and(
+                gte(cessions.date, firstDay),
+                lte(cessions.date, lastDay),
+                ne(cessions.status, "cancelled")
+              )
+            ),
+          db
+            .select({
+              id: reservations.id,
+              spotId: reservations.spotId,
+              date: reservations.date,
+              startTime: reservations.startTime,
+              endTime: reservations.endTime,
+            })
+            .from(reservations)
+            .where(
+              and(
+                eq(reservations.userId, user.id),
+                gte(reservations.date, firstDay),
+                lte(reservations.date, lastDay),
+                eq(reservations.status, "confirmed")
+              )
+            ),
         ]);
 
-      const allOfficeSpots = spotsData.data ?? [];
+      // Get spot labels for my reservations
+      const myReservationSpotIds = new Set(
+        myReservationRows.map((r) => r.spotId)
+      );
+      const spotLabels =
+        myReservationSpotIds.size > 0
+          ? await db
+              .select({ id: spots.id, label: spots.label })
+              .from(spots)
+              .where(eq(spots.resourceType, "office"))
+          : [];
+      const spotLabelById = new Map(spotLabels.map((s) => [s.id, s.label]));
+
       // Plazas flexible (visitor): siempre disponibles sin necesidad de cesión.
       const flexibleSpotIds = new Set(
-        allOfficeSpots.filter((s) => s.type === "visitor").map((s) => s.id)
+        allSpots.filter((s) => s.type === "visitor").map((s) => s.id)
       );
       const flexibleCount = flexibleSpotIds.size;
-      const officeSpotsSet = new Set(allOfficeSpots.map((s) => s.id));
+      const officeSpotsSet = new Set(allSpots.map((s) => s.id));
 
       // Reservas confirmadas por fecha (filtradas a puestos de oficina)
       const reservedByDate = new Map<string, Set<string>>();
-      for (const r of reservationsData.data ?? []) {
-        if (!officeSpotsSet.has(r.spot_id)) continue; // guardia cross-resource
+      for (const r of reservationRows) {
+        if (!officeSpotsSet.has(r.spotId)) continue; // guardia cross-resource
         if (!reservedByDate.has(r.date)) reservedByDate.set(r.date, new Set());
-        reservedByDate.get(r.date)!.add(r.spot_id);
+        reservedByDate.get(r.date)!.add(r.spotId);
       }
 
       // Cesiones disponibles de puestos fijos asignados.
       const cededAvailableByDate = new Map<string, number>();
-      for (const c of cessionsData.data ?? []) {
+      for (const c of cessionRows) {
         if (
-          officeSpotsSet.has(c.spot_id) &&
-          !flexibleSpotIds.has(c.spot_id) &&
+          officeSpotsSet.has(c.spotId) &&
+          !flexibleSpotIds.has(c.spotId) &&
           c.status === "available"
         ) {
           cededAvailableByDate.set(
@@ -185,13 +221,13 @@ export const getOfficeCalendarMonthData = actionClient
           endTime?: string | null;
         }
       >();
-      for (const r of myReservationsData.data ?? []) {
-        if (!officeSpotsSet.has(r.spot_id)) continue; // ignorar reservas de otros módulos
+      for (const r of myReservationRows) {
+        if (!officeSpotsSet.has(r.spotId)) continue; // ignorar reservas de otros módulos
         myReservationByDate.set(r.date, {
           id: r.id,
-          spotLabel: r.spot?.label ?? undefined,
-          startTime: r.start_time,
-          endTime: r.end_time,
+          spotLabel: spotLabelById.get(r.spotId) ?? undefined,
+          startTime: r.startTime,
+          endTime: r.endTime,
         });
       }
 

@@ -9,7 +9,8 @@
 
 import { revalidatePath } from "next/cache";
 import { actionClient, success, error, type ActionResult } from "@/lib/actions";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { spots, reservations, cessions } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { createCessionSchema, cancelCessionSchema } from "@/lib/validations";
 import { getAllResourceConfigs } from "@/lib/config";
@@ -19,6 +20,7 @@ import {
   getUserCessions,
   type CessionWithDetails,
 } from "@/lib/queries/cessions";
+import { eq, and } from "drizzle-orm";
 
 /**
  * Crea cesiones de puesto de oficina para múltiples fechas.
@@ -39,22 +41,22 @@ export const createOfficeCession = actionClient
       throw new Error("Las cesiones de oficina están deshabilitadas");
     }
 
-    const supabase = await createClient();
-
     // Verificar que el usuario es dueño del puesto y que es de oficina
-    const { data: spot, error: spotError } = await supabase
-      .from("spots")
-      .select("id, assigned_to, resource_type")
-      .eq("id", parsedInput.spot_id)
-      .maybeSingle();
+    const [spot] = await db
+      .select({
+        id: spots.id,
+        assignedTo: spots.assignedTo,
+        resourceType: spots.resourceType,
+      })
+      .from(spots)
+      .where(eq(spots.id, parsedInput.spot_id))
+      .limit(1);
 
-    if (spotError)
-      throw new Error(`Error al verificar puesto: ${spotError.message}`);
     if (!spot) throw new Error("Puesto no encontrado");
-    if (spot.resource_type !== "office") {
+    if (spot.resourceType !== "office") {
       throw new Error("Este puesto no es un espacio de oficina");
     }
-    if (spot.assigned_to !== user.id) {
+    if (spot.assignedTo !== user.id) {
       throw new Error("Solo puedes ceder tu propio puesto");
     }
 
@@ -70,28 +72,33 @@ export const createOfficeCession = actionClient
     }
 
     const rows = parsedInput.dates.map((date) => ({
-      spot_id: parsedInput.spot_id,
-      user_id: user.id,
+      spotId: parsedInput.spot_id,
+      userId: user.id,
       date,
     }));
 
-    const { data, error } = await supabase
-      .from("cessions")
-      .insert(rows)
-      .select("id");
+    try {
+      const inserted = await db
+        .insert(cessions)
+        .values(rows)
+        .returning({ id: cessions.id });
 
-    if (error) {
-      if (error.code === "23505") {
+      revalidatePath("/oficinas");
+      revalidatePath("/oficinas/cesiones");
+      return { count: inserted.length };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (
+        msg.includes("23505") ||
+        msg.includes("unique") ||
+        msg.includes("duplicate")
+      ) {
         throw new Error(
           "Ya existe una cesión para este puesto en uno de los días seleccionados"
         );
       }
-      throw new Error(`Error al crear cesión: ${error.message}`);
+      throw new Error(`Error al crear cesión: ${msg}`);
     }
-
-    revalidatePath("/oficinas");
-    revalidatePath("/oficinas/cesiones");
-    return { count: data.length };
   });
 
 /**
@@ -103,30 +110,38 @@ export const cancelOfficeCession = actionClient
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
 
-    const supabase = await createClient();
+    const [cession] = await db
+      .select({
+        id: cessions.id,
+        status: cessions.status,
+        userId: cessions.userId,
+        spotId: cessions.spotId,
+        date: cessions.date,
+      })
+      .from(cessions)
+      .where(eq(cessions.id, parsedInput.id))
+      .limit(1);
 
-    const { data: cession, error: fetchError } = await supabase
-      .from("cessions")
-      .select("id, status, user_id, spot_id, date")
-      .eq("id", parsedInput.id)
-      .single();
+    if (!cession) throw new Error("Cesión no encontrada");
 
-    if (fetchError || !cession) throw new Error("Cesión no encontrada");
-
-    if (cession.user_id !== user.id && user.profile?.role !== "admin") {
+    if (cession.userId !== user.id && user.profile?.role !== "admin") {
       throw new Error("No puedes cancelar esta cesión");
     }
 
     // Buscar si hay una reserva activa sobre este puesto+fecha.
     // IMPORTANTE: comprobamos la reserva real en BD, NO nos fiamos del campo
     // cession.status para evitar estados inconsistentes.
-    const { data: activeReservation } = await supabase
-      .from("reservations")
-      .select("id")
-      .eq("spot_id", cession.spot_id)
-      .eq("date", cession.date)
-      .eq("status", "confirmed")
-      .maybeSingle();
+    const [activeReservation] = await db
+      .select({ id: reservations.id })
+      .from(reservations)
+      .where(
+        and(
+          eq(reservations.spotId, cession.spotId),
+          eq(reservations.date, cession.date),
+          eq(reservations.status, "confirmed")
+        )
+      )
+      .limit(1);
 
     if (activeReservation && user.profile?.role !== "admin") {
       throw new Error(
@@ -137,25 +152,27 @@ export const cancelOfficeCession = actionClient
     // Cancelar la reserva activa del empleado PRIMERO: si falla, la cesión
     // permanece intacta y no hay estado inconsistente.
     if (activeReservation) {
-      const { error: reservationError } = await supabase
-        .from("reservations")
-        .update({ status: "cancelled" })
-        .eq("id", activeReservation.id);
-
-      if (reservationError) {
+      try {
+        await db
+          .update(reservations)
+          .set({ status: "cancelled" })
+          .where(eq(reservations.id, activeReservation.id));
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
         throw new Error(
-          `No se pudo anular la reserva del empleado: ${reservationError.message}. La cesión no ha sido modificada.`
+          `No se pudo anular la reserva del empleado: ${msg}. La cesión no ha sido modificada.`
         );
       }
     }
 
-    const { error: updateError } = await supabase
-      .from("cessions")
-      .update({ status: "cancelled" })
-      .eq("id", parsedInput.id);
-
-    if (updateError) {
-      throw new Error(`Error al cancelar cesión: ${updateError.message}`);
+    try {
+      await db
+        .update(cessions)
+        .set({ status: "cancelled" })
+        .where(eq(cessions.id, parsedInput.id));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      throw new Error(`Error al cancelar cesión: ${msg}`);
     }
 
     revalidatePath("/oficinas");
@@ -174,8 +191,8 @@ export async function getMyOfficeCessions(): Promise<
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
 
-    const cessions = await getUserCessions(user.id, "office");
-    return success(cessions);
+    const officeCessions = await getUserCessions(user.id, "office");
+    return success(officeCessions);
   } catch (err) {
     console.error("[oficinas] getMyOfficeCessions error:", err);
     return error(

@@ -11,65 +11,61 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("@/lib/db", () => ({ db: mockDb }));
+
+import { mockDb, resetDbMocks, setupSelectMock } from "../../mocks/db";
 import { getSpots, getSpotsByDate } from "@/lib/queries/spots";
-import { createQueryChain } from "../../mocks/supabase";
-import {
-  createMockSpot,
-  createMockReservationWithProfile,
-  createMockCession,
-  createMockVisitorReservation,
-} from "../../mocks/factories";
 
-// ─── Mock de Supabase ─────────────────────────────────────────────────────────
+// ─── Helpers de datos en camelCase (formato Drizzle) ─────────────────────────
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(),
-}));
+function makeSpot(overrides?: Record<string, unknown>) {
+  return {
+    id: "spot-00000000-0000-0000-0000-000000000001",
+    label: "A-01",
+    type: "standard",
+    assignedTo: null,
+    resourceType: "parking",
+    isActive: true,
+    positionX: 10,
+    positionY: 20,
+    entityId: null,
+    createdAt: new Date("2025-01-01T00:00:00Z"),
+    updatedAt: new Date("2025-01-01T00:00:00Z"),
+    ...overrides,
+  };
+}
 
-import { createClient } from "@/lib/supabase/server";
+// Shapes returned by getSpotsByDate parallel queries:
+// Query 2: { id, spotId, userId, fullName }
+function makeReservationRow(overrides?: Record<string, unknown>) {
+  return {
+    id: "res-00000000-0000-0000-0000-000000000001",
+    spotId: "spot-00000000-0000-0000-0000-000000000001",
+    userId: "user-00000000-0000-0000-0000-000000000001",
+    fullName: "Usuario Test",
+    ...overrides,
+  };
+}
 
-// ─── Helpers de test ──────────────────────────────────────────────────────────
+// Query 3: { id, spotId, status }
+function makeCessionRow(overrides?: Record<string, unknown>) {
+  return {
+    id: "ces-00000000-0000-0000-0000-000000000001",
+    spotId: "spot-00000000-0000-0000-0000-000000000001",
+    status: "available",
+    ...overrides,
+  };
+}
 
-/**
- * Configura el mock de Supabase para responder con los datos dados por tabla.
- * El mock de `from` devuelve un query chain diferente según el nombre de tabla.
- */
-function setupSupabaseMock(tableData: {
-  spots?: ReturnType<typeof createMockSpot>[];
-  spotsError?: { message: string };
-  reservations?: ReturnType<typeof createMockReservationWithProfile>[];
-  cessions?: ReturnType<typeof createMockCession>[];
-  visitor_reservations?: ReturnType<typeof createMockVisitorReservation>[];
-}) {
-  const mockFrom = vi.fn((table: string) => {
-    switch (table) {
-      case "spots":
-        return createQueryChain({
-          data: tableData.spots ?? [],
-          error: tableData.spotsError ?? null,
-        });
-      case "reservations":
-        return createQueryChain({
-          data: tableData.reservations ?? [],
-          error: null,
-        });
-      case "cessions":
-        return createQueryChain({
-          data: tableData.cessions ?? [],
-          error: null,
-        });
-      case "visitor_reservations":
-        return createQueryChain({
-          data: tableData.visitor_reservations ?? [],
-          error: null,
-        });
-      default:
-        return createQueryChain({ data: [], error: null });
-    }
-  });
-
-  vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as never);
-  return mockFrom;
+// Query 4: { id, spotId, visitorName }
+function makeVisitorRow(overrides?: Record<string, unknown>) {
+  return {
+    id: "vis-00000000-0000-0000-0000-000000000001",
+    spotId: "spot-00000000-0000-0000-0000-000000000001",
+    visitorName: "Visitante Test",
+    ...overrides,
+  };
 }
 
 const DATE = "2025-03-15";
@@ -78,12 +74,11 @@ const DATE = "2025-03-15";
 
 describe("getSpots", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("devuelve las plazas activas", async () => {
-    const spot = createMockSpot({ label: "A-01" });
-    setupSupabaseMock({ spots: [spot] });
+    setupSelectMock([makeSpot({ label: "A-01" })]);
 
     const result = await getSpots();
 
@@ -92,17 +87,16 @@ describe("getSpots", () => {
   });
 
   it("devuelve array vacío si no hay plazas", async () => {
-    setupSupabaseMock({ spots: [] });
+    setupSelectMock([]);
     const result = await getSpots();
     expect(result).toEqual([]);
   });
 
   it("con entityId incluye plazas de la sede y globales", async () => {
-    const spots = [
-      createMockSpot({ id: "s1", entity_id: "ent-1" }),
-      createMockSpot({ id: "s2", entity_id: null }),
-    ];
-    setupSupabaseMock({ spots });
+    setupSelectMock([
+      makeSpot({ id: "s1", entityId: "ent-1" }),
+      makeSpot({ id: "s2", entityId: null }),
+    ]);
 
     const result = await getSpots(undefined, false, "ent-1");
 
@@ -110,8 +104,10 @@ describe("getSpots", () => {
     expect(result.map((s) => s.id)).toEqual(["s1", "s2"]);
   });
 
-  it("lanza error si Supabase devuelve error", async () => {
-    setupSupabaseMock({ spotsError: { message: "Conexión fallida" } });
+  it("lanza error si la query falla", async () => {
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("DB error");
+    });
     await expect(getSpots()).rejects.toThrow(
       "No se pudieron obtener las plazas"
     );
@@ -122,14 +118,20 @@ describe("getSpots", () => {
 
 describe("getSpotsByDate", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   // ── Plaza estándar libre ────────────────────────────────────────────────────
 
   it("devuelve estado 'free' para plaza estándar sin reservas", async () => {
-    const spot = createMockSpot({ id: "spot-1", type: "standard" });
-    setupSupabaseMock({ spots: [spot] });
+    // getSpotsByDate makes 4 parallel selects via Promise.all:
+    // 1. spots, 2. reservations+profiles join, 3. cessions, 4. visitor_reservations
+    setupSelectMock([
+      makeSpot({ id: "spot-1", type: "standard", assignedTo: null }),
+    ]);
+    setupSelectMock([]); // reservations
+    setupSelectMock([]); // cessions
+    setupSelectMock([]); // visitor_reservations
 
     const result = await getSpotsByDate(DATE);
 
@@ -145,13 +147,18 @@ describe("getSpotsByDate", () => {
   // ── Plaza estándar reservada ────────────────────────────────────────────────
 
   it("devuelve estado 'reserved' para plaza con reserva confirmada", async () => {
-    const spot = createMockSpot({ id: "spot-1", type: "standard" });
-    const reservation = createMockReservationWithProfile({
-      id: "res-1",
-      spot_id: "spot-1",
-      profiles: { full_name: "Ana Pérez" },
-    });
-    setupSupabaseMock({ spots: [spot], reservations: [reservation] });
+    setupSelectMock([
+      makeSpot({ id: "spot-1", type: "standard", assignedTo: null }),
+    ]);
+    setupSelectMock([
+      makeReservationRow({
+        id: "res-1",
+        spotId: "spot-1",
+        fullName: "Ana Pérez",
+      }),
+    ]);
+    setupSelectMock([]); // cessions
+    setupSelectMock([]); // visitor_reservations
 
     const result = await getSpotsByDate(DATE);
 
@@ -162,13 +169,13 @@ describe("getSpotsByDate", () => {
     });
   });
 
-  it("devuelve reserved_by_name undefined si el perfil es null", async () => {
-    const spot = createMockSpot({ id: "spot-1", type: "standard" });
-    const reservation = createMockReservationWithProfile({
-      spot_id: "spot-1",
-      profiles: null,
-    });
-    setupSupabaseMock({ spots: [spot], reservations: [reservation] });
+  it("devuelve reserved_by_name undefined si el perfil fullName es null", async () => {
+    setupSelectMock([
+      makeSpot({ id: "spot-1", type: "standard", assignedTo: null }),
+    ]);
+    setupSelectMock([makeReservationRow({ spotId: "spot-1", fullName: null })]);
+    setupSelectMock([]);
+    setupSelectMock([]);
 
     const result = await getSpotsByDate(DATE);
 
@@ -178,13 +185,18 @@ describe("getSpotsByDate", () => {
   // ── Plaza con reserva de visitante ─────────────────────────────────────────
 
   it("devuelve estado 'visitor-blocked' para plaza con reserva de visitante", async () => {
-    const spot = createMockSpot({ id: "spot-1", type: "standard" });
-    const visitor = createMockVisitorReservation({
-      id: "vis-1",
-      spot_id: "spot-1",
-      visitor_name: "Visitante Externo",
-    });
-    setupSupabaseMock({ spots: [spot], visitor_reservations: [visitor] });
+    setupSelectMock([
+      makeSpot({ id: "spot-1", type: "standard", assignedTo: null }),
+    ]);
+    setupSelectMock([]); // reservations
+    setupSelectMock([]); // cessions
+    setupSelectMock([
+      makeVisitorRow({
+        id: "vis-1",
+        spotId: "spot-1",
+        visitorName: "Visitante Externo",
+      }),
+    ]);
 
     const result = await getSpotsByDate(DATE);
 
@@ -196,18 +208,18 @@ describe("getSpotsByDate", () => {
   });
 
   it("visitante tiene prioridad sobre reserva de empleado en la misma plaza", async () => {
-    const spot = createMockSpot({ id: "spot-1", type: "standard" });
-    const reservation = createMockReservationWithProfile({ spot_id: "spot-1" });
-    const visitor = createMockVisitorReservation({
-      id: "vis-priority",
-      spot_id: "spot-1",
-      visitor_name: "Visitante Prioritario",
-    });
-    setupSupabaseMock({
-      spots: [spot],
-      reservations: [reservation],
-      visitor_reservations: [visitor],
-    });
+    setupSelectMock([
+      makeSpot({ id: "spot-1", type: "standard", assignedTo: null }),
+    ]);
+    setupSelectMock([makeReservationRow({ spotId: "spot-1" })]);
+    setupSelectMock([]);
+    setupSelectMock([
+      makeVisitorRow({
+        id: "vis-priority",
+        spotId: "spot-1",
+        visitorName: "Visitante Prioritario",
+      }),
+    ]);
 
     const result = await getSpotsByDate(DATE);
 
@@ -218,12 +230,16 @@ describe("getSpotsByDate", () => {
   // ── Plaza asignada sin cesión ──────────────────────────────────────────────────────────
 
   it("devuelve estado 'occupied' para plaza asignada sin cesión", async () => {
-    const spot = createMockSpot({
-      id: "spot-mgmt",
-      type: "standard",
-      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
-    });
-    setupSupabaseMock({ spots: [spot] });
+    setupSelectMock([
+      makeSpot({
+        id: "spot-mgmt",
+        type: "standard",
+        assignedTo: "owner-00000000-0000-0000-0000-000000000001",
+      }),
+    ]);
+    setupSelectMock([]); // reservations
+    setupSelectMock([]); // cessions
+    setupSelectMock([]); // visitor_reservations
 
     const result = await getSpotsByDate(DATE);
 
@@ -236,17 +252,18 @@ describe("getSpotsByDate", () => {
   // ── Plaza asignada cedida disponible ──────────────────────────────────────────
 
   it("devuelve estado 'ceded' para plaza asignada con cesión 'available'", async () => {
-    const spot = createMockSpot({
-      id: "spot-mgmt",
-      type: "standard",
-      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
-    });
-    const cession = createMockCession({
-      id: "ces-1",
-      spot_id: "spot-mgmt",
-      status: "available",
-    });
-    setupSupabaseMock({ spots: [spot], cessions: [cession] });
+    setupSelectMock([
+      makeSpot({
+        id: "spot-mgmt",
+        type: "standard",
+        assignedTo: "owner-00000000-0000-0000-0000-000000000001",
+      }),
+    ]);
+    setupSelectMock([]); // reservations
+    setupSelectMock([
+      makeCessionRow({ id: "ces-1", spotId: "spot-mgmt", status: "available" }),
+    ]);
+    setupSelectMock([]);
 
     const result = await getSpotsByDate(DATE);
 
@@ -259,17 +276,18 @@ describe("getSpotsByDate", () => {
   // ── Plaza asignada cedida y ya reservada ────────────────────────────────────────
 
   it("devuelve estado 'reserved' para plaza asignada con cesión 'reserved'", async () => {
-    const spot = createMockSpot({
-      id: "spot-mgmt",
-      type: "standard",
-      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
-    });
-    const cession = createMockCession({
-      id: "ces-1",
-      spot_id: "spot-mgmt",
-      status: "reserved",
-    });
-    setupSupabaseMock({ spots: [spot], cessions: [cession] });
+    setupSelectMock([
+      makeSpot({
+        id: "spot-mgmt",
+        type: "standard",
+        assignedTo: "owner-00000000-0000-0000-0000-000000000001",
+      }),
+    ]);
+    setupSelectMock([]); // reservations
+    setupSelectMock([
+      makeCessionRow({ id: "ces-1", spotId: "spot-mgmt", status: "reserved" }),
+    ]);
+    setupSelectMock([]);
 
     const result = await getSpotsByDate(DATE);
 
@@ -284,12 +302,12 @@ describe("getSpotsByDate", () => {
   // "free" independientemente de assigned_to, salvo reserva activa.
 
   it("devuelve 'free' para plaza visitor sin reservas (parking)", async () => {
-    const spot = createMockSpot({
-      id: "spot-visitor",
-      type: "visitor",
-      assigned_to: null,
-    });
-    setupSupabaseMock({ spots: [spot] });
+    setupSelectMock([
+      makeSpot({ id: "spot-visitor", type: "visitor", assignedTo: null }),
+    ]);
+    setupSelectMock([]);
+    setupSelectMock([]);
+    setupSelectMock([]);
 
     const result = await getSpotsByDate(DATE);
 
@@ -297,12 +315,17 @@ describe("getSpotsByDate", () => {
   });
 
   it("devuelve 'free' para plaza visitor/flexible en oficina sin reservas", async () => {
-    const spot = createMockSpot({
-      id: "spot-flex",
-      type: "visitor",
-      assigned_to: null,
-    });
-    setupSupabaseMock({ spots: [spot] });
+    setupSelectMock([
+      makeSpot({
+        id: "spot-flex",
+        type: "visitor",
+        assignedTo: null,
+        resourceType: "office",
+      }),
+    ]);
+    setupSelectMock([]);
+    setupSelectMock([]);
+    setupSelectMock([]);
 
     const result = await getSpotsByDate(DATE, "office");
 
@@ -310,12 +333,14 @@ describe("getSpotsByDate", () => {
   });
 
   it("devuelve 'reserved' para plaza visitor con reserva confirmada", async () => {
-    const spot = createMockSpot({ id: "spot-visitor", type: "visitor" });
-    const reservation = createMockReservationWithProfile({
-      id: "res-v",
-      spot_id: "spot-visitor",
-    });
-    setupSupabaseMock({ spots: [spot], reservations: [reservation] });
+    setupSelectMock([
+      makeSpot({ id: "spot-visitor", type: "visitor", assignedTo: null }),
+    ]);
+    setupSelectMock([
+      makeReservationRow({ id: "res-v", spotId: "spot-visitor" }),
+    ]);
+    setupSelectMock([]);
+    setupSelectMock([]);
 
     const result = await getSpotsByDate(DATE);
 
@@ -326,13 +351,18 @@ describe("getSpotsByDate", () => {
   });
 
   it("devuelve 'visitor-blocked' para plaza visitor con reserva de visitante externo", async () => {
-    const spot = createMockSpot({ id: "spot-visitor", type: "visitor" });
-    const visitor = createMockVisitorReservation({
-      id: "vis-ext",
-      spot_id: "spot-visitor",
-      visitor_name: "Carlos Externo",
-    });
-    setupSupabaseMock({ spots: [spot], visitor_reservations: [visitor] });
+    setupSelectMock([
+      makeSpot({ id: "spot-visitor", type: "visitor", assignedTo: null }),
+    ]);
+    setupSelectMock([]);
+    setupSelectMock([]);
+    setupSelectMock([
+      makeVisitorRow({
+        id: "vis-ext",
+        spotId: "spot-visitor",
+        visitorName: "Carlos Externo",
+      }),
+    ]);
 
     const result = await getSpotsByDate(DATE);
 
@@ -346,24 +376,18 @@ describe("getSpotsByDate", () => {
   // ── Visitante en plaza asignada ──────────────────────────────────────────────────
 
   it("visitante en plaza asignada tiene prioridad sobre la lógica de cesión", async () => {
-    const spot = createMockSpot({
-      id: "spot-mgmt",
-      type: "standard",
-      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
-    });
-    const cession = createMockCession({
-      spot_id: "spot-mgmt",
-      status: "available",
-    });
-    const visitor = createMockVisitorReservation({
-      id: "vis-mgmt",
-      spot_id: "spot-mgmt",
-    });
-    setupSupabaseMock({
-      spots: [spot],
-      cessions: [cession],
-      visitor_reservations: [visitor],
-    });
+    setupSelectMock([
+      makeSpot({
+        id: "spot-mgmt",
+        type: "standard",
+        assignedTo: "owner-00000000-0000-0000-0000-000000000001",
+      }),
+    ]);
+    setupSelectMock([]);
+    setupSelectMock([
+      makeCessionRow({ spotId: "spot-mgmt", status: "available" }),
+    ]);
+    setupSelectMock([makeVisitorRow({ id: "vis-mgmt", spotId: "spot-mgmt" })]);
 
     const result = await getSpotsByDate(DATE);
 
@@ -373,25 +397,18 @@ describe("getSpotsByDate", () => {
   // ── Múltiples plazas ──────────────────────────────────────────────────────
 
   it("calcula el estado de cada plaza de forma independiente", async () => {
-    const spotFree = createMockSpot({ id: "spot-free", type: "standard" });
-    const spotReserved = createMockSpot({
-      id: "spot-reserved",
-      type: "standard",
-    });
-    const spotMgmt = createMockSpot({
-      id: "spot-mgmt",
-      type: "standard",
-      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
-    });
-
-    const reservation = createMockReservationWithProfile({
-      spot_id: "spot-reserved",
-    });
-
-    setupSupabaseMock({
-      spots: [spotFree, spotReserved, spotMgmt],
-      reservations: [reservation],
-    });
+    setupSelectMock([
+      makeSpot({ id: "spot-free", type: "standard", assignedTo: null }),
+      makeSpot({ id: "spot-reserved", type: "standard", assignedTo: null }),
+      makeSpot({
+        id: "spot-mgmt",
+        type: "standard",
+        assignedTo: "owner-00000000-0000-0000-0000-000000000001",
+      }),
+    ]);
+    setupSelectMock([makeReservationRow({ spotId: "spot-reserved" })]);
+    setupSelectMock([]);
+    setupSelectMock([]);
 
     const result = await getSpotsByDate(DATE);
     const byId = Object.fromEntries(result.map((s) => [s.id, s.status]));
@@ -401,27 +418,33 @@ describe("getSpotsByDate", () => {
     expect(byId["spot-mgmt"]).toBe("occupied");
   });
 
-  // ── Error de Supabase ─────────────────────────────────────────────────────
+  // ── Error de DB ─────────────────────────────────────────────────────────────
 
   it("lanza error si la query de plazas falla", async () => {
-    setupSupabaseMock({ spotsError: { message: "Error de base de datos" } });
+    vi.mocked(mockDb.select).mockImplementationOnce(() => {
+      throw new Error("Error de base de datos");
+    });
     await expect(getSpotsByDate(DATE)).rejects.toThrow(
-      "No se pudieron obtener las plazas"
+      "Error de base de datos"
     );
   });
 
   // ── Mapeo de campos ────────────────────────────────────────────────────────
 
   it("mapea correctamente los campos de la plaza al resultado", async () => {
-    const spot = createMockSpot({
-      id: "spot-map",
-      label: "B-05",
-      type: "visitor",
-      assigned_to: "user-abc",
-      position_x: 100,
-      position_y: 200,
-    });
-    setupSupabaseMock({ spots: [spot] });
+    setupSelectMock([
+      makeSpot({
+        id: "spot-map",
+        label: "B-05",
+        type: "visitor",
+        assignedTo: "user-abc",
+        positionX: 100,
+        positionY: 200,
+      }),
+    ]);
+    setupSelectMock([]);
+    setupSelectMock([]);
+    setupSelectMock([]);
 
     const result = await getSpotsByDate(DATE);
 
