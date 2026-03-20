@@ -9,6 +9,9 @@
  * Usage: npx tsx src/lib/db/seed.ts
  */
 
+import { config } from "dotenv";
+config({ path: ".env.local" });
+
 import bcrypt from "bcryptjs";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
