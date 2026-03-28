@@ -1,5 +1,3 @@
-"use server";
-
 /**
  * Calendar Data Actions compartidas
  *

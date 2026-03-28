@@ -1,5 +1,3 @@
-"use server";
-
 /**
  * Acciones de cesión compartidas
  *
