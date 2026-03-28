@@ -16,7 +16,7 @@
 
 ## 🎯 El Problema
 
-[GRUPOSIETE](https://gruposiete.com) necesitaba gestionar dos tipos de recursos con lógica similar pero reglas distintas: las plazas de aparcamiento de directivos (que quedan vacías cuando viajan) y los escritorios en zonas de hoteling (que deben reservarse por franjas horarias). Todo se gestionaba "de palabra, o no se gestionaba".
+[GRUPOSIETE](https://gruposiete.es) necesitaba gestionar dos tipos de recursos con lógica similar pero reglas distintas: las plazas de aparcamiento de directivos (que quedan vacías cuando viajan) y los escritorios en zonas de hoteling (que deben reservarse por franjas horarias). Todo se gestionaba "de palabra, o no se gestionaba".
 
 > 💡 En empresas con +50 empleados y recursos limitados, la tasa de infrautilización del parking corporativo puede superar el 30% — y los escritorios de hoteling sin sistema son fuente constante de conflictos.
 
