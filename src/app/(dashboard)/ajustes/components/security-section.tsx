@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { signOutAction, signOutAllAction } from "@/lib/auth/sign-out";
+import { signOutAction } from "@/lib/auth/sign-out";
 import { deleteSelfAccount } from "../actions";
 import { ROUTES } from "@/lib/constants";
 import { toast } from "sonner";
@@ -49,7 +49,7 @@ export function SecuritySection({ user }: SecuritySectionProps) {
   const handleSignOutAll = () => {
     if (!confirm("¿Cerrar sesión en todos los dispositivos?")) return;
     startTransition(async () => {
-      await signOutAllAction();
+      await signOutAction();
     });
   };
 

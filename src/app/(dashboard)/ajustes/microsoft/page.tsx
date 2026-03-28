@@ -10,7 +10,7 @@ import { redirect } from "next/navigation";
 import { MicrosoftConnectionCard } from "../components/microsoft-connection-card";
 import { OutlookSyncForm } from "../components/outlook-sync-form";
 import { ManagementCessionRules } from "../components/management-cession-rules";
-import { ContentSection } from "../components/content-section";
+import { ContentSection } from "@/components/content-section";
 
 export default async function SettingsMicrosoftPage() {
   const user = await requireAuth();

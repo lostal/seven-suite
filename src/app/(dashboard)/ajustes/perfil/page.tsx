@@ -8,7 +8,7 @@ import { requireAuth } from "@/lib/auth/helpers";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
 import { ProfileForm } from "../components/profile-form";
-import { ContentSection } from "../components/content-section";
+import { ContentSection } from "@/components/content-section";
 
 export default async function SettingsProfilePage() {
   const user = await requireAuth();

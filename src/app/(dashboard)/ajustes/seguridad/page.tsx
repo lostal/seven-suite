@@ -8,7 +8,7 @@ import { requireAuth } from "@/lib/auth/helpers";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
 import { SecuritySection } from "../components/security-section";
-import { ContentSection } from "../components/content-section";
+import { ContentSection } from "@/components/content-section";
 
 export default async function SettingsSecurityPage() {
   const user = await requireAuth();

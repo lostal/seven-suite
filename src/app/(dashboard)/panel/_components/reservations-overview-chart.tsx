@@ -19,7 +19,7 @@ import {
   YAxis,
 } from "recharts";
 import type { DailyCount } from "@/lib/queries/stats";
-import { useMounted } from "@/hooks";
+import { useMounted } from "@/hooks/use-mounted";
 
 interface ReservationsOverviewChartProps {
   data: DailyCount[];

@@ -9,7 +9,7 @@
 import { NextResponse } from "next/server";
 
 import { ROUTES, getHomeRouteForRole } from "@/lib/constants";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/config";
 
 export default auth((request) => {
   const pathname = request.nextUrl.pathname;

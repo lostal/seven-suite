@@ -15,9 +15,3 @@ export async function signOutAction() {
   await signOut({ redirect: false });
   redirect(ROUTES.LOGIN);
 }
-
-/** Cierra la sesión (alias for compatibility) */
-export async function signOutAllAction() {
-  await signOut({ redirect: false });
-  redirect(ROUTES.LOGIN);
-}

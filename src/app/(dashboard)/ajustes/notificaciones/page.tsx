@@ -5,7 +5,7 @@
  */
 
 import { requireAuth } from "@/lib/auth/helpers";
-import { ContentSection } from "../components/content-section";
+import { ContentSection } from "@/components/content-section";
 import {
   Card,
   CardContent,
