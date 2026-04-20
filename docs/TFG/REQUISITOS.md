@@ -7,23 +7,21 @@ UML trazables al código y a los entregables posteriores.
 
 ## 3.1. Sesiones de levantamiento de información
 
-El levantamiento de requisitos se realizó mediante entrevistas con tres perfiles clave de
-GRUPOSIETE: un directivo con plaza de aparcamiento asignada, una responsable de recursos
-humanos y un empleado de perfil no técnico con experiencia en el uso diario de la sede de
-Alcobendas.
+El levantamiento de requisitos se realizó mediante videollamadas con el perfil clave de
+GRUPOSIETE: el director de IT de la empresa que además trabaja en la sede de Alcobendas.
 
 Las sesiones pusieron de manifiesto tres patrones de uso recurrentes. El primero es la
 coordinación informal de plazas de parking mediante WhatsApp: los directivos comunican su
 ausencia al grupo general y cualquier empleado responde en hilo libre, sin registro, sin confirmación
 y sin visibilidad del estado real de ocupación. El segundo es la gestión de puestos de oficina: dado
 que la sede tiene 240 m² y no todos los empleados acuden a diario, existe un problema crónico de
-sobreocupación algunos días y de infrautilización otros, sin mecanismo de reserva. El tercero es la
-gestión de ausencias: las solicitudes de vacaciones se tramitan por correo electrónico entre empleado
-y manager, sin trazabilidad ni flujo de aprobación formal hacia RRHH.
+infrautilización algunos días. El tercero es la gestión de ausencias: las solicitudes de vacaciones se
+tramitan directamente a través de un Excel (los responsables se encargan de pasar a RRHH las
+vacaciones de los empleados de su sede).
 
 De las sesiones emergieron tres decisiones de diseño que condicionan el resto del análisis.
-Primera: la cesión de plazas de parking debe ser una operación explícita del propietario, no una
-liberación implícita, para evitar conflictos de acceso. Segunda: el sistema debe integrarse con
+Primera: la cesión de plazas de parking debe ser una operación intencional del propietario, no una
+liberación automática, para evitar conflictos de acceso. Segunda: el sistema debe integrarse con
 Microsoft 365 para la detección automática del estado fuera de oficina, ya que los directivos
 utilizan Outlook de forma habitual. Tercera: el flujo de aprobación de ausencias debe contemplar
 dos niveles (manager y RRHH) para respetar la estructura organizativa actual de la empresa.
@@ -32,7 +30,7 @@ dos niveles (manager y RRHH) para respetar la estructura organizativa actual de 
 
 El modelo del dominio construye una abstracción de la realidad de GRUPOSIETE independiente
 de cualquier decisión de implementación. Sus artefactos (diagrama de clases, diagramas de
-estados y glosario) constituyen el vocabulario compartido entre cliente y desarrollador a lo largo
+estados y glosario) recogen el vocabulario compartido entre cliente y desarrollador a lo largo
 de todo el proyecto.
 
 ### 3.2.1. Diagrama de clases del dominio
@@ -50,7 +48,7 @@ acceso pleno a la configuración del sistema. Todos pertenecen a una `Entidad`, 
 sede o empresa del grupo.
 
 El área de **espacios** gira en torno a la entidad `Plaza`, que unifica conceptualmente las plazas de
-aparcamiento y los puestos de oficina mediante el atributo `recurso`. La `Reserva` vincula a un
+aparcamiento y los puestos de oficina mediante el atributo `recurso` debido a su similitud. La `Reserva` vincula a un
 empleado con una plaza en una fecha concreta, con soporte opcional de franja horaria para los
 puestos de oficina. La `Cesión` representa la liberación voluntaria de una plaza asignada por su
 propietario: cuando queda en estado disponible, cualquier empleado puede generar sobre ella una
@@ -62,13 +60,13 @@ por un empleado.
 El área de **RRHH** contiene la `SolicitudAusencia`, cuya complejidad reside en su ciclo de
 aprobación en dos niveles. El área de **comunicación** incluye el `Anuncio` y el
 `CalendarioFestivos`, este último compuesto por `Festivos` individuales y asociado a cada entidad
-para el cómputo correcto de días laborables.
+para el registro correcto de días laborables.
 
 ### 3.2.2. Diagramas de estados
 
 Se documentan los ciclos de vida de las tres entidades con comportamiento dinámico no trivial.
 
-**Reserva.** El ciclo es deliberadamente simple: una reserva se crea siempre en estado confirmada
+**Reserva.** El ciclo es muy simple: una reserva se crea siempre en estado confirmada
 y solo puede transitar a cancelada. La restricción de unicidad (una plaza, un día, una reserva
 confirmada) se garantiza a nivel de base de datos mediante índices parciales.
 
@@ -132,7 +130,7 @@ individual de cada caso de uso.
 
 El diagrama de contexto representa el sistema como una máquina de estados cuyos estados
 principales corresponden a los módulos del portal. Las transiciones de entrada (`autenticarse()`) y
-salida (`cerrarSesion()`) delimitan la frontera del sistema respecto al exterior. Las acciones
+salida (`cerrarSesion()`) delimitan la frontera del sistema. Las acciones
 ejecutables dentro de cada módulo se enumeran como comportamientos internos de su estado
 correspondiente, de forma que el diagrama sirve de índice navegable de toda la funcionalidad del
 sistema.

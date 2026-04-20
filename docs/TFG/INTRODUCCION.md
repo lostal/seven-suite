@@ -16,7 +16,7 @@ WhatsApp. Esto causa problemas, como que no se utilizan bien los recursos y los 
 tienen una buena experiencia.
 
 Según CBRE España, en oficinas con entornos híbridos, solo el 55% de la capacidad se
-utiliza en promedio. Los viernes, esto cae un 70%. Esto muestra que es importante gestionar los
+utiliza en promedio pudiendo caer los viernes a un 70%. Esto muestra que es importante gestionar los
 espacios de forma dinámica en las empresas actuales.
 
 Este trabajo de fin de grado busca implementar un portal del empleado para

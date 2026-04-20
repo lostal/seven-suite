@@ -201,7 +201,7 @@ base de datos como parte del propio proyecto. El acceso a los datos se realiza a
 Drizzle ORM, un ORM de TypeScript con inferencia de tipos estricta: el esquema de la base de
 datos es la única fuente de verdad y los tipos de la aplicación se derivan directamente de él sin
 necesidad de generación de código adicional. La autorización se gestiona de forma explícita en
-la capa de aplicación mediante guardas de rol, con Auth.js v5 como solución de autenticación
+la capa de aplicación mediante guardas de rol, con Auth.js v5 (next-auth) como solución de autenticación
 y DrizzleAdapter como puente entre la sesión y la base de datos.
 
 ## 2.3. Justificación de la propuesta
@@ -263,7 +263,7 @@ extensible a módulos futuros de gestión de recursos humanos.
   Router, PostgreSQL autoalojado con Drizzle ORM, Microsoft Entra ID como proveedor de identidad), el modelo
   lógico y físico de datos en PostgreSQL, y los diagramas de despliegue y paquetes (Capítulo 4).
 - **OS3:** Implementar y validar el MVP funcional con pruebas unitarias (Vitest) y pruebas
-  end-to-end (Playwright), desplegando en Vercel mediante pipeline CI/CD con GitHub Actions
+  end-to-end (Playwright), desplegando en un servidor propio mediante pipeline CI/CD con GitHub Actions
   (Capítulo 5).
 - **OS4:** Evaluar la solución mediante métricas de cobertura de tests, rendimiento (Core Web
   Vitals) y usabilidad (SUS), verificar la trazabilidad entre requisitos y entrega, y proponer un
@@ -283,7 +283,7 @@ mismo autor, con supervisión iterativa semanal por parte de la tutora académic
 1. **Primera iteración - Requisitos (Capítulo 3):** a partir de sesiones de levantamiento de
    información con personas clave de GRUPOSIETE, se elabora el modelo del dominio, se
    identifican los actores del sistema y se definen los casos de uso del MVP. Se producen prototipos
-   de interfaz de baja y alta fidelidad con Figma para validar la comprensión de los requisitos.
+   de interfaz de baja y alta fidelidad con plantUML para validar la comprensión de los requisitos.
 
 2. **Segunda iteración - Análisis y diseño (Capítulo 4):** a partir de los casos de uso
    formalizados se derivan las clases de análisis y diseño, se define la arquitectura del sistema y el
@@ -293,7 +293,7 @@ mismo autor, con supervisión iterativa semanal por parte de la tutora académic
 3. **Tercera iteración - Implementación (Capítulo 5):** el MVP se construye de forma
    incremental comenzando por la capa de autenticación SSO con Microsoft Entra ID, seguida de
    los módulos de reservas y el panel de administración, con pruebas unitarias (Vitest) y end-to-end
-   (Playwright). El despliegue se realiza en Vercel mediante CI/CD con GitHub Actions.
+   (Playwright). El despliegue se realiza en un servidor propio mediante CI/CD con GitHub Actions.
 
 4. **Cuarta iteración - Evaluación y conclusiones (Capítulo 6):** se evalúa la solución
    mediante métricas de cobertura de tests, rendimiento (Core Web Vitals) y usabilidad (SUS), se
@@ -304,5 +304,4 @@ mismo autor, con supervisión iterativa semanal por parte de la tutora académic
 Las herramientas de soporte empleadas a lo largo del proyecto son: GitHub para control
 de versiones y trazabilidad de commits, el repositorio de código abierto
 https://github.com/satnaing/shadcn-admin como plantilla para el dashboard (core), Notion para la
-gestión de tareas y apuntes, PlantUML para la elaboración de diagramas UML, y Figma para el
-diseños específicos.
+gestión de tareas y apuntes, PlantUML para la elaboración de diagramas UML.
