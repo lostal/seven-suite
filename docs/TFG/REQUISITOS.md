@@ -66,14 +66,14 @@ para el registro correcto de días laborables.
 
 Se documentan los ciclos de vida de las tres entidades con comportamiento dinámico no trivial.
 
-**Reserva.** El ciclo es muy simple: una reserva se crea siempre en estado confirmada
+**Reserva**. El ciclo es muy simple: una reserva se crea siempre en estado confirmada
 y solo puede transitar a cancelada. La restricción de unicidad (una plaza, un día, una reserva
 confirmada) se garantiza a nivel de base de datos mediante índices parciales.
 
 ![Estados de Reserva](../../modelosUML/svg/estadosReserva.svg)
 <sub>[Código fuente](../../modelosUML/puml/estadosReserva.puml)</sub>
 
-**Cesión.** Nace en estado disponible cuando el propietario la cede. Transita a reservada en
+**Cesión**. Nace en estado disponible cuando el propietario la cede. Transita a reservada en
 cuanto un empleado genera una reserva sobre ella, o a cancelada si el propietario la retira antes
 de que sea reservada. Una cesión reservada también puede cancelarse, lo que libera la reserva
 asociada.
@@ -81,7 +81,7 @@ asociada.
 ![Estados de Cesión](../../modelosUML/svg/estadosCesion.svg)
 <sub>[Código fuente](../../modelosUML/puml/estadosCesion.puml)</sub>
 
-**SolicitudAusencia.** Es el ciclo más complejo del sistema. Una solicitud nace como pendiente y
+**SolicitudAusencia**. Es el ciclo más complejo del sistema. Una solicitud nace como pendiente y
 requiere aprobación secuencial: primero el manager directo del empleado y después el equipo de
 RRHH. En cualquier punto anterior a la aprobación final el empleado puede cancelarla; el manager
 o RRHH pueden rechazarla en su respectivo nivel.
@@ -183,7 +183,6 @@ estableciendo el alcance del MVP documentado en este trabajo.
 | **Must**   | `gestionarUsuarios()`           | Administración |
 | **Must**   | `configurarSistema()`           | Administración |
 | **Should** | `cancelarVisitante()`           | Parking        |
-| **Should** | `configurarReglaCesion()`       | Parking        |
 | **Should** | `configurarPreferencias()`      | Ajustes        |
 | **Should** | `conectarMicrosoft365()`        | Ajustes        |
 | **Should** | `consultarTablon()`             | Tablón         |

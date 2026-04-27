@@ -1,12 +1,12 @@
 # 4. Análisis y Diseño
 
-El objetivo de esta iteración es construir la abstracción del sistema a partir de los casos de uso formalizados en el capítulo anterior. El resultado es el conjunto de artefactos —arquitectura, clases, paquetes y modelo de datos— que sirven de puente entre el contrato con el cliente (capítulo 3) y el código ejecutable (capítulo 5). A diferencia de los documentos de diseño especulativos, el contenido de este capítulo describe la arquitectura que efectivamente se ha construido y es verificable directamente en el código del repositorio.
+El objetivo de esta iteración es construir la abstracción del sistema a partir de los casos de uso formalizados en el capítulo anterior. El resultado es el conjunto de artefactos (arquitectura, clases, paquetes y modelo de datos) que sirven de puente entre el contrato con el cliente (capítulo 3) y el código ejecutable (capítulo 5). A diferencia de los documentos de diseño especulativos, el contenido de este capítulo describe la arquitectura que efectivamente se ha construido y es verificable directamente en el código del repositorio.
 
 ## 4.1 Introducción y enfoque
 
 La disciplina de análisis y diseño que prescribe RUP tiene como propósito describir el sistema en el lenguaje de los desarrolladores, introducir formalismo y tomar decisiones sobre el funcionamiento interno. En un proyecto donde la implementación ya está completada, este capítulo cumple esa misma función pero con una ventaja adicional: toda decisión de diseño es constatable. No existe la brecha entre diseño y código que suele aparecer cuando el diseño es anterior al desarrollo.
 
-El enfoque seguido en este capítulo es **híbrido**: en el apartado de análisis se expone el modelo clásico RUP con sus clases de análisis (Modelo, Vista, Controlador). En el apartado de diseño se muestra cómo ese modelo se materializa en la arquitectura real: las clases controladoras colapsan en Server Actions, las clases vista se corresponden con Server Components y Client Components de Next.js, y el modelo del dominio se mapea directamente sobre el esquema Drizzle. Esta articulación entre el modelo de análisis y el diseño concreto permite verificar la trazabilidad entre los conceptos del dominio (capítulo 3) y el código (capítulo 5).
+El enfoque seguido en este capítulo es **híbrido**: en el apartado de análisis se expone el modelo clásico RUP con sus clases de análisis (Modelo, Vista, Controlador). En el apartado de diseño se muestra cómo ese modelo se materializa en la arquitectura real. Esta articulación entre el modelo de análisis y el diseño concreto permite verificar la trazabilidad entre los conceptos del dominio (capítulo 3) y el código (capítulo 5).
 
 ## 4.2 Análisis de la arquitectura
 
@@ -54,17 +54,17 @@ El sistema interactúa con tres servicios externos, cada uno con una función es
 
 ### 4.3.1 Stack tecnológico
 
-Las tecnologías empleadas —Next.js 15 App Router, Auth.js v5, Drizzle ORM y PostgreSQL 16— se describen en el §2. Lo relevante aquí es cómo se articulan: un único lenguaje (TypeScript) para todo el stack, un único proceso de despliegue, sin capa de API REST separada. Las lecturas ocurren en Server Components directamente contra la base de datos.
+Las tecnologías empleadas son Next.js 15 App Router, Auth.js v5, Drizzle ORM y PostgreSQL 16. Lo relevante aquí es cómo se articulan: un único lenguaje (TypeScript) para todo el stack, un único proceso de despliegue, sin capa de API REST separada. Las lecturas ocurren en Server Components directamente contra la base de datos.
 
-### 4.3.2 Patrón monolito modular con plug-in
+### 4.3.2 Patrón monolito modular plug-in
 
-El portal sigue el patrón de **monolito modular** descrito en el capítulo 2 (§2.2.5). La estructura se divide en un núcleo fijo y módulos activables:
+El portal sigue el patrón de monolito modular descrito en el capítulo 2. La estructura se divide en un núcleo fijo y módulos activables:
 
 **Core shell** (siempre activo): autenticación, navegación (`layout.tsx`), configuración del sistema (`system_config` + `config.ts`), auditoría (`audit.ts`) y middleware de protección de rutas (`proxy.ts`).
 
 **Módulos plug-in**: cada módulo reside en su propia carpeta bajo `src/app/(dashboard)/` y puede ser habilitado o deshabilitado por entidad sin modificar el código base. La activación se gestiona en la tabla `entity_modules` y se consulta en el layout mediante `getAllResourceConfigs()`. Los módulos del MVP son: `parking`, `oficinas`, `vacaciones`, `tablon`, `administracion`, `ajustes`, `visitantes`, `directorio`, `mis-reservas` y `panel`.
 
-La lógica que es idéntica entre módulos de la misma familia se extrae a funciones parametrizadas. El caso más representativo es la cesión: `src/lib/actions/cession-actions.ts` que recibe el tipo de recurso (`"parking"` | `"office"`) y devuelve las actions `createCession` y `cancelCession` configuradas para ese recurso. Los módulos `parking/cesiones/` y `oficinas/cesiones/` importan esta factory y reexportan las actions correspondientes. Este es el mecanismo de composición sobre herencia que se aplica de forma sistemática en el proyecto.
+La lógica que es idéntica entre módulos de la misma familia se extrae a funciones parametrizadas. El caso más representativo es la cesión: `src/lib/actions/cession-actions.ts`, que recibe el tipo de recurso (`"parking"` | `"office"`) y devuelve las actions `createCession` y `cancelCession` configuradas para ese recurso. Los módulos `parking/cesiones/` y `oficinas/cesiones/` importan esta factory y reexportan las actions correspondientes. Este es el mecanismo de composición sobre herencia que se aplica de forma sistemática en el proyecto.
 
 ### 4.3.3 Diagrama de despliegue
 
@@ -77,9 +77,9 @@ El diagrama de despliegue refleja los nodos físicos del sistema en producción.
 
 ### 4.4.1 Clases de análisis (modelo RUP)
 
-Siguiendo la clasificación RUP, a partir de los casos de uso del §3.3 se identifican tres categorías de clases:
+Siguiendo la clasificación RUP, a partir de los casos de uso se identifican tres categorías de clases:
 
-**Clases Modelo** — Derivadas directamente del modelo del dominio (§3.2.1). Se corresponden con las entidades que persisten en la base de datos: `Empleado`, `Entidad`, `Plaza`, `Reserva`, `Cesión`, `SolicitudAusencia`, `Anuncio`, `CalendarioFestivos`, `ReglaAutoCesión` y `ReservaVisitante`.
+**Clases Modelo** — Derivadas directamente del modelo del dominio. Se corresponden con las entidades que persisten en la base de datos: `Empleado`, `Entidad`, `Plaza`, `Reserva`, `Cesión`, `SolicitudAusencia`, `Anuncio`, `CalendarioFestivos`, `ReglaAutoCesión` y `ReservaVisitante`.
 
 **Clases Vista** — Una clase vista por actor primario que representa la ventana principal de interacción:
 
@@ -92,7 +92,7 @@ Siguiendo la clasificación RUP, a partir de los casos de uso del §3.3 se ident
 
 Además, existe una clase vista primitiva por cada clase de modelo: `PlazaView`, `ReservaView`, `CesiónView`, `SolicitudAusenciaView`, `AnuncioView`.
 
-**Clases Controlador** — RUP prescribe una clase controladora por caso de uso. Siguiendo esta convención, cada CdU Must del §3.3.3 tiene su controladora homónima: `ReservarPlazaController`, `CederPlazaController`, `AprobarSolicitudAusenciaController`, etc. — en total 17 controladoras (la autenticación se delega a Auth.js y no genera controladora propia). En el paso al diseño real, estas clases no se implementan como tal: §4.4.2 describe cómo colapsan en Server Actions agrupadas por módulo.
+**Clases Controlador** — RUP prescribe una clase controladora por caso de uso. Siguiendo esta convención, cada CdU Must tiene su controladora homónima: `ReservarPlazaController`, `CederPlazaController`, `AprobarSolicitudAusenciaController`, etc. en total 17 controladoras (la autenticación se delega a Auth.js y no genera controladora propia). En el paso al diseño real, estas clases no se implementan como tal: se describe cómo colapsan en Server Actions agrupadas por módulo.
 
 ### 4.4.2 Colapso al diseño real
 
@@ -117,7 +117,7 @@ La librería de UI es [shadcn/ui](https://ui.shadcn.com/), que proporciona compo
 
 Las clases Controlador del análisis se realizan como Server Actions. En lugar de un archivo por CdU, las actions se agrupan por módulo (p. ej. `parking/actions.ts` reúne las actions de reserva de parking; `vacaciones/actions.ts` las de ausencias), con la excepción de las cessions, que se extraen a `src/lib/actions/` porque son compartidas entre parking y oficinas mediante la factory `buildCessionActions`. Esta agrupación reduce la proliferación de archivos sin romper la cohesión.
 
-El constructor `actionClient` cumple el papel que en el modelo de análisis ejercía la clase controladora: recibe el input, lo valida con Zod, obtiene el contexto de autenticación, ejecuta la lógica y devuelve `ActionResult<T>`. La guarda de rol —equivalente a la comprobación de precondición del CdU— se realiza dentro del handler de cada action invocando las funciones de `src/lib/auth/helpers.ts` o lanzando un error si el rol es insuficiente.
+El constructor `actionClient` cumple el papel que en el modelo de análisis ejercía la clase controladora: recibe el input, lo valida con Zod, obtiene el contexto de autenticación, ejecuta la lógica y devuelve `ActionResult<T>`. La guarda de rol (equivalente a la comprobación de precondición del CdU) se realiza dentro del handler de cada action invocando las funciones de `src/lib/auth/helpers.ts` o lanzando un error si el rol es insuficiente.
 
 ### 4.4.3 Diagrama de clases de diseño
 
@@ -126,7 +126,7 @@ El diagrama siguiente muestra las clases de diseño principales con sus atributo
 ![Diagrama de clases de diseño](../../modelosUML/svg/clasesDiseño.svg)
 <sub>[Código fuente](../../modelosUML/puml/clasesDiseño.puml)</sub>
 
-### 4.4.4 Patrones aplicados
+### 4.4.4 Patrones declarados
 
 **Factory parametrizada por tipo de recurso.** El patrón más característico del diseño es `buildCessionActions(cfg)`. Parking y oficinas comparten exactamente la misma lógica de cesión salvo el tipo de recurso, las rutas de revalidación y los mensajes de error. En lugar de duplicar el código o crear una jerarquía de herencia, se parametriza la función con un objeto de configuración `CessionConfig`. Este mismo patrón se aplica en `src/lib/actions/calendar-actions.ts` para las acciones de calendario compartidas.
 
@@ -221,15 +221,15 @@ El modelo prescinde de Row Level Security (RLS) de PostgreSQL. La autorización 
 
 ## 4.8 Trazabilidad requisito → diseño
 
-La tabla siguiente cierra el ciclo de trazabilidad entre los casos de uso del capítulo 3 (§3.3.3) y los artefactos de diseño e implementación concretos. Cada fila establece la cadena completa: CdU → módulo → Server Action → query → tabla.
+La tabla siguiente cierra el ciclo de trazabilidad entre los casos de uso del capítulo 3 y los artefactos de diseño e implementación concretos. Cada fila establece la cadena completa: CdU → módulo → Server Action → query → tabla.
 
 | CdU                            | Prioridad | Módulo                      | Server Action                                                     | Query / tabla principal                           |
 | ------------------------------ | --------- | --------------------------- | ----------------------------------------------------------------- | ------------------------------------------------- |
 | `autenticarse()`               | Must      | `src/lib/auth/`             | `signIn()` Auth.js                                                | `users`, `profiles`                               |
 | `reservarPlaza()`              | Must      | `parking/`                  | `createReservation`                                               | `getAvailableSpots` → `reservations`              |
 | `cancelarReservaParking()`     | Must      | `parking/`                  | `cancelReservation`                                               | `reservations` (UPDATE status)                    |
-| `cederPlaza()`                 | Must      | `parking/cesiones/`         | `createCession` (buildCessionActions)                             | `cessions` (INSERT)                               |
-| `cancelarCesion()`             | Must      | `parking/cesiones/`         | `cancelCession` (buildCessionActions)                             | `cessions` (UPDATE status)                        |
+| `cederPlaza()`                 | Must      | `parking/cesiones/`         | `createCession`                                                   | `cessions` (INSERT)                               |
+| `cancelarCesion()`             | Must      | `parking/cesiones/`         | `cancelCession`                                                   | `cessions` (UPDATE status)                        |
 | `registrarVisitante()`         | Must      | `parking/visitantes/`       | `createVisitorReservation`                                        | `visitor_reservations` + Resend API               |
 | `reservarPuesto()`             | Must      | `oficinas/`                 | `createOfficeReservation`                                         | `getAvailableOfficeSpots` → `reservations`        |
 | `cancelarReservaPuesto()`      | Must      | `oficinas/`                 | `cancelOfficeReservation`                                         | `reservations` (UPDATE status)                    |
@@ -237,8 +237,8 @@ La tabla siguiente cierra el ciclo de trazabilidad entre los casos de uso del ca
 | `cancelarSolicitudAusencia()`  | Must      | `vacaciones/`               | `cancelLeaveRequest`                                              | `leave_requests` (UPDATE status)                  |
 | `aprobarSolicitudAusencia()`   | Must      | `vacaciones/`               | `approveLeaveRequest`                                             | `leave_requests` (UPDATE status→manager_approved) |
 | `rechazarSolicitudAusencia()`  | Must      | `vacaciones/`               | `rejectLeaveRequest`                                              | `leave_requests` (UPDATE status→rejected)         |
-| `validarSolicitudAusencia()`   | Must      | `vacaciones/`               | `approveLeaveRequest` (rol hr)                                    | `leave_requests` (UPDATE status→hr_approved)      |
-| `rechazarValidacionAusencia()` | Must      | `vacaciones/`               | `rejectLeaveRequest` (rol hr)                                     | `leave_requests` (UPDATE status→rejected)         |
+| `validarSolicitudAusencia()`   | Must      | `vacaciones/`               | `approveLeaveRequest`                                             | `leave_requests` (UPDATE status→hr_approved)      |
+| `rechazarValidacionAusencia()` | Must      | `vacaciones/`               | `rejectLeaveRequest`                                              | `leave_requests` (UPDATE status→rejected)         |
 | `editarPerfil()`               | Must      | `ajustes/`                  | `updateProfile`                                                   | `profiles` (UPDATE)                               |
 | `gestionarPlazas()`            | Must      | `administracion/`           | `createSpot`, `updateSpot`, `deleteSpot`                          | `spots`                                           |
 | `gestionarUsuarios()`          | Must      | `administracion/`           | `updateUserRole`, `assignSpotToUser`, `deleteUser`                | `profiles`, `spots`                               |

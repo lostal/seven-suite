@@ -30,7 +30,7 @@ requieren estacionamiento. Hoy en día, la coordinación se realiza por medio de
 solución no es la mejor porque carece de un registro formal y escapa al control de la
 organización.
 
-Se propuso un sistema unificado para gestionar los espacios en la sede. Este sistema
+En la sesión inicial con el director de IT se propuso un sistema unificado para gestionar los espacios en la sede. Este sistema
 debía ofrecer:
 
 - Visibilidad de los espacios disponibles en cada sede
@@ -55,7 +55,7 @@ arquitectura propuesta.
 
 El teletrabajo en España ha evolucionado desde la pandemia de 2020 hacia una
 estabilización en un nuevo equilibrio híbrido. Según el Instituto Nacional de Estadística, el
-15,4% de los ocupados teletrabajó durante 2024: el 7,8% de forma habitual y el 7,6%
+**15,4% de los ocupados teletrabajó durante 2024**: el 7,8% de forma habitual y el 7,6%
 ocasionalmente, sumando aproximadamente 3,32 millones de personas (INE, 2025). El ONTSI
 sitúa a España 1,9 puntos (en porcentaje) por debajo de la media europea en teletrabajo habitual,
 y proyecta en su informe Teletrabajo 2025 que esta cifra continuará creciendo de forma
@@ -112,13 +112,13 @@ sus documentos; quedando las demás secciones totalmente vacías o sin actualiza
 una experiencia de usuario poco intuitiva para perfiles no administrativos, secciones confusas y
 no tener ningún mecanismo para la gestión de espacios físicos (Wolters Kluwer, 2024).
 
-| Solución    | Precio/mes | M365 Graph/Teams | Multi-sede | Nóminas        | API Custom/Modular |
+| Solución    | Precio/mes | M365 Graph/Teams | Multi-sede | Nóminas API    | Custom/Modular     |
 | ----------- | ---------- | ---------------- | ---------- | -------------- | ------------------ |
 | Personio    | Consulta\* | Teams/Slack      | Sí         | Sí (a3innuva)  | Alta               |
 | Factorial   | 5,50 €/usu | Outlook          | Sí         | Automatización | Alta               |
 | a3innuva    | Consulta\* | No               | Parcial    | Sí             | Baja               |
 | SAP/Workday | Muy alto   | Parcial          | Sí         | No             | Media              |
-| GRUPOSIETE  | 0 €        | Graph+Bot        | Sí         | Sí (futuro)    | Total              |
+| GRUPOSIETE  | Sin licencia | Graph+Bot      | Sí         | Sí (futuro)    | Total              |
 
 _Tabla 1. Comparativa de soluciones ESS/RRHH. \* Precio no público, requiere contacto comercial. Fuente: elaboración propia con datos de mercado consultados en marzo de 2026._
 
@@ -144,11 +144,11 @@ sin posibilidad de extensión a otros módulos ESS (KALENA, 2026).
 | Deskbird   | 2,50 €/usu/mes | Teams  | No      | Sí      | Sí         |
 | Parkalot   | 49 $/50 usu    | Básico | Sí      | No      | Sí         |
 | KALENA     | 60 €/mes       | No     | Sí      | Sí      | Sí         |
-| GRUPOSIETE | 0 €            | Graph  | Sí      | Sí      | Sí         |
+| GRUPOSIETE | Sin licencia   | Graph  | Sí      | Sí      | Sí         |
 
 _Tabla 2. Comparativa de soluciones de gestión de espacios. \* Precio no público, requiere contacto comercial. Fuente: Precios consultados en webs oficiales en marzo de 2026._
 
-Análisis: ninguna solución del mercado combina en un único producto la gestión de
+**Análisis:** ninguna solución del mercado combina en un único producto la gestión de
 parking y oficinas con integración nativa en Microsoft 365 Graph y capacidad de extensión hacia
 un portal del empleado completo. Las herramientas más cercanas al caso de uso (Skedda,
 KALENA) funcionan de forma aislada y requieren herramientas adicionales para cubrir el resto
@@ -238,7 +238,7 @@ Microsoft 365, se presenta como la única alternativa que responde simultáneame
 de GRUPOSIETE: cobertura funcional completa para el MVP, integración real con M365,
 arquitectura extensible a módulos futuros y coste operativo cero en licencias.
 
-Hipótesis: la implementación de un portal del empleado modular basado en Next.js,
+**Hipótesis**: la implementación de un portal del empleado modular basado en Next.js,
 PostgreSQL y Microsoft 365 Graph resolverá la fragmentación entre sedes de GRUPOSIETE,
 optimizando el uso de espacios corporativos sin inversiones adicionales en licencias de software
 o cambios de sede, y proporcionando diversos módulos de panel del empleado y una base
@@ -298,7 +298,7 @@ mismo autor, con supervisión iterativa semanal por parte de la tutora académic
 4. **Cuarta iteración - Evaluación y conclusiones (Capítulo 6):** se evalúa la solución
    mediante métricas de cobertura de tests, rendimiento (Core Web Vitals) y usabilidad (SUS), se
    verifica la trazabilidad entre requisitos y entrega, y se propone un roadmap de evolución que
-   contemple módulos adicionales como la integración con Personio para nóminas y la gestión
+   contemple módulos adicionales como integración con Personio para nóminas y gestión
    avanzada de documentación laboral.
 
 Las herramientas de soporte empleadas a lo largo del proyecto son: GitHub para control
