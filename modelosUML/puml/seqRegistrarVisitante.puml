@@ -9,71 +9,50 @@ skinparam backgroundColor #FFFFFF
 
 title Secuencia: registrarVisitante()
 
-actor "Empleado\n(navegador)" as U
-participant "RSC Page\n/parking/visitantes" as Page
-participant "VisitorForm\n(Client Component)" as CC
+actor "Empleado" as U
+participant "Página RSC\n/parking/visitantes" as Page
+participant "Formulario de visita\n(componente cliente)" as CC
 participant "createVisitorReservation()\nServer Action" as SA
-participant "getCurrentUser()\nauth/helpers" as Auth
-participant "getResourceConfig()\nconfig.ts" as Cfg
-participant "Drizzle ORM\n(db)" as DB
-participant "sendVisitorEmail()\nlib/email" as Email
-participant "Resend API" as Resend
-database "PostgreSQL" as PG
+participant "Auth + Config\n(helpers / config.ts)" as AuthCfg
+participant "Base de datos\n(Drizzle + PostgreSQL)" as DB
+participant "Resend\n(API de email)" as Email
 
-U -> Page : GET /parking/visitantes
-Page -> DB : getUpcomingVisitorReservations(userId, entityId)
-DB -> PG : SELECT visitor_reservations
-PG --> DB : VisitorReservationWithDetails[]
-Page --> U : lista de visitas próximas + botón "Nueva visita"
+U -> Page : accede a /parking/visitantes
+Page -> DB : consulta visitas próximas del empleado
+DB --> Page : ReservaVisitante[]
+Page --> U : lista de visitas + botón "Nueva visita"
 
 U -> CC : pulsa "Nueva visita"
-CC -> SA : getAvailableVisitorSpotsAction(date)
-SA -> DB : SELECT spots WHERE type = 'visitor' AND NOT reserved
-DB -> PG : query
-PG --> DB : spots disponibles
-SA --> CC : [{ id, label }]
+CC -> DB : consulta plazas de visitante disponibles (fecha)
+DB --> CC : [{ id, etiqueta }]
 CC --> U : muestra formulario con plazas disponibles
 
-U -> CC : rellena datos del visitante (nombre, empresa, email, fecha, plaza)
+U -> CC : rellena datos (nombre, empresa, email, fecha, plaza)
 U -> CC : confirma
 
-CC -> SA : createVisitorReservation({ spot_id, date, visitor_name, visitor_company, visitor_email })
-SA -> Auth : getCurrentUser()
-Auth --> SA : AuthUser
+CC -> SA : createVisitorReservation({ spotId, fecha, nombreVisitante, ... })
+SA -> AuthCfg : obtiene usuario autenticado + config del módulo
+AuthCfg --> SA : AuthUser · ResourceConfig
 
-SA -> Cfg : getResourceConfig("parking", "visitor_booking_enabled", entityId)
-Cfg --> SA : true
-
-SA -> DB : SELECT spots WHERE id = spot_id
-DB -> PG : query
-PG --> DB : { label, type: 'visitor', resourceType: 'parking' }
-
-SA -> DB : INSERT INTO visitor_reservations (spotId, reservedBy, date, visitorName, ...)
-DB -> PG : INSERT
-
-alt unique constraint violation (plaza ya reservada ese día)
-  PG --> DB : UniqueViolationError
-  SA --> CC : ActionError("Esta plaza ya tiene reserva de visitante para este día")
+SA -> DB : INSERT INTO visitor_reservations
+alt plaza ya reservada ese día
+  DB --> SA : violación de índice único
+  SA --> CC : Error — plaza ya tiene reserva de visitante ese día
 else inserción exitosa
-  PG --> DB : { id }
-  DB --> SA : reservationId
-
-  SA -> Email : sendVisitorReservationEmail(visitorEmail, visitorName, date, spotLabel, ...)
-  Email -> Resend : POST /emails
-  Resend --> Email : { id }
+  DB --> SA : { id }
+  SA -> Email : envía email al visitante (fecha, plaza, .ics adjunto)
   Email --> SA : enviado
-
-  SA -> DB : UPDATE visitor_reservations SET notification_sent = true WHERE id = reservationId
-  DB -> PG : UPDATE
+  SA -> DB : UPDATE notification_sent = true
   SA -> SA : revalidatePath("/parking/visitantes")
-  SA --> CC : ActionSuccess({ id: reservationId })
+  SA --> CC : OK — { id: reservaId }
 end
 
-CC --> U : confirmación con datos de la visita / mensaje de error
+CC --> U : confirmación con datos de la visita o error
 
-note right of Resend
-  El visitante recibe email con
-  fecha, plaza y .ics adjunto.
+note right of Email
+  El visitante recibe el email
+  con la fecha, la plaza y un
+  archivo .ics adjunto.
   No tiene acceso al portal.
 end note
 

@@ -22,37 +22,15 @@ skinparam rectangle {
 
 title Capas lógicas del sistema
 
-rectangle "**Capa de Presentación**\n//RSC pages · Client Components · shadcn/ui//" <<presentacion>> as P {
-  rectangle "Server Components (layouts, pages)" as P1 <<presentacion>>
-  rectangle "Client Components (calendarios, formularios, hooks)" as P2 <<presentacion>>
-}
+rectangle "**Presentación**\nPáginas servidor (RSC) · Componentes cliente · shadcn/ui" <<presentacion>> as P
+rectangle "**Aplicación**\nServer Actions · Validación Zod · Guardas de rol · Caché de config" <<aplicacion>> as A
+rectangle "**Dominio**\nQueries Drizzle · Validación de reservas · Utilidades de calendario" <<dominio>> as D
+rectangle "**Persistencia**\nDrizzle ORM · schema.ts (fuente única de verdad) · PostgreSQL 16" <<persistencia>> as DB
+rectangle "**Servicios externos**\nMicrosoft Entra ID (SSO) · Microsoft Graph · Resend (email)" <<externo>> as EXT
 
-rectangle "**Capa de Aplicación**\n//Server Actions · Zod · Auth guards//" <<aplicacion>> as A {
-  rectangle "actionClient + validaciones Zod" as A1 <<aplicacion>>
-  rectangle "Guardas de rol (auth/helpers.ts, auth/authorize.ts)" as A2 <<aplicacion>>
-  rectangle "Caché de configuración (config.ts)" as A3 <<aplicacion>>
-}
-
-rectangle "**Capa de Dominio / Negocio**\n//Queries · Calendar utils · Booking validation//" <<dominio>> as D {
-  rectangle "Queries Drizzle (lib/queries/*)" as D1 <<dominio>>
-  rectangle "Lógica de negocio (booking-validation, calendar-utils, audit)" as D2 <<dominio>>
-}
-
-rectangle "**Capa de Persistencia**\n//Drizzle ORM · PostgreSQL 16//" <<persistencia>> as DB {
-  rectangle "Drizzle ORM — schema.ts como fuente única de verdad" as DB1 <<persistencia>>
-  rectangle "PostgreSQL 16 (Docker Compose)" as DB2 <<persistencia>>
-}
-
-rectangle "**Servicios externos**\n//Microsoft 365 · Resend//" <<externo>> as EXT {
-  rectangle "Microsoft Entra ID (OAuth 2.0/OIDC)" as EXT1 <<externo>>
-  rectangle "Microsoft Graph API (OOO, Teams, Outlook)" as EXT2 <<externo>>
-  rectangle "Resend (email visitantes)" as EXT3 <<externo>>
-}
-
-P  -down-> A  : llamadas a Server Actions
-A  -down-> D  : invocación de queries
-D  -down-> DB : Drizzle query builder
-A  -right-> EXT : OAuth, Graph, email
-P  -right-> EXT : SSO redirect
+P  -down-> A   : llama a Server Actions
+A  -down-> D   : invoca queries
+D  -down-> DB  : consultas Drizzle
+A  -right-> EXT : OAuth · Graph API · email
 
 @enduml

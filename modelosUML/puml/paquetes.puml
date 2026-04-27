@@ -20,127 +20,45 @@ skinparam package {
 
 title Diagrama de paquetes
 
-package "src/app/(auth)/" <<core>> as Auth {
-  [login page]
-}
+package "src/app/(auth)/" <<core>> as Auth
 
 package "src/app/(dashboard)/" <<core>> as Dashboard {
-  package "parking/" <<modulo>> as PKG_P {
-    [page.tsx]
-    [actions.ts]
-    [cesiones/]
-    [visitantes/]
-    [mapa/]
-    [reservas/]
-  }
-  package "oficinas/" <<modulo>> as PKG_O {
-    [page.tsx]
-    [actions.ts]
-    [cesiones/]
-  }
-  package "vacaciones/" <<modulo>> as PKG_V {
-    [page.tsx]
-    [actions.ts]
-    [gestionar/]
-  }
-  package "tablon/" <<modulo>> as PKG_T {
-    [page.tsx]
-    [actions.ts]
-  }
-  package "administracion/" <<modulo>> as PKG_A {
-    [actions.ts]
-    [entidades/]
-  }
-  package "ajustes/" <<modulo>> as PKG_AJ {
-    [page.tsx]
-    [actions.ts]
-  }
-  package "panel/" <<modulo>> as PKG_PAN {
-    [page.tsx]
-  }
+  package "parking/" <<modulo>> as PKG_P
+  package "oficinas/" <<modulo>> as PKG_O
+  package "vacaciones/" <<modulo>> as PKG_V
+  package "tablon/" <<modulo>> as PKG_T
+  package "administracion/" <<modulo>> as PKG_A
+  package "ajustes/" <<modulo>> as PKG_AJ
+  package "panel/" <<modulo>> as PKG_PAN
 }
 
 package "src/lib/" <<lib>> as Lib {
-  package "db/" <<lib>> as DB {
-    [schema.ts]
-    [index.ts]
-    [types.ts]
-    [helpers.ts]
-    [migrations/]
-  }
-  package "auth/" <<lib>> as LIB_AUTH {
-    [config.ts]
-    [helpers.ts]
-    [sign-in.ts]
-    [sign-up.ts]
-    [sign-out.ts]
-  }
-  package "queries/" <<lib>> as Queries {
-    [reservations.ts]
-    [spots.ts]
-    [cessions.ts]
-    [offices.ts]
-    [preferences.ts]
-    [leave-requests.ts]
-    [announcements.ts]
-    [stats.ts]
-  }
-  package "actions/" <<lib>> as SharedActions {
-    [cession-actions.ts]
-    [calendar-actions.ts]
-  }
-  package "calendar/" <<lib>> as Calendar {
-    [calendar-utils.ts]
-    [resource-types.ts]
-  }
-  [actions.ts] as AC
-  [validations.ts] as Val
-  [config.ts] as Cfg
-  [booking-validation.ts] as BV
-  [audit.ts] as Audit
-  [env.ts] as Env
+  package "db/" <<lib>> as DB
+  package "auth/" <<lib>> as LIB_AUTH
+  package "queries/" <<lib>> as Queries
+  package "actions/" <<lib>> as SharedActions
+  package "calendar/" <<lib>> as Calendar
 }
 
-package "src/components/" <<shared>> as Components {
-  [booking/]
-  [ui/ (shadcn)]
-  [layout/]
-  [data-table/]
-}
+package "src/components/" <<shared>> as Components
+package "src/types/" <<shared>> as Types
 
-package "src/types/" <<shared>> as Types {
-  [index.ts]
-}
+' ── Dependencias ─────────────────────────────────────────────
+Dashboard  ..> Lib        : importa lógica compartida
+Dashboard  ..> Components : importa componentes UI
+Dashboard  ..> Types      : tipos de la aplicación
 
-' ── Dependencias entre paquetes ───────────────────────────────
+PKG_P  ..> SharedActions  : buildCessionActions("parking")
+PKG_O  ..> SharedActions  : buildCessionActions("office")
 
-PKG_P  ..> AC       : usa actionClient
-PKG_O  ..> AC       : usa actionClient
-PKG_V  ..> AC       : usa actionClient
-PKG_T  ..> AC       : usa actionClient
-PKG_A  ..> AC       : usa actionClient
-PKG_AJ ..> AC       : usa actionClient
-
-PKG_P  ..> SharedActions : buildCessionActions("parking")
-PKG_O  ..> SharedActions : buildCessionActions("office")
-
-AC       ..> Val    : valida input
-AC       ..> LIB_AUTH : getCurrentUser
-AC       ..> Queries : consulta
-AC       ..> Cfg    : getAllResourceConfigs
-AC       ..> Audit  : registra
-
-Queries  ..> DB     : Drizzle query builder
-SharedActions ..> AC
 SharedActions ..> Queries
-
-Dashboard ..> Components : importa UI
-PKG_PAN  ..> Queries  : stats directas
+SharedActions ..> LIB_AUTH
+Queries       ..> DB
+Lib           ..> Types
 
 note bottom of DB
-  schema.ts es la fuente única
-  de verdad: los tipos de la app
-  se infieren de él, sin codegen.
+  schema.ts es la fuente única de verdad.
+  Los tipos de la app se infieren de él.
 end note
 
 @enduml

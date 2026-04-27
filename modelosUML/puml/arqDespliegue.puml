@@ -25,42 +25,39 @@ skinparam cloud {
 title Diagrama de despliegue
 
 node "Navegador del usuario" as Browser {
-  artifact "Next.js hydration\n(Client Components)" as Client
+  artifact "Aplicación cliente\n(Next.js hydration)" as Client
 }
 
 node "Servidor VPS (Ubuntu)" as VPS {
-  node "Docker network" as Docker {
+  node "Red Docker interna" as Docker {
     node "Contenedor Next.js\n(Node.js 20, puerto 3000)" as NextJS {
-      artifact "App Router RSC" as RSC
-      artifact "Server Actions" as SA
-      artifact "API routes\n(/api/auth, /api/...)" as API
+      artifact "Páginas RSC + Server Actions" as RSC
+      artifact "Rutas API\n(/api/auth, webhooks)" as API
     }
-    database "Contenedor PostgreSQL 16\n(puerto 5432)" as PG {
-      artifact "schema.ts → tablas" as Schema
-    }
+    database "Contenedor PostgreSQL 16\n(sin exposición exterior)" as PG
   }
-  artifact "GitHub Actions CI/CD\n(.github/workflows/)" as CICD
+  artifact "CI/CD (GitHub Actions)" as CICD
 }
 
-cloud "Microsoft 365\n(cloud externa)" as M365 {
-  node "Microsoft Entra ID\n(OAuth 2.0/OIDC)" as EntraID
-  node "Microsoft Graph API\n(Calendar, Teams)" as Graph
+cloud "Microsoft 365" as M365 {
+  node "Entra ID\n(OAuth 2.0/OIDC)" as EntraID
+  node "Graph API\n(calendario, Teams)" as Graph
 }
 
-cloud "Resend\n(cloud externa)" as ResendCloud {
-  node "Email API" as Resend
+cloud "Resend" as ResendCloud {
+  node "API de email" as Resend
 }
 
-Browser -down-> NextJS : HTTPS (puerto 443)\nnginx / reverse proxy
-NextJS  -down-> PG     : TCP 5432\nDrizzle ORM
-NextJS  -right-> EntraID : OAuth 2.0/OIDC\nsesión JWT
-NextJS  -right-> Graph   : Bearer token\nOOO · Teams · Outlook
-NextJS  -right-> Resend  : API key\nemail visitantes
-CICD    -up-> NextJS     : docker pull / restart
+Browser -down-> NextJS  : HTTPS / nginx (puerto 443)
+NextJS  -down-> PG      : Drizzle ORM (red interna)
+NextJS  -right-> EntraID : SSO (OAuth 2.0/OIDC)
+NextJS  -right-> Graph   : Bearer token
+NextJS  -right-> Resend  : API key (email visitantes)
+CICD   -up-> NextJS      : despliegue continuo
 
 note right of Docker
   Ambos contenedores comparten
-  la misma red Docker interna.
+  la red interna Docker.
   PostgreSQL no está expuesto
   al exterior.
 end note

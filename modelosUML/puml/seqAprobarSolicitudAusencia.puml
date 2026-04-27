@@ -9,52 +9,47 @@ skinparam backgroundColor #FFFFFF
 
 title Secuencia: aprobarSolicitudAusencia()
 
-actor "Manager / RRHH\n(navegador)" as U
-participant "RSC Page\n/vacaciones/gestionar" as Page
-participant "LeaveRequestTable\n(Client Component)" as CC
+actor "Manager / RRHH" as U
+participant "Página RSC\n/vacaciones/gestionar" as Page
+participant "Tabla de solicitudes\n(componente cliente)" as CC
 participant "approveLeaveRequest()\nServer Action" as SA
-participant "getCurrentUser()\nauth/helpers" as Auth
-participant "Drizzle ORM\n(db)" as DB
-database "PostgreSQL" as PG
+participant "Auth\n(helpers.ts)" as Auth
+participant "Base de datos\n(Drizzle + PostgreSQL)" as DB
 
-U -> Page : GET /vacaciones/gestionar
-Page -> DB : getLeaveRequestsForManager(managerId)
-DB -> PG : SELECT leave_requests WHERE manager_id = managerId
-PG --> DB : LeaveRequestRow[]
+U -> Page : accede a /vacaciones/gestionar
+Page -> DB : consulta solicitudes del manager/RRHH
+DB --> Page : SolicitudAusencia[]
 Page --> U : tabla de solicitudes pendientes
 
 U -> CC : selecciona solicitud y pulsa "Aprobar"
-CC -> U : muestra panel de detalle con campo de notas (opcional)
+CC --> U : panel de detalle con campo de notas (opcional)
 U -> CC : introduce notas y confirma
 
-CC -> SA : approveLeaveRequest({ id, notes })
+CC -> SA : approveLeaveRequest({ id, notas })
 SA -> Auth : getCurrentUser()
-Auth --> SA : AuthUser { id, profile: { role } }
+Auth --> SA : AuthUser { id, perfil: { rol } }
 
-alt role no es manager | hr | admin
-  SA --> CC : ActionError("Sin permisos")
+alt rol sin permisos (empleado)
+  SA --> CC : Error — sin permisos
 else
-  SA -> DB : SELECT status FROM leave_requests WHERE id = id
-  DB -> PG : query
-  PG --> DB : { status }
+  SA -> DB : consulta estado actual de la solicitud
+  DB --> SA : { estado }
 
-  alt role = manager AND status = 'pending'
-    SA -> DB : UPDATE leave_requests SET status = 'manager_approved',\n  manager_id = user.id, manager_notes = notes
-    DB -> PG : UPDATE
-    PG --> DB : OK
+  alt manager Y estado = pendiente
+    SA -> DB : UPDATE estado → aprobada_manager
+    DB --> SA : OK
     SA -> SA : revalidatePath("/vacaciones/gestionar")
-    SA --> CC : ActionSuccess({ approved: true, newStatus: 'manager_approved' })
-  else role = hr|admin AND status = 'manager_approved' (o admin en cualquier estado)
-    SA -> DB : UPDATE leave_requests SET status = 'hr_approved',\n  hr_id = user.id, hr_notes = notes
-    DB -> PG : UPDATE
-    PG --> DB : OK
+    SA --> CC : OK — { nuevoEstado: aprobada_manager }
+  else RRHH/admin Y estado = aprobada_manager
+    SA -> DB : UPDATE estado → aprobada_rrhh
+    DB --> SA : OK
     SA -> SA : revalidatePath("/vacaciones/gestionar")
-    SA --> CC : ActionSuccess({ approved: true, newStatus: 'hr_approved' })
+    SA --> CC : OK — { nuevoEstado: aprobada_rrhh }
   else transición inválida
-    SA --> CC : ActionError("No puedes aprobar en estado actual con tu rol")
+    SA --> CC : Error — no puedes aprobar en el estado actual
   end
 end
 
-CC --> U : actualiza estado en tabla / mensaje de error
+CC --> U : actualiza estado en tabla o muestra error
 
 @enduml

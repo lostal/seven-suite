@@ -4,66 +4,45 @@ skinparam defaultFontName Arial
 skinparam defaultFontSize 11
 skinparam sequenceArrowThickness 1.2
 skinparam sequenceArrowColor #444444
-skinparam sequenceBoxBorderColor #2d6a9f
 skinparam participantBorderThickness 1.5
 skinparam backgroundColor #FFFFFF
 
 title Secuencia: reservarPlaza()
 
-actor "Empleado\n(navegador)" as U
-participant "RSC Page\n/parking" as Page
-participant "ResourceCalendar\n(Client Component)" as CC
+actor "Empleado" as U
+participant "Página RSC\n/parking" as Page
+participant "Calendario\n(componente cliente)" as CC
 participant "createReservation()\nServer Action" as SA
-participant "getCurrentUser()\nauth/helpers" as Auth
-participant "getAllResourceConfigs()\nconfig.ts" as Cfg
-participant "Drizzle ORM\n(db)" as DB
-database "PostgreSQL" as PG
+participant "Auth + Config\n(helpers / config.ts)" as AuthCfg
+participant "Base de datos\n(Drizzle + PostgreSQL)" as DB
 
-U -> Page : GET /parking
-Page -> DB : getAvailableSpots(date, entityId)
-DB -> PG : SELECT spots, reservations, cessions
-PG --> DB : rows
-DB --> Page : SpotWithStatus[]
-Page --> U : renders calendar + spot list
+U -> Page : accede a /parking
+Page -> DB : consulta plazas disponibles (fecha, entidad)
+DB --> Page : PlazaConEstado[]
+Page --> U : muestra calendario con plazas
 
-U -> CC : selecciona fecha y plaza disponible
-CC -> U : muestra diálogo de confirmación
-U -> CC : confirma reserva
+U -> CC : selecciona fecha y plaza
+CC --> U : diálogo de confirmación
+U -> CC : confirma
 
-CC -> SA : createReservation({ spot_id, date })
-SA -> Auth : getCurrentUser()
-Auth --> SA : AuthUser { id, profile }
+CC -> SA : createReservation({ spotId, fecha })
+SA -> AuthCfg : obtiene usuario autenticado + config del módulo
+AuthCfg --> SA : AuthUser · ResourceConfig
 
-SA -> Cfg : getAllResourceConfigs("parking", entityId)
-Cfg --> SA : ResourceConfig { booking_enabled, max_advance_days, ... }
-
-alt booking_enabled = false
-  SA --> CC : ActionError("Las reservas están deshabilitadas")
-else booking_enabled = true
-  SA -> SA : validateBookingDate(date, config)
-  SA -> DB : SELECT FROM spots WHERE id = spot_id
-  DB -> PG : query
-  PG --> DB : Spot row
-  DB --> SA : { id, resourceType, entityId }
-
-  SA -> DB : SELECT FROM reservations WHERE userId = user.id AND date = date
-  DB -> PG : query
-  PG --> DB : []
-
-  SA -> DB : INSERT INTO reservations (spotId, userId, date)
-  DB -> PG : INSERT
-  alt constraint violation (spot o usuario ya reservado)
-    PG --> DB : UniqueViolationError
-    DB --> SA : error
-    SA --> CC : ActionError("Esta plaza ya está reservada")
-  else inserción exitosa
-    PG --> DB : { id }
-    DB --> SA : { id }
+alt módulo deshabilitado o fecha fuera del plazo
+  SA --> CC : Error — operación no permitida
+else todo válido
+  SA -> DB : INSERT INTO reservations (spotId, userId, fecha)
+  alt plaza o usuario ya reservados ese día
+    DB --> SA : violación de índice único parcial
+    SA --> CC : Error — plaza ya reservada para esa fecha
+  else
+    DB --> SA : reserva creada { id }
     SA -> SA : revalidatePath("/parking")
-    SA --> CC : ActionSuccess({ id })
+    SA --> CC : OK — reserva confirmada
   end
 end
 
-CC --> U : confirmación / mensaje de error
+CC --> U : confirmación o mensaje de error
 
 @enduml

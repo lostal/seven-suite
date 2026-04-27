@@ -4,195 +4,97 @@ hide circle
 hide empty members
 
 skinparam defaultFontName Arial
-skinparam defaultFontSize 11
-skinparam classAttributeIconSize 0
+skinparam defaultFontSize 10
 skinparam classBorderThickness 1.5
 skinparam arrowThickness 1.2
 skinparam arrowColor #444444
+skinparam backgroundColor #FFFFFF
 
 skinparam class {
-  BackgroundColor<<modelo>>      #d5ecd4
-  BorderColor<<modelo>>          #2e7d32
-  BackgroundColor<<accion>>      #dce8f5
-  BorderColor<<accion>>          #2d6a9f
-  BackgroundColor<<query>>       #fde8cc
-  BorderColor<<query>>           #c45e0a
-  BackgroundColor<<util>>        #f5f0d5
-  BorderColor<<util>>            #9c8c10
+  BackgroundColor<<modelo>>  #d5ecd4
+  BorderColor<<modelo>>      #2e7d32
+  BackgroundColor<<accion>>  #dce8f5
+  BorderColor<<accion>>      #2d6a9f
 }
 
 title Clases de diseño principales
 
-' ── Capa de modelo (schema Drizzle) ──────────────────────────
+package "Modelo  —  src/lib/db/schema.ts" {
 
-class "profiles" as Profile <<modelo>> {
-  id: UUID PK
-  email: text
-  fullName: text
-  role: user_role
-  entityId: UUID FK
-  managerId: UUID FK
+  class "profiles" <<modelo>> {
+    role: admin | manager | hr | employee
+    entityId · managerId
+  }
+
+  class "entities" <<modelo>> {
+    name · shortCode · isActive
+  }
+
+  class "spots" <<modelo>> {
+    label · type · resourceType
+    assignedTo (opcional)
+  }
+
+  class "reservations" <<modelo>> {
+    date · status
+    startTime · endTime (franjas opcionales)
+  }
+
+  class "cessions" <<modelo>> {
+    date
+    status: available | reserved | cancelled
+  }
+
+  class "leave_requests" <<modelo>> {
+    leaveType · startDate · endDate
+    status (flujo de aprobación multinivel)
+    managerId · hrId
+  }
+
+  class "visitor_reservations" <<modelo>> {
+    date · visitorName · visitorEmail
+    notificationSent: boolean
+  }
+
+  class "announcements" <<modelo>> {
+    title · body · entityId
+    publishedAt · expiresAt
+  }
 }
 
-class "entities" as Entity <<modelo>> {
-  id: UUID PK
-  name: text
-  shortCode: text
-  isActive: boolean
+package "Capa de acción  —  Server Actions" {
+
+  class "actionClient" <<accion>> {
+    schema(zod: ZodType<T>)
+    action(handler): ServerAction<T>
+  }
+
+  class "ActionResult<T>" <<accion>> {
+    success: true  → data: T
+    success: false → error · fieldErrors
+  }
+
+  class "buildCessionActions(cfg)" <<accion>> {
+    cfg: resourceType · noun · basePath
+    ─────────────────────────────
+    createCession(): ActionResult
+    cancelCession(): ActionResult
+  }
 }
 
-class "spots" as Spot <<modelo>> {
-  id: UUID PK
-  label: text
-  type: spot_type
-  resourceType: resource_type
-  assignedTo: UUID FK
-  entityId: UUID FK
-  isActive: boolean
-}
+' ── Relaciones del modelo ─────────────────────────────────────
+profiles             "N" --o "1" entities          : pertenece a >
+spots                "N" --o "1" entities          : pertenece a >
+spots                "0..1" --o "1" profiles       : < asignada a
+reservations         "N" --> "1" spots             : ocupa >
+reservations         "N" --> "1" profiles          : realizada por >
+cessions             "N" --> "1" spots             : cede >
+cessions             "N" --> "1" profiles          : propietario >
+leave_requests       "N" --> "1" profiles          : solicita >
+visitor_reservations "N" --> "1" spots             : ocupa >
 
-class "reservations" as Reservation <<modelo>> {
-  id: UUID PK
-  spotId: UUID FK
-  userId: UUID FK
-  date: date
-  status: reservation_status
-  startTime: time
-  endTime: time
-}
-
-class "cessions" as Cession <<modelo>> {
-  id: UUID PK
-  spotId: UUID FK
-  userId: UUID FK
-  date: date
-  status: cession_status
-}
-
-class "leave_requests" as LeaveRequest <<modelo>> {
-  id: UUID PK
-  employeeId: UUID FK
-  leaveType: leave_type
-  startDate: date
-  endDate: date
-  status: leave_status
-  managerId: UUID FK
-  hrId: UUID FK
-}
-
-class "announcements" as Announcement <<modelo>> {
-  id: UUID PK
-  title: text
-  body: text
-  entityId: UUID FK
-  publishedAt: timestamp
-  expiresAt: timestamp
-  createdBy: UUID FK
-}
-
-class "visitor_reservations" as VisitorRes <<modelo>> {
-  id: UUID PK
-  spotId: UUID FK
-  reservedBy: UUID FK
-  date: date
-  visitorName: text
-  visitorEmail: text
-  notificationSent: boolean
-}
-
-' ── Capa de acciones (Server Actions) ─────────────────────────
-
-class "actionClient" <<accion>> {
-  schema(zod: ZodType<T>)
-  action(handler): (input) => ActionResult<T>
-}
-
-class "ActionResult<T>" <<accion>> {
-  success: boolean
-  data?: T
-  error?: string
-  fieldErrors?: Record<string,string[]>
-}
-
-class "createReservation" <<accion>> {
-  schema: createReservationSchema
-  validates date, spotId
-  guards: getCurrentUser()
-  validates bookingDate
-  inserts: reservations
-}
-
-class "buildCessionActions(cfg)" <<accion>> {
-  cfg.resourceType
-  cfg.noun
-  cfg.basePath
-  createCession()
-  cancelCession()
-}
-
-class "approveLeaveRequest" <<accion>> {
-  schema: approveLeaveRequestSchema
-  guards: manager | hr | admin
-  transitions: pending→manager_approved
-               manager_approved→hr_approved
-}
-
-' ── Capa de queries ────────────────────────────────────────────
-
-class "getAvailableSpots()" <<query>> {
-  date: string
-  resourceType
-  entityId
-  returns: SpotWithStatus[]
-}
-
-class "getReservations()" <<query>> {
-  userId
-  returns: ReservationWithDetails[]
-}
-
-class "getLeaveRequests()" <<query>> {
-  managerId | hrId
-  returns: LeaveRequestRow[]
-}
-
-' ── Utilidades transversales ───────────────────────────────────
-
-class "getCurrentUser()" <<util>> {
-  reads JWT session
-  returns: AuthUser | null
-}
-
-class "getAllResourceConfigs()" <<util>> {
-  resourceType
-  entityId
-  uses unstable_cache
-  returns: ResourceConfig
-}
-
-' ── Relaciones ────────────────────────────────────────────────
-
-Profile    "N" --o "1" Entity         : pertenece a >
-Spot       "N" --o "1" Entity         : pertenece a >
-Spot       "0..1" --o "1" Profile     : < asignada a
-Reservation "N" --> "1" Spot          : ocupa >
-Reservation "N" --> "1" Profile       : realiza >
-Cession    "N" --> "1" Spot           : cede >
-Cession    "N" --> "1" Profile        : propietario >
-LeaveRequest "N" --> "1" Profile      : solicita >
-Announcement "N" --o "1" Entity       : publica >
-VisitorRes "N" --> "1" Spot           : ocupa >
-VisitorRes "N" --> "1" Profile        : gestiona >
-
-actionClient ..> ActionResult      : produce >
-createReservation ..> actionClient : usa >
-buildCessionActions ..> actionClient : usa >
-approveLeaveRequest ..> actionClient : usa >
-
-createReservation ..> getAvailableSpots : consulta previa >
-approveLeaveRequest ..> getLeaveRequests : consulta estado >
-createReservation ..> getCurrentUser : autenticación >
-approveLeaveRequest ..> getCurrentUser : autenticación >
-createReservation ..> getAllResourceConfigs : valida config >
+' ── Relaciones de acción ──────────────────────────────────────
+actionClient        ..> ActionResult      : produce >
+buildCessionActions ..> actionClient      : usa >
 
 @enduml
