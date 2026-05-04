@@ -1,5 +1,23 @@
 # 2. Marco teórico
 
+> [← Cap. 1](INTRODUCCION.md) · [Índice](../../README.md) · [Siguiente →](REQUISITOS.md)
+
+## Contenido
+
+- [2.1. Contexto GRUPOSIETE](#21-contexto-gruposiete)
+- [2.2. Estado del arte](#22-estado-del-arte)
+  - [2.2.1 El trabajo híbrido en España](#221-el-trabajo-híbrido-en-españa)
+  - [2.2.2 Portales ESS: evolución y estado actual](#222-portales-ess-evolución-y-estado-actual)
+  - [2.2.3. Soluciones ESS/RRHH en el mercado español](#223-soluciones-essrrhh-en-el-mercado-español)
+  - [2.2.4. Soluciones de gestión de espacios físicos](#224-soluciones-de-gestión-de-espacios-físicos)
+  - [2.2.5. Arquitectura modular de software](#225-arquitectura-modular-de-software)
+  - [2.2.6. Stack tecnológico: Next.js, PostgreSQL y Drizzle ORM](#226-stack-tecnológico-nextjs-postgresql-y-drizzle-orm)
+- [2.3. Justificación de la propuesta](#23-justificación-de-la-propuesta)
+- [2.4. Objetivos Generales y Específicos](#24-objetivos-generales-y-específicos)
+  - [2.4.1 Objetivo general](#241-objetivo-general)
+  - [2.4.2 Objetivos específicos](#242-objetivos-específicos)
+- [2.5. Estructura del trabajo](#25-estructura-del-trabajo)
+
 Gestionar los RRHH y los espacios en las pequeñas y medianas empresas que están
 empezando a adaptar un sistema de trabajo híbrido puede ser difícil, y más estando en medio de
 una fusión multi-empresa. Este capítulo analiza la condición actual y particular de
@@ -305,3 +323,7 @@ Las herramientas de soporte empleadas a lo largo del proyecto son: GitHub para c
 de versiones y trazabilidad de commits, el repositorio de código abierto
 https://github.com/satnaing/shadcn-admin como plantilla para el dashboard (core), Notion para la
 gestión de tareas y apuntes, PlantUML para la elaboración de diagramas UML.
+
+---
+
+[← Cap. 1](INTRODUCCION.md) · [Índice](../../README.md) · [Siguiente →](REQUISITOS.md)

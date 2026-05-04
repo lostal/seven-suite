@@ -1,5 +1,7 @@
 # 1. Introducción
 
+> [Índice](../../README.md) · [Siguiente →](MARCO_TEORICO.md)
+
 GRUPOSIETE surge tras la unión de ocho empresas dedicadas a la distribución de
 materiales de construcción. Como ocurre habitualmente tras una fusión, se han encontrado con
 varios retos: cada sede tiene procesos distintos, los equipos están repartidos por todo el país y la
@@ -25,3 +27,7 @@ varios módulos principales: gestión de parking con visitantes, reserva de pues
 incorpora un directorio de empleados, gestión de vacaciones con flujo de aprobación y un
 tablón de anuncios interno. La arquitectura modular permite incorporar en el futuro módulos
 adicionales de gestión de RRHH como nóminas y documentación laboral.
+
+---
+
+[Índice](../../README.md) · [Siguiente →](MARCO_TEORICO.md)

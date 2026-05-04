@@ -1,5 +1,22 @@
 # 3. Requisitos
 
+> [← Cap. 2](MARCO_TEORICO.md) · [Índice](../../README.md) · [Siguiente →](ANALISIS_DISENO.md)
+
+## Contenido
+
+- [3.1. Sesiones de levantamiento de información](#31-sesiones-de-levantamiento-de-información)
+- [3.2. Modelo del dominio](#32-modelo-del-dominio)
+  - [3.2.1. Diagrama de clases del dominio](#321-diagrama-de-clases-del-dominio)
+  - [3.2.2. Diagramas de estados](#322-diagramas-de-estados)
+  - [3.2.3. Glosario](#323-glosario)
+  - [3.2.4. Requisitos suplementarios](#324-requisitos-suplementarios)
+- [3.3. Disciplina de requisitos](#33-disciplina-de-requisitos)
+  - [3.3.1. Diagrama de contexto](#331-diagrama-de-contexto)
+  - [3.3.2. Actores del sistema](#332-actores-del-sistema)
+  - [3.3.3. Casos de uso](#333-casos-de-uso)
+  - [3.3.4. Detalle de casos de uso representativos](#334-detalle-de-casos-de-uso-representativos)
+  - [3.3.5. Prototipos de interfaz](#335-prototipos-de-interfaz)
+
 El objetivo de esta iteración es delimitar el alcance del sistema mediante la construcción del
 modelo del dominio y la especificación de los casos de uso del MVP. El resultado es el acuerdo
 formal entre cliente y desarrollador sobre lo que el sistema debe hacer, expresado en artefactos
@@ -262,3 +279,7 @@ de la visita (fecha y selección de plaza), con acción de registro y envío aut
 
 ![Prototipo registrarVisitante()](../../modelosUML/svg/protoRegistrarVisitante.svg)
 <sub>[Código fuente](../../modelosUML/puml/protoRegistrarVisitante.puml)</sub>
+
+---
+
+[← Cap. 2](MARCO_TEORICO.md) · [Índice](../../README.md) · [Siguiente →](ANALISIS_DISENO.md)

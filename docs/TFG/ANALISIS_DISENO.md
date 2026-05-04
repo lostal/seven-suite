@@ -1,5 +1,37 @@
 # 4. Análisis y Diseño
 
+> [← Cap. 3](REQUISITOS.md) · [Índice](../../README.md)
+
+## Contenido
+
+- [4.1 Introducción y enfoque](#41-introducción-y-enfoque)
+- [4.2 Análisis de la arquitectura](#42-análisis-de-la-arquitectura)
+  - [4.2.1 Capas lógicas del sistema](#421-capas-lógicas-del-sistema)
+  - [4.2.2 Flujo de una operación típica](#422-flujo-de-una-operación-típica)
+  - [4.2.3 Sistemas externos y su frontera](#423-sistemas-externos-y-su-frontera)
+- [4.3 Diseño de la arquitectura](#43-diseño-de-la-arquitectura)
+  - [4.3.1 Stack tecnológico](#431-stack-tecnológico)
+  - [4.3.2 Patrón monolito modular plug-in](#432-patrón-monolito-modular-plug-in)
+  - [4.3.3 Diagrama de despliegue](#433-diagrama-de-despliegue)
+- [4.4 Análisis y diseño de clases](#44-análisis-y-diseño-de-clases)
+  - [4.4.1 Clases de análisis (modelo RUP)](#441-clases-de-análisis-modelo-rup)
+  - [4.4.2 Colapso al diseño real](#442-colapso-al-diseño-real)
+  - [4.4.3 Diagrama de clases de diseño](#443-diagrama-de-clases-de-diseño)
+  - [4.4.4 Patrones declarados](#444-patrones-declarados)
+- [4.5 Diseño de casos de uso representativos](#45-diseño-de-casos-de-uso-representativos)
+  - [4.5.1 `reservarPlaza()`](#451-reservarplaza)
+  - [4.5.2 `aprobarSolicitudAusencia()`](#452-aprobarsolicitudausencia)
+  - [4.5.3 `registrarVisitante()`](#453-registrarvisitante)
+- [4.6 Diseño de paquetes](#46-diseño-de-paquetes)
+  - [4.6.1 Árbol de `src/` con responsabilidad por paquete](#461-árbol-de-src-con-responsabilidad-por-paquete)
+  - [4.6.2 Reglas de dependencia](#462-reglas-de-dependencia)
+  - [4.6.3 Diagrama de paquetes](#463-diagrama-de-paquetes)
+- [4.7 Modelo físico de datos](#47-modelo-físico-de-datos)
+  - [4.7.1 Diagrama entidad-relación del subset central](#471-diagrama-entidad-relación-del-subset-central)
+  - [4.7.2 Restricciones críticas del modelo](#472-restricciones-críticas-del-modelo)
+  - [4.7.3 Decisión de autorización en aplicación](#473-decisión-de-autorización-en-aplicación)
+- [4.8 Trazabilidad requisito → diseño](#48-trazabilidad-requisito--diseño)
+
 El objetivo de esta iteración es construir la abstracción del sistema a partir de los casos de uso formalizados en el capítulo anterior. El resultado es el conjunto de artefactos (arquitectura, clases, paquetes y modelo de datos) que sirven de puente entre el contrato con el cliente (capítulo 3) y el código ejecutable (capítulo 5). A diferencia de los documentos de diseño especulativos, el contenido de este capítulo describe la arquitectura que efectivamente se ha construido y es verificable directamente en el código del repositorio.
 
 ## 4.1 Introducción y enfoque
@@ -253,3 +285,7 @@ La tabla siguiente cierra el ciclo de trazabilidad entre los casos de uso del ca
 | `gestionarEntidades()`         | Should    | `administracion/entidades/` | `createEntity`, `updateEntity`, `deleteEntity`                    | `entities`                                        |
 | `configurarModulos()`          | Should    | `administracion/entidades/` | `toggleEntityModule`                                              | `entity_modules`                                  |
 | `consultarAnalytics()`         | Could     | `panel/`                    | — (lectura RSC)                                                   | `stats.ts` → múltiples tablas                     |
+
+---
+
+[← Cap. 3](REQUISITOS.md) · [Índice](../../README.md)
