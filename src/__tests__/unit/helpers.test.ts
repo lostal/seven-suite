@@ -7,7 +7,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { validateUserPreferences } from "@/lib/db/helpers";
+import {
+  isUniqueViolation,
+  isExclusionViolation,
+  validateUserPreferences,
+} from "@/lib/db/helpers";
 import type { UserPreferences } from "@/lib/db/types";
 
 function createMockPrefs(
@@ -140,5 +144,59 @@ describe("validateUserPreferences", () => {
     expect(result.userId).toBe("user-abc-123");
     expect(result.notifyReservationConfirmed).toBe(false);
     expect(result.outlookSyncEnabled).toBe(true);
+  });
+});
+
+// ─── PG Error Codes ──────────────────────────────────────────────────────────
+
+describe("isUniqueViolation", () => {
+  it("returns true for object with code 23505", () => {
+    expect(isUniqueViolation({ code: "23505" })).toBe(true);
+  });
+
+  it("returns false for object with different code", () => {
+    expect(isUniqueViolation({ code: "23P01" })).toBe(false);
+  });
+
+  it("returns false for object without code property", () => {
+    expect(isUniqueViolation({ message: "error" })).toBe(false);
+  });
+
+  it("returns false for null", () => {
+    expect(isUniqueViolation(null)).toBe(false);
+  });
+
+  it("returns false for string", () => {
+    expect(isUniqueViolation("23505")).toBe(false);
+  });
+
+  it("returns false for Error instance", () => {
+    expect(isUniqueViolation(new Error("db error"))).toBe(false);
+  });
+
+  it("returns false for undefined", () => {
+    expect(isUniqueViolation(undefined)).toBe(false);
+  });
+});
+
+describe("isExclusionViolation", () => {
+  it("returns true for object with code 23P01", () => {
+    expect(isExclusionViolation({ code: "23P01" })).toBe(true);
+  });
+
+  it("returns false for object with different code", () => {
+    expect(isExclusionViolation({ code: "23505" })).toBe(false);
+  });
+
+  it("returns false for null", () => {
+    expect(isExclusionViolation(null)).toBe(false);
+  });
+
+  it("returns false for number as code", () => {
+    expect(isExclusionViolation({ code: 23001 })).toBe(false);
+  });
+
+  it("returns false for plain object without code", () => {
+    expect(isExclusionViolation({})).toBe(false);
   });
 });

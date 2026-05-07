@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getUserCessions } from "@/lib/queries/cessions";
+import { getUserCessions, getCessionsByDate } from "@/lib/queries/cessions";
 
 // ─── Mock de Drizzle db ───────────────────────────────────────────────────────
 
@@ -93,5 +93,85 @@ describe("getUserCessions", () => {
     const result = await getUserCessions(USER_ID);
 
     expect(result).toHaveLength(2);
+  });
+});
+
+// ─── getCessionsByDate ───────────────────────────────────────────────────────
+
+describe("getCessionsByDate", () => {
+  beforeEach(() => {
+    resetDbMocks();
+  });
+
+  it("devuelve cesiones para una fecha sin filtrar por resourceType", async () => {
+    setupSelectMock([
+      makeCessionRow({ spotResourceType: "parking" }),
+      makeCessionRow({ spotResourceType: "office" }),
+    ]);
+
+    const result = await getCessionsByDate("2026-06-01");
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      spot_label: "P-01",
+      user_name: "Test User",
+      resource_type: "parking",
+    });
+  });
+
+  it("filtra por resourceType=parking", async () => {
+    setupSelectMock([
+      makeCessionRow({ spotResourceType: "parking" }),
+      makeCessionRow({ spotResourceType: "parking" }),
+    ]);
+
+    const result = await getCessionsByDate("2026-06-01", "parking");
+
+    expect(result).toHaveLength(2);
+    for (const c of result) {
+      expect(c.resource_type).toBe("parking");
+    }
+  });
+
+  it("descarta filas con resourceType incorrecto y emite console.warn", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    setupSelectMock([makeCessionRow({ spotResourceType: "office" })]);
+
+    const result = await getCessionsByDate("2026-06-01", "parking");
+
+    expect(result).toHaveLength(0);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("getCessionsByDate"),
+      expect.objectContaining({ expected: "parking", got: "office" })
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("mapea user_name null a string vacía", async () => {
+    setupSelectMock([{ ...makeCessionRow(), user_name: null }]);
+
+    const result = await getCessionsByDate("2026-06-01");
+
+    expect(result[0]?.user_name).toBe("");
+  });
+
+  it("retorna array vacío cuando no hay cesiones", async () => {
+    setupSelectMock([]);
+
+    const result = await getCessionsByDate("2026-06-01");
+
+    expect(result).toHaveLength(0);
+  });
+
+  it("respeta el orden descendente por fecha de creación", async () => {
+    setupSelectMock([
+      { ...makeCessionRow(), created_at: new Date("2026-05-10") },
+      { ...makeCessionRow(), created_at: new Date("2026-05-01") },
+    ]);
+
+    const result = await getCessionsByDate("2026-06-01");
+
+    expect(result[0]?.created_at).toEqual(new Date("2026-05-10"));
+    expect(result[1]?.created_at).toEqual(new Date("2026-05-01"));
   });
 });

@@ -18,6 +18,8 @@ vi.mock("@/lib/db", async () => {
 import {
   getPublishedAnnouncements,
   getAnnouncementsForManagement,
+  countUnreadAnnouncements,
+  getUnreadAnnouncementIds,
   markAsRead,
 } from "@/lib/queries/announcements";
 
@@ -169,5 +171,101 @@ describe("markAsRead", () => {
     setupInsertMock([]);
 
     await expect(markAsRead("ann-1", "user-1")).resolves.toBeUndefined();
+  });
+});
+
+// ─── countUnreadAnnouncements / getUnreadAnnouncementIds ────────────────────
+
+describe("countUnreadAnnouncements", () => {
+  beforeEach(() => {
+    resetDbMocks();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns count of unread announcements for entity", async () => {
+    // MAIN query (outer db.select runs first in method chain)
+    setupSelectMock([{ id: "ann-1" }, { id: "ann-2" }, { id: "ann-3" }]);
+    // SUBQUERY (inner db.select runs inside notExists argument evaluation)
+    setupSelectMock([]);
+
+    const count = await countUnreadAnnouncements("user-1", "ent-A");
+
+    expect(count).toBe(3);
+  });
+
+  it("returns zero when all are read", async () => {
+    setupSelectMock([]);
+    setupSelectMock([]);
+
+    const count = await countUnreadAnnouncements("user-1", "ent-A");
+
+    expect(count).toBe(0);
+  });
+
+  it("filters by null entityId (only global announcements)", async () => {
+    setupSelectMock([{ id: "ann-global" }]);
+    setupSelectMock([]);
+
+    const count = await countUnreadAnnouncements("user-1", null);
+
+    expect(count).toBe(1);
+  });
+
+  it("makes two select calls (subquery + main query)", async () => {
+    setupSelectMock([]);
+    setupSelectMock([{ id: "ann-1" }]);
+
+    await countUnreadAnnouncements("user-1", "ent-A");
+
+    expect(mockDb.select).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("getUnreadAnnouncementIds", () => {
+  beforeEach(() => {
+    resetDbMocks();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns Set of unread announcement IDs", async () => {
+    setupSelectMock([{ id: "ann-1" }, { id: "ann-2" }]);
+    setupSelectMock([]);
+
+    const result = await getUnreadAnnouncementIds("user-1", "ent-A");
+
+    expect(result).toBeInstanceOf(Set);
+    expect(result.size).toBe(2);
+    expect(result.has("ann-1")).toBe(true);
+    expect(result.has("ann-2")).toBe(true);
+  });
+
+  it("returns empty Set when all announcements are read", async () => {
+    setupSelectMock([]);
+    setupSelectMock([]);
+
+    const result = await getUnreadAnnouncementIds("user-1", "ent-A");
+
+    expect(result.size).toBe(0);
+  });
+
+  it("returns empty Set when no announcements exist", async () => {
+    setupSelectMock([]);
+    setupSelectMock([]);
+
+    const result = await getUnreadAnnouncementIds("user-1", null);
+
+    expect(result.size).toBe(0);
   });
 });

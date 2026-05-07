@@ -3,6 +3,11 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * Playwright Configuration for E2E Tests
  *
+ * Proyectos:
+ * - public: tests que no requieren auth (smoke, login page)
+ * - setup: autenticación Microsoft SSO (se salta si no hay credenciales)
+ * - chromium / mobile-chrome: tests autenticados (dependen de setup)
+ *
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
@@ -18,13 +23,36 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
+    // Public pages — always run, no auth needed
     {
-      name: "chromium",
+      name: "public",
+      testMatch: /smoke\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
+    // Auth setup — runs once, can be skipped if no MS credentials
+    {
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+    },
+    // Desktop Chrome — authenticated flows
+    {
+      name: "chromium",
+      testMatch: /flows\/.*\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+    // Mobile Chrome (Pixel 5) — authenticated flows
     {
       name: "mobile-chrome",
-      use: { ...devices["Pixel 5"] },
+      testMatch: /flows\/.*\.spec\.ts/,
+      use: {
+        ...devices["Pixel 5"],
+        storageState: "e2e/.auth/user.json",
+      },
+      dependencies: ["setup"],
     },
   ],
   webServer: {

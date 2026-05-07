@@ -13,7 +13,7 @@ export default defineConfig({
         "postgresql://seven_suite:seven_suite_dev@localhost:5432/seven_suite_test",
     },
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
-    exclude: ["node_modules", ".next", "e2e"],
+    exclude: ["node_modules", ".next", "e2e", "src/__tests__/integration/**"],
     // Limpiar mocks automáticamente antes de cada test (best practice)
     clearMocks: true,
     restoreMocks: true,
@@ -32,13 +32,15 @@ export default defineConfig({
         "src/**/*.spec.{ts,tsx}",
         "src/__tests__/**",
       ],
-      // Umbrales de cobertura — elevados progresivamente (mayo 2026).
-      // Cobertura real: 79% stmts, 70% branches, 65% funcs, 80% lines.
+      // Umbrales de cobertura — elevados a nivel sobresaliente (mayo 2026).
+      // Cobertura real: 81% stmts, 72% branches, 67% funcs, 82% lines.
+      // Tests de integración: `pnpm test:integration` (requiere Docker PostgreSQL).
+      // Tests E2E: `pnpm test:e2e` (requiere servidor Next.js corriendo).
       thresholds: {
-        statements: 75,
-        branches: 65,
-        functions: 62,
-        lines: 75,
+        statements: 80,
+        branches: 70,
+        functions: 65,
+        lines: 80,
       },
     },
   },

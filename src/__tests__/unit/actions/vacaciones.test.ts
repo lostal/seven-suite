@@ -25,7 +25,7 @@ vi.mock("@/lib/queries/leave-requests", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-import { getCurrentUser } from "@/lib/auth/helpers";
+import { getCurrentUser, type AuthUser } from "@/lib/auth/helpers";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { getHolidayDatesSet } from "@/lib/queries/holidays";
 import {
@@ -47,7 +47,6 @@ import {
   approveLeaveRequest,
   rejectLeaveRequest,
 } from "@/app/(dashboard)/vacaciones/actions";
-import type { AuthUser } from "@/lib/auth/helpers";
 
 const REQUEST_ID = "550e8400-e29b-41d4-a716-446655440001";
 

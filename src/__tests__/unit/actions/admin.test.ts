@@ -536,6 +536,47 @@ describe("assignUserToSpot", () => {
       );
     }
   });
+
+  it("bloquea asignación si la plaza es de otra sede activa", async () => {
+    vi.mocked(getActiveEntityId).mockResolvedValueOnce("ent-1");
+
+    // select spot (entityId = ent-2, different from active)
+    setupSelectMock([{ entityId: "ent-2" }]);
+
+    const result = await assignUserToSpot({
+      spot_id: UUID2,
+      user_id: UUID,
+      resource_type: "parking",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain(
+        "Esta plaza no pertenece a la sede activa"
+      );
+    }
+    // Should not proceed to the second select (profile)
+    expect(mockDb.select).toHaveBeenCalledTimes(1);
+  });
+
+  it("permite asignación cuando spot y usuario comparten sede", async () => {
+    vi.mocked(getActiveEntityId).mockResolvedValueOnce("ent-1");
+
+    setupSelectMock([{ entityId: "ent-1" }]);
+    setupSelectMock([{ entityId: "ent-1" }]);
+    // Transaction: 2 updates
+    setupUpdateMock([{ id: UUID2 }]);
+    setupUpdateMock([]);
+
+    const result = await assignUserToSpot({
+      spot_id: UUID2,
+      user_id: UUID,
+      resource_type: "parking",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual({ assigned: true });
+  });
 });
 
 // ─── deleteUser ───────────────────────────────────────────────────────────────
@@ -583,5 +624,34 @@ describe("deleteUser", () => {
 
     expect(result.success).toBe(false);
     expect(mockDb.delete).not.toHaveBeenCalled();
+  });
+
+  it("rechaza eliminar usuario de otra sede cuando hay activeEntityId", async () => {
+    vi.mocked(getActiveEntityId).mockResolvedValueOnce("ent-1");
+
+    // Target user belongs to ent-2, not ent-1
+    setupSelectMock([{ entityId: "ent-2" }]);
+
+    const result = await deleteUser({ user_id: UUID });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain(
+        "No tienes permisos para eliminar este usuario"
+      );
+    }
+    expect(mockDb.delete).not.toHaveBeenCalled();
+  });
+
+  it("permite eliminar usuario de la misma sede cuando hay activeEntityId", async () => {
+    vi.mocked(getActiveEntityId).mockResolvedValueOnce("ent-1");
+
+    setupSelectMock([{ entityId: "ent-1" }]);
+    setupDeleteMock([{ id: UUID }]);
+
+    const result = await deleteUser({ user_id: UUID });
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual({ deleted: true });
   });
 });

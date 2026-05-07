@@ -29,11 +29,10 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-import { requireAuth } from "@/lib/auth/helpers";
+import { requireAuth, type AuthUser } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { completeOnboarding } from "@/app/onboarding/actions";
-import type { AuthUser } from "@/lib/auth/helpers";
 
 function setupAuthUser(role = "employee") {
   vi.mocked(requireAuth).mockResolvedValue({

@@ -20,9 +20,8 @@ vi.mock("@/lib/auth/helpers", () => ({
   getCurrentUser: vi.fn(),
 }));
 
-import { getCurrentUser } from "@/lib/auth/helpers";
+import { getCurrentUser, type AuthUser } from "@/lib/auth/helpers";
 import { logAuditEvent } from "@/lib/audit";
-import type { AuthUser } from "@/lib/auth/helpers";
 
 function setupAuthUser(overrides?: Partial<AuthUser>) {
   vi.mocked(getCurrentUser).mockResolvedValue({

@@ -46,10 +46,9 @@ vi.mock("@/lib/utils", () => ({
   getPageNumbers: () => [1],
 }));
 
-import { getCurrentUser } from "@/lib/auth/helpers";
+import { getCurrentUser, type AuthUser } from "@/lib/auth/helpers";
 import { getAllResourceConfigs } from "@/lib/config";
 import { buildCalendarAction } from "@/lib/actions/calendar-actions";
-import type { AuthUser } from "@/lib/auth/helpers";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

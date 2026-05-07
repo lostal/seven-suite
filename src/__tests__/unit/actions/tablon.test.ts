@@ -30,6 +30,7 @@ import {
   getCurrentUser,
   requireAuth,
   requireManagerOrAbove,
+  type AuthUser,
 } from "@/lib/auth/helpers";
 import {
   getPublishedAnnouncements,
@@ -53,7 +54,6 @@ import {
   getMyFeedAnnouncements,
   getManageAnnouncements,
 } from "@/app/(dashboard)/tablon/actions";
-import type { AuthUser } from "@/lib/auth/helpers";
 
 const ANNOUNCEMENT_ID = "550e8400-e29b-41d4-a716-446655440001";
 const ENTITY_ID_B = "550e8400-e29b-41d4-a716-4466554400b2";
