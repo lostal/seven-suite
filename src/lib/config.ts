@@ -90,6 +90,7 @@ const RESOURCE_DEFAULTS: Record<ResourceType, ResourceConfigValues> = {
 // ─── Cache tag ────────────────────────────────────────────────
 
 export const CONFIG_CACHE_TAG = "system-config";
+const ENTITY_CONFIG_CACHE_TAG = "entity-config";
 
 // ─── Funciones de acceso ──────────────────────────────────────
 
@@ -223,29 +224,37 @@ export async function getResourceConfig<K extends ResourceConfigKey>(
  * Debe llamarse después de cada mutación en system_config.
  */
 export async function invalidateConfigCache(): Promise<void> {
-  // Second arg 'default' required by Next.js 16 internal cache layer — do not remove
   revalidateTag(CONFIG_CACHE_TAG, "default");
+}
+
+export async function invalidateEntityConfigCache(): Promise<void> {
+  revalidateTag(ENTITY_CONFIG_CACHE_TAG, "default");
 }
 
 // ─── Configuración por entidad (entity_config) ───────────────
 
 /**
  * Carga todas las filas de entity_config para una entidad concreta.
- * Sin caché: las páginas de configuración son force-dynamic y se espera
- * que la escritura en entity_config se refleje de inmediato.
+ * Cacheada por entityId con el tag `entity-config`. Se invalida al
+ * escribir en entity_config desde las acciones de configuración.
  */
-async function fetchEntityConfigs(
-  entityId: string
-): Promise<Record<string, unknown>> {
-  try {
-    const rows = await db
-      .select({ key: entityConfigTable.key, value: entityConfigTable.value })
-      .from(entityConfigTable)
-      .where(eq(entityConfigTable.entityId, entityId));
+const fetchEntityConfigs = unstable_cache(
+  async (entityId: string): Promise<Record<string, unknown>> => {
+    try {
+      const rows = await db
+        .select({ key: entityConfigTable.key, value: entityConfigTable.value })
+        .from(entityConfigTable)
+        .where(eq(entityConfigTable.entityId, entityId));
 
-    return Object.fromEntries(rows.map((row) => [row.key, row.value]));
-  } catch (error) {
-    console.error("[config] Error fetching entity_config:", error);
-    return {};
+      return Object.fromEntries(rows.map((row) => [row.key, row.value]));
+    } catch (error) {
+      console.error("[config] Error fetching entity_config:", error);
+      return {};
+    }
+  },
+  ["entity-config"],
+  {
+    tags: [ENTITY_CONFIG_CACHE_TAG],
+    revalidate: 60,
   }
-}
+);

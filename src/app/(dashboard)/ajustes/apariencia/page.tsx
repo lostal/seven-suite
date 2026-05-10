@@ -1,33 +1,28 @@
 /**
- * Settings - Preferences Page
- *
- * App preferences: theme and parking view settings.
+ * Apariencia — Personalización visual de la aplicación
  */
 
 import { requireAuth } from "@/lib/auth/helpers";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
-import { PreferencesForm } from "../components/preferences-form";
 import { ContentSection } from "@/components/content-section";
+import { AppearanceForm } from "./_components/appearance-form";
 
-export default async function SettingsPreferencesPage() {
+export default async function AparienciaPage() {
   const user = await requireAuth();
 
-  // Fetch user profile with preferences
   const data = await getUserProfileWithPreferences(user.id);
 
   if (!data || !data.preferences) {
     redirect("/panel");
   }
 
-  const { preferences } = data;
-
   return (
     <ContentSection
-      title="Preferencias"
-      desc="Personaliza la apariencia y comportamiento de la aplicación."
+      title="Apariencia"
+      desc="Personaliza el aspecto visual de la aplicación."
     >
-      <PreferencesForm preferences={preferences} />
+      <AppearanceForm preferences={data.preferences} />
     </ContentSection>
   );
 }

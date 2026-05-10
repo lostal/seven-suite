@@ -1,33 +1,274 @@
 "use server";
 
 /**
- * Server Actions de Ajustes
+ * Acciones de Ajustes
  *
- * Acciones para actualizar el perfil, preferencias e integración con Microsoft.
- * Todas usan el patrón actionClient → devuelven ActionResult<T>, nunca lanzan.
+ * Incluye tanto acciones de configuración del sistema (admin)
+ * como acciones de perfil y preferencias de usuario.
  */
 
+import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { z } from "zod/v4";
-
-const DEFAULT_OUTLOOK_CALENDAR_NAME = "Reservas";
-import { actionClient } from "@/lib/actions";
 import { db } from "@/lib/db";
 import {
+  systemConfig,
+  entityConfig,
   profiles,
   userPreferences,
   userMicrosoftTokens,
   users,
 } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth/helpers";
+import { requireAuth, requireAdmin } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
 import {
+  invalidateConfigCache,
+  invalidateEntityConfigCache,
+} from "@/lib/config";
+import { getActiveEntityId } from "@/lib/queries/active-entity";
+import { and, eq, inArray } from "drizzle-orm";
+import {
+  updateGlobalConfigSchema,
+  updateResourceConfigSchema,
   updateProfileSchema,
   updateNotificationPreferencesSchema,
   updateOutlookPreferencesSchema,
   updateCessionRulesSchema,
   updateThemeSchema,
+  type UpdateResourceConfigInput,
 } from "@/lib/validations";
+import { syncAllHolidays } from "@/lib/holidays-sync";
+
+// ─── Helper interno ───────────────────────────────────────────
+
+/**
+ * Actualiza (o inserta) múltiples claves en system_config.
+ */
+async function upsertConfigs(
+  entries: Array<{ key: string; value: unknown }>,
+  adminUserId: string
+): Promise<void> {
+  for (const { key, value } of entries) {
+    await db
+      .insert(systemConfig)
+      .values({
+        key,
+        value: value as never,
+        updatedBy: adminUserId,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: systemConfig.key,
+        set: {
+          value: value as never,
+          updatedBy: adminUserId,
+          updatedAt: new Date(),
+        },
+      });
+  }
+}
+
+/**
+ * Actualiza (o inserta) múltiples claves en entity_config para la sede indicada.
+ */
+async function upsertEntityConfigs(
+  entityId: string,
+  entries: Array<{ key: string; value: unknown }>,
+  adminUserId: string
+): Promise<void> {
+  for (const { key, value } of entries) {
+    await db
+      .insert(entityConfig)
+      .values({
+        entityId,
+        key,
+        value: value as never,
+        updatedBy: adminUserId,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [entityConfig.entityId, entityConfig.key],
+        set: {
+          value: value as never,
+          updatedBy: adminUserId,
+          updatedAt: new Date(),
+        },
+      });
+  }
+}
+
+/**
+ * Convierte un objeto de configuración de recurso al formato de filas
+ * de system_config con prefijo.
+ */
+function resourceConfigToEntries(
+  resourceType: "parking" | "office",
+  config: UpdateResourceConfigInput
+): Array<{ key: string; value: unknown }> {
+  const prefix = `${resourceType}.`;
+  return Object.entries(config).map(([key, value]) => ({
+    key: `${prefix}${key}`,
+    value,
+  }));
+}
+
+// ─── Actualizar configuración global ─────────────────────────
+
+export const updateGlobalConfig = actionClient
+  .schema(updateGlobalConfigSchema)
+  .action(async ({ parsedInput }) => {
+    const adminUser = await requireAdmin();
+
+    const entries = Object.entries(parsedInput).map(([key, value]) => ({
+      key,
+      value,
+    }));
+
+    await upsertConfigs(entries, adminUser.id);
+    await invalidateConfigCache();
+    revalidatePath("/ajustes/general");
+
+    return { updated: true };
+  });
+
+// ─── Actualizar configuración de parking ─────────────────────
+
+export const updateParkingConfig = actionClient
+  .schema(updateResourceConfigSchema)
+  .action(async ({ parsedInput }) => {
+    const adminUser = await requireAdmin();
+    const entityId = await getActiveEntityId();
+
+    const entries = resourceConfigToEntries("parking", parsedInput);
+
+    if (entityId) {
+      await upsertEntityConfigs(entityId, entries, adminUser.id);
+      await invalidateEntityConfigCache();
+    } else {
+      await upsertConfigs(entries, adminUser.id);
+    }
+
+    await invalidateConfigCache();
+    revalidatePath("/ajustes/parking");
+    revalidatePath("/parking");
+
+    return { updated: true };
+  });
+
+// ─── Sincronizar festivos ─────────────────────────────────────
+
+/**
+ * Sincroniza los festivos de todas las sedes activas con CCAA asignada
+ * desde la API OpenHolidays. Solo admin.
+ */
+export async function syncHolidaysAction(): Promise<
+  ActionResult<{ synced: number; errors: string[] }>
+> {
+  try {
+    await requireAdmin();
+    const result = await syncAllHolidays();
+    revalidatePath("/ajustes/general");
+    return success(result);
+  } catch (err) {
+    console.error("[config] syncHolidaysAction error:", err);
+    return error(
+      err instanceof Error ? err.message : "Error al sincronizar festivos"
+    );
+  }
+}
+
+// ─── Actualizar configuración de oficinas ────────────────────
+
+export const updateOfficeConfig = actionClient
+  .schema(updateResourceConfigSchema)
+  .action(async ({ parsedInput }) => {
+    const adminUser = await requireAdmin();
+    const entityId = await getActiveEntityId();
+
+    const entries = resourceConfigToEntries("office", parsedInput);
+
+    if (entityId) {
+      await upsertEntityConfigs(entityId, entries, adminUser.id);
+      await invalidateEntityConfigCache();
+    } else {
+      await upsertConfigs(entries, adminUser.id);
+    }
+
+    await invalidateConfigCache();
+    revalidatePath("/ajustes/oficinas");
+    revalidatePath("/oficinas");
+
+    return { updated: true };
+  });
+
+// ─── Restaurar defaults de sede ────────────────────────────
+
+export const restoreParkingDefaults = actionClient
+  .schema(z.object({}))
+  .action(async () => {
+    await requireAdmin();
+    const entityId = await getActiveEntityId();
+
+    if (!entityId) {
+      throw new Error("No hay una sede activa seleccionada");
+    }
+
+    const keys = resourceConfigToEntries(
+      "parking",
+      {} as UpdateResourceConfigInput
+    ).map((e) => e.key);
+
+    await db
+      .delete(entityConfig)
+      .where(
+        and(
+          eq(entityConfig.entityId, entityId),
+          inArray(entityConfig.key, keys)
+        )
+      );
+
+    await invalidateEntityConfigCache();
+    await invalidateConfigCache();
+    revalidatePath("/ajustes/parking");
+    revalidatePath("/parking");
+
+    return { restored: true };
+  });
+
+export const restoreOfficeDefaults = actionClient
+  .schema(z.object({}))
+  .action(async () => {
+    await requireAdmin();
+    const entityId = await getActiveEntityId();
+
+    if (!entityId) {
+      throw new Error("No hay una sede activa seleccionada");
+    }
+
+    const keys = resourceConfigToEntries(
+      "office",
+      {} as UpdateResourceConfigInput
+    ).map((e) => e.key);
+
+    await db
+      .delete(entityConfig)
+      .where(
+        and(
+          eq(entityConfig.entityId, entityId),
+          inArray(entityConfig.key, keys)
+        )
+      );
+
+    await invalidateEntityConfigCache();
+    await invalidateConfigCache();
+    revalidatePath("/ajustes/oficinas");
+    revalidatePath("/oficinas");
+
+    return { restored: true };
+  });
+
+// ─── Constante compartida ────────────────────────────────────
+
+const DEFAULT_OUTLOOK_CALENDAR_NAME = "Reservas";
 
 // ─── Update Profile ──────────────────────────────────────────
 
@@ -198,7 +439,6 @@ export const testTeamsNotification = actionClient
       );
     }
 
-    // Enviar notificación de prueba vía Microsoft Graph
     const response = await fetch("https://graph.microsoft.com/v1.0/me/chats", {
       method: "POST",
       headers: {
@@ -248,7 +488,6 @@ export const forceCalendarSync = actionClient
       );
     }
 
-    // Obtener eventos del calendario de Outlook
     const startDate = new Date().toISOString();
     const endDate = new Date(
       Date.now() + 30 * 24 * 60 * 60 * 1000
@@ -267,7 +506,6 @@ export const forceCalendarSync = actionClient
       );
     }
 
-    // Actualizar última sincronización
     await db
       .update(userMicrosoftTokens)
       .set({
@@ -306,7 +544,6 @@ export const deleteSelfAccount = actionClient
   .action(async () => {
     const user = await requireAuth();
 
-    // Delete the user record — cascade will remove profile and all related data
     const deleted = await db
       .delete(users)
       .where(eq(users.id, user.id))

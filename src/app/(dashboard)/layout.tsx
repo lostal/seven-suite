@@ -106,6 +106,19 @@ export default async function DashboardLayout({
         ? cookieEntityId
         : (entities[0]?.id ?? null);
       entityIdPersisted = isValidCookieEntity;
+
+      // Persistir la cookie en el servidor en el primer render para evitar
+      // que las Server Actions posteriores lean entityId = null durante
+      // la ventana entre SSR y la hidratación del EntitySwitcher.
+      if (!isValidCookieEntity && activeEntityId) {
+        cookieStore.set("active-entity-id", activeEntityId, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 7,
+          httpOnly: true,
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+        });
+      }
       if (activeEntityId) {
         enabledModules = await getEntityEnabledModules(activeEntityId);
       }

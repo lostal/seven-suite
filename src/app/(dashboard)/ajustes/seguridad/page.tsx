@@ -1,36 +1,24 @@
 /**
- * Settings - Security Page
- *
- * Security settings and account information.
+ * Seguridad — Gestión de cuenta y sesiones
  */
 
 import { requireAuth } from "@/lib/auth/helpers";
-import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
-import { redirect } from "next/navigation";
-import { SecuritySection } from "../components/security-section";
 import { ContentSection } from "@/components/content-section";
+import { SecuritySection } from "../components/security-section";
 
-export default async function SettingsSecurityPage() {
+export default async function SeguridadPage() {
   const user = await requireAuth();
-
-  // Fetch user profile with preferences
-  const data = await getUserProfileWithPreferences(user.id);
-
-  if (!data || !data.profile) {
-    redirect("/panel");
-  }
-
-  const { profile } = data;
 
   return (
     <ContentSection
       title="Seguridad"
-      desc="Gestiona la seguridad de tu cuenta y visualiza información importante."
+      desc="Gestiona la seguridad de tu cuenta y sesiones activas."
     >
       <SecuritySection
         user={{
-          email: profile.email,
-          created_at: profile.createdAt.toISOString(),
+          email: user.email ?? "",
+          created_at:
+            user.profile?.createdAt?.toISOString() ?? new Date().toISOString(),
         }}
       />
     </ContentSection>

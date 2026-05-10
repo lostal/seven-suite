@@ -35,12 +35,24 @@ vi.mock("@/lib/db", async () => {
   return { db: mockDb };
 });
 
-vi.mock("@/lib/auth/helpers", () => ({
-  requireAuth: vi.fn(),
+vi.mock("next/cache", () => ({
+  unstable_cache: vi.fn((fn: (...args: unknown[]) => unknown) => fn),
+  revalidateTag: vi.fn(),
+  revalidatePath: vi.fn(),
 }));
 
-vi.mock("next/cache", () => ({
-  revalidatePath: vi.fn(),
+vi.mock("@/lib/auth/helpers", () => ({
+  requireAuth: vi.fn(),
+  requireAdmin: vi.fn(),
+}));
+
+vi.mock("@/lib/config", () => ({
+  invalidateConfigCache: vi.fn(),
+  invalidateEntityConfigCache: vi.fn(),
+}));
+
+vi.mock("@/lib/queries/active-entity", () => ({
+  getActiveEntityId: vi.fn().mockResolvedValue(null),
 }));
 
 import { requireAuth } from "@/lib/auth/helpers";

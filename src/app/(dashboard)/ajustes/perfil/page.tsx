@@ -1,16 +1,14 @@
 /**
- * Settings - Profile Page
- *
- * User profile information and settings.
+ * Perfil — Página de configuración personal
  */
 
 import { requireAuth } from "@/lib/auth/helpers";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
-import { ProfileForm } from "../components/profile-form";
 import { ContentSection } from "@/components/content-section";
+import { ProfileForm } from "../components/profile-form";
 
-export default async function SettingsProfilePage() {
+export default async function PerfilPage() {
   const user = await requireAuth();
 
   const data = await getUserProfileWithPreferences(user.id);
@@ -19,13 +17,12 @@ export default async function SettingsProfilePage() {
     redirect("/panel");
   }
 
-  const { profile } = data;
   return (
     <ContentSection
-      title="Información Personal"
-      desc="Actualiza tu información de perfil y foto de usuario."
+      title="Perfil"
+      desc="Gestiona tu información personal y foto de perfil."
     >
-      <ProfileForm profile={profile} />
+      <ProfileForm profile={data.profile} />
     </ContentSection>
   );
 }

@@ -150,6 +150,14 @@ export const createOfficeReservation = actionClient
     if (!user) throw new Error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
+    const isAdmin = user.profile?.role === "admin";
+
+    if (!isAdmin && !entityId) {
+      throw new Error(
+        "No tienes una sede asignada. Contacta con un administrador."
+      );
+    }
+
     const config = await getAllResourceConfigs("office", entityId);
 
     // Comprobar si las reservas están habilitadas

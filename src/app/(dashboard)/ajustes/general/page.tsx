@@ -4,12 +4,14 @@
 
 export const dynamic = "force-dynamic";
 
+import { requireAdmin } from "@/lib/auth/helpers";
 import { getGlobalConfigs } from "@/lib/config";
 import { ContentSection } from "@/components/content-section";
 import { GlobalConfigForm } from "../_components/global-config-form";
 import { SyncHolidaysButton } from "../_components/sync-holidays-button";
 
 export default async function ConfiguracionGeneralPage() {
+  await requireAdmin();
   const config = await getGlobalConfigs();
 
   return (

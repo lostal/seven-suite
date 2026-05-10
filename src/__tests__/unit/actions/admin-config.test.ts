@@ -12,7 +12,7 @@ import {
   updateGlobalConfig,
   updateParkingConfig,
   updateOfficeConfig,
-} from "@/app/(dashboard)/configuracion/actions";
+} from "@/app/(dashboard)/ajustes/actions";
 import { mockDb, resetDbMocks, setupInsertMock } from "../../mocks/db";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────

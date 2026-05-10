@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { profiles, entities } from "@/lib/db/schema";
 import { getAllEntities } from "@/lib/queries/entities";
+import { getActiveEntityId } from "@/lib/queries/active-entity";
 import { eq } from "drizzle-orm";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
@@ -19,7 +20,11 @@ export default async function DirectorioPage() {
   const userEntityId = user.profile?.entityId ?? null;
 
   // Los empleados solo ven usuarios de su propia sede;
-  // los administradores ven el directorio global.
+  // los administradores ven los usuarios de la sede activa,
+  // o el directorio global si no tienen sede seleccionada.
+  const activeEntityId = isAdmin ? await getActiveEntityId() : null;
+  const effectiveEntityId = isAdmin ? activeEntityId : userEntityId;
+
   const profilesQuery = db
     .select({
       id: profiles.id,
@@ -36,8 +41,8 @@ export default async function DirectorioPage() {
     .orderBy(profiles.fullName);
 
   const [profileRows, allEntities] = await Promise.all([
-    !isAdmin && userEntityId
-      ? profilesQuery.where(eq(profiles.entityId, userEntityId))
+    effectiveEntityId
+      ? profilesQuery.where(eq(profiles.entityId, effectiveEntityId))
       : profilesQuery,
     getAllEntities(),
   ]);

@@ -12,7 +12,7 @@ import {
 } from "@/lib/db/schema";
 import type { ResourceType } from "@/lib/db/types";
 import { toServerDateStr } from "@/lib/utils";
-import { eq, and, gte, ne, asc, desc } from "drizzle-orm";
+import { eq, and, gte, ne, asc, desc, or, isNull } from "drizzle-orm";
 
 /**
  * Fila de cesión — tipo compatible con los callers existentes (snake_case).
@@ -37,7 +37,8 @@ export interface CessionWithDetails {
  */
 export async function getCessionsByDate(
   date: string,
-  resourceType?: "parking" | "office"
+  resourceType?: "parking" | "office",
+  entityId?: string | null
 ): Promise<CessionWithDetails[]> {
   const conditions = [
     eq(cessionsTable.date, date),
@@ -46,6 +47,12 @@ export async function getCessionsByDate(
 
   if (resourceType) {
     conditions.push(eq(spotsTable.resourceType, resourceType));
+  }
+
+  if (entityId) {
+    conditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
   }
 
   const rows = await db
@@ -99,7 +106,8 @@ export async function getCessionsByDate(
  */
 export async function getUserCessions(
   userId: string,
-  resourceType?: "parking" | "office"
+  resourceType?: "parking" | "office",
+  entityId?: string | null
 ): Promise<CessionWithDetails[]> {
   const today = toServerDateStr(new Date());
 
@@ -111,6 +119,12 @@ export async function getUserCessions(
 
   if (resourceType) {
     conditions.push(eq(spotsTable.resourceType, resourceType));
+  }
+
+  if (entityId) {
+    conditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
   }
 
   const rows = await db

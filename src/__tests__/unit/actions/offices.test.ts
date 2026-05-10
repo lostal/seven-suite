@@ -104,7 +104,7 @@ describe("createOfficeReservation", () => {
   beforeEach(() => {
     resetDbMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
-    vi.mocked(getEffectiveEntityId).mockResolvedValue(null);
+    vi.mocked(getEffectiveEntityId).mockResolvedValue("test-entity");
   });
 
   it("crea la reserva y devuelve el id", async () => {

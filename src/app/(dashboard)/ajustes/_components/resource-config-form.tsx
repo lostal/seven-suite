@@ -44,6 +44,10 @@ interface ResourceConfigFormProps {
   showTimeSlots?: boolean;
   /** Whether the visitor booking toggle should be shown (false for offices) */
   showVisitorBooking?: boolean;
+  /** Whether this is a per-entity override (shows restore defaults button) */
+  isEntityOverride?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onRestoreDefaults?: any;
 }
 
 // ─── Nullable number input (vacío = sin límite) ───────────────
@@ -408,8 +412,11 @@ export function ResourceConfigForm({
   onSave,
   showTimeSlots = true,
   showVisitorBooking = true,
+  isEntityOverride = false,
+  onRestoreDefaults,
 }: ResourceConfigFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const {
     register,
@@ -454,6 +461,23 @@ export function ResourceConfigForm({
       toast.error("Error inesperado al guardar la configuración");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRestoreDefaults = async () => {
+    if (!onRestoreDefaults) return;
+    setIsRestoring(true);
+    try {
+      const result = await onRestoreDefaults({});
+      if (result && !result.success) {
+        toast.error(result.error ?? "Error al restaurar valores");
+        return;
+      }
+      toast.success("Valores restaurados a los defaults globales");
+    } catch {
+      toast.error("Error inesperado al restaurar");
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -549,9 +573,23 @@ export function ResourceConfigForm({
       {/* ─── Cesiones ───────────────────────────────────── */}
       <CessionRulesSection {...sectionProps} />
 
-      <Button type="submit" disabled={!isDirty || isLoading}>
-        {isLoading ? "Guardando..." : "Guardar cambios"}
-      </Button>
+      <div className="flex items-center justify-between">
+        {isEntityOverride && onRestoreDefaults ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleRestoreDefaults}
+            disabled={isRestoring}
+          >
+            {isRestoring ? "Restaurando..." : "Restaurar defaults globales"}
+          </Button>
+        ) : (
+          <div />
+        )}
+        <Button type="submit" disabled={!isDirty || isLoading}>
+          {isLoading ? "Guardando..." : "Guardar cambios"}
+        </Button>
+      </div>
     </form>
   );
 }

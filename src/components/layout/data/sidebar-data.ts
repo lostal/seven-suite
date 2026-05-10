@@ -16,24 +16,25 @@
 import {
   LayoutDashboard,
   Users,
-  Shield,
   Settings,
-  User,
-  Bell,
-  Cloud,
   MapPin,
   LayoutGrid,
   Building2,
-  SlidersHorizontal,
   ParkingCircle,
   ArrowLeftRight,
   CalendarCheck,
-  Globe,
   BookUser,
   Landmark,
   Palmtree,
   ClipboardList,
   Megaphone,
+  User,
+  Bell,
+  Cloud,
+  Shield,
+  Palette,
+  Globe,
+  Car,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { type SidebarData } from "../types";
@@ -109,28 +110,6 @@ export function getSidebarData({
 
   const adminOficinaItems = [
     { title: "Asignaciones", url: ROUTES.ADMIN_OFFICES, icon: LayoutGrid },
-  ];
-
-  const configSubItems = [
-    { title: "General", url: ROUTES.ADMIN_SETTINGS, icon: Globe },
-    ...(parkingEnabled
-      ? [
-          {
-            title: "Parking",
-            url: ROUTES.ADMIN_SETTINGS_PARKING,
-            icon: ParkingCircle,
-          },
-        ]
-      : []),
-    ...(officeEnabled
-      ? [
-          {
-            title: "Oficinas",
-            url: ROUTES.ADMIN_SETTINGS_OFFICES,
-            icon: Building2,
-          },
-        ]
-      : []),
   ];
 
   return {
@@ -257,18 +236,11 @@ export function getSidebarData({
                 },
               ]
             : []),
-          // Configuración (admin — configuración de la sede activa)
-          {
-            title: "Configuración",
-            icon: SlidersHorizontal,
-            roles: ["admin"] as UserRole[],
-            items: configSubItems,
-          },
         ],
       },
-      // ─── Global: siempre visibles para admins ──────────────
+      // ─── General ───────────────────────────────────────────
       {
-        title: "Global",
+        title: "General",
         items: [
           {
             title: "Directorio",
@@ -285,31 +257,71 @@ export function getSidebarData({
           {
             title: "Ajustes",
             icon: Settings,
+            roles: ["employee", "manager", "hr"] as UserRole[],
             items: [
-              {
-                title: "Perfil",
-                url: ROUTES.SETTINGS,
-                icon: User,
-              },
+              { title: "Perfil", url: "/ajustes/perfil", icon: User },
               {
                 title: "Notificaciones",
-                url: ROUTES.SETTINGS_NOTIFICATIONS,
+                url: "/ajustes/notificaciones",
                 icon: Bell,
               },
               {
-                title: "Preferencias",
-                url: ROUTES.SETTINGS_PREFERENCES,
-                icon: Settings,
+                title: "Apariencia",
+                url: "/ajustes/apariencia",
+                icon: Palette,
               },
               {
                 title: "Microsoft 365",
-                url: ROUTES.SETTINGS_MICROSOFT,
+                url: "/ajustes/microsoft",
                 icon: Cloud,
               },
               {
                 title: "Seguridad",
-                url: ROUTES.SETTINGS_SECURITY,
+                url: "/ajustes/seguridad",
                 icon: Shield,
+              },
+            ],
+          },
+          {
+            title: "Ajustes",
+            icon: Settings,
+            roles: ["admin"] as UserRole[],
+            items: [
+              { title: "Perfil", url: "/ajustes/perfil", icon: User },
+              {
+                title: "Notificaciones",
+                url: "/ajustes/notificaciones",
+                icon: Bell,
+              },
+              {
+                title: "Apariencia",
+                url: "/ajustes/apariencia",
+                icon: Palette,
+              },
+              {
+                title: "Microsoft 365",
+                url: "/ajustes/microsoft",
+                icon: Cloud,
+              },
+              {
+                title: "Seguridad",
+                url: "/ajustes/seguridad",
+                icon: Shield,
+              },
+              {
+                title: "General",
+                url: "/ajustes/general",
+                icon: Globe,
+              },
+              {
+                title: "Parking",
+                url: "/ajustes/parking",
+                icon: Car,
+              },
+              {
+                title: "Oficinas",
+                url: "/ajustes/oficinas",
+                icon: Building2,
               },
             ],
           },

@@ -14,7 +14,7 @@ import {
   profiles as profilesTable,
 } from "@/lib/db/schema";
 import { toServerDateStr } from "@/lib/utils";
-import { eq, and, gte, lte, ne, desc } from "drizzle-orm";
+import { eq, and, gte, lte, ne, desc, or, isNull } from "drizzle-orm";
 
 function currentMonthBounds(): { firstOfMonth: string; lastOfMonth: string } {
   const now = new Date();
@@ -132,14 +132,16 @@ export async function getDailyCountsLast30Days(
       spotEntityId?: string | null;
     };
     if (resourceType && row.spotResourceType !== resourceType) continue;
-    if (entityId && row.spotEntityId !== entityId) continue;
+    if (entityId && row.spotEntityId !== entityId && row.spotEntityId !== null)
+      continue;
     const entry = countsByDate.get(row.date);
     if (entry) entry.reservations++;
   }
 
   for (const v of visitorsData) {
     const row = v as { date: string; spotEntityId?: string | null };
-    if (entityId && row.spotEntityId !== entityId) continue;
+    if (entityId && row.spotEntityId !== entityId && row.spotEntityId !== null)
+      continue;
     const entry = countsByDate.get(row.date);
     if (entry) entry.visitors++;
   }
@@ -177,7 +179,9 @@ export async function getTopSpots(
     conditions.push(eq(spotsTable.resourceType, resourceType));
   }
   if (entityId) {
-    conditions.push(eq(spotsTable.entityId, entityId));
+    conditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
   }
 
   const rows = await db
@@ -261,7 +265,7 @@ export async function getMovementDistribution(
           eq(reservationsTable.status, "confirmed"),
           gte(reservationsTable.date, firstOfMonth),
           lte(reservationsTable.date, lastOfMonth),
-          eq(spotsTable.entityId, entityId)
+          or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))
         )
       ),
     db
@@ -273,7 +277,7 @@ export async function getMovementDistribution(
           ne(cessionsTable.status, "cancelled"),
           gte(cessionsTable.date, firstOfMonth),
           lte(cessionsTable.date, lastOfMonth),
-          eq(spotsTable.entityId, entityId)
+          or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))
         )
       ),
     db
@@ -285,7 +289,7 @@ export async function getMovementDistribution(
           eq(visitorReservationsTable.status, "confirmed"),
           gte(visitorReservationsTable.date, firstOfMonth),
           lte(visitorReservationsTable.date, lastOfMonth),
-          eq(spotsTable.entityId, entityId)
+          or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))
         )
       ),
   ]);
@@ -330,7 +334,9 @@ export async function getMonthlyReservationCount(
     joinConditions.push(eq(spotsTable.resourceType, resourceType));
   }
   if (entityId) {
-    joinConditions.push(eq(spotsTable.entityId, entityId));
+    joinConditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
   }
 
   const rows = await db
@@ -366,8 +372,12 @@ export async function getRecentActivity(
   const visConditions = [eq(visitorReservationsTable.status, "confirmed")];
 
   if (entityId) {
-    resConditions.push(eq(spotsTable.entityId, entityId));
-    visConditions.push(eq(spotsTable.entityId, entityId));
+    resConditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
+    visConditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
   }
 
   const [resRows, visRows] = await Promise.all([
@@ -412,10 +422,14 @@ export async function getRecentActivity(
 
   // Filtro adicional por entityId
   const resData = entityId
-    ? resRows.filter((r) => r.spotEntityId === entityId)
+    ? resRows.filter(
+        (r) => r.spotEntityId === entityId || r.spotEntityId === null
+      )
     : resRows;
   const visData = entityId
-    ? visRows.filter((v) => v.spotEntityId === entityId)
+    ? visRows.filter(
+        (v) => v.spotEntityId === entityId || v.spotEntityId === null
+      )
     : visRows;
 
   type ActivityWithTime = RecentActivity & { createdAt: Date };
@@ -472,7 +486,9 @@ export async function getActiveUsersThisMonth(
       .innerJoin(spotsTable, eq(reservationsTable.spotId, spotsTable.id))
       .where(and(...conditions));
 
-    const filtered = rows.filter((r) => r.spotEntityId === entityId);
+    const filtered = rows.filter(
+      (r) => r.spotEntityId === entityId || r.spotEntityId === null
+    );
     const uniqueUsers = new Set(filtered.map((r) => r.userId));
     return uniqueUsers.size;
   }
@@ -518,9 +534,11 @@ export async function getVisitorsTodayCount(
       and(
         eq(visitorReservationsTable.date, date),
         eq(visitorReservationsTable.status, "confirmed"),
-        eq(spotsTable.entityId, entityId)
+        or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))
       )
     );
 
-  return rows.filter((r) => r.spotEntityId === entityId).length;
+  return rows.filter(
+    (r) => r.spotEntityId === entityId || r.spotEntityId === null
+  ).length;
 }

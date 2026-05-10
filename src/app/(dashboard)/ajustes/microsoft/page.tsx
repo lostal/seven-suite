@@ -1,21 +1,18 @@
 /**
- * Settings - Microsoft 365 Page
- *
- * Microsoft 365 integration and Outlook sync settings.
+ * Microsoft 365 — Integración y sincronización
  */
 
 import { requireAuth } from "@/lib/auth/helpers";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
+import { ContentSection } from "@/components/content-section";
 import { MicrosoftConnectionCard } from "../components/microsoft-connection-card";
 import { OutlookSyncForm } from "../components/outlook-sync-form";
 import { ManagementCessionRules } from "../components/management-cession-rules";
-import { ContentSection } from "@/components/content-section";
 
-export default async function SettingsMicrosoftPage() {
+export default async function MicrosoftPage() {
   const user = await requireAuth();
 
-  // Fetch user profile with preferences
   const data = await getUserProfileWithPreferences(user.id);
 
   if (!data || !data.profile || !data.preferences) {
@@ -36,21 +33,21 @@ export default async function SettingsMicrosoftPage() {
 
   return (
     <ContentSection
-      title="Integración con Microsoft 365"
-      desc="Conecta tu cuenta de Microsoft 365 y sincroniza tu calendario de Outlook."
+      title="Microsoft 365"
+      desc="Conecta tu cuenta y configura la sincronización con Outlook."
     >
       <div className="space-y-6">
         <MicrosoftConnectionCard status={microsoftStatus} />
         <OutlookSyncForm
           preferences={preferencesCompat}
-          microsoftConnected={microsoftStatus?.connected || false}
-          lastSync={microsoftStatus?.lastSync || null}
+          microsoftConnected={microsoftStatus?.connected ?? false}
+          lastSync={microsoftStatus?.lastSync ?? null}
         />
         {profile.role === "admin" && (
           <ManagementCessionRules
             preferences={preferencesCompat}
             spotInfo={assignedSpots.parking}
-            microsoftConnected={microsoftStatus?.connected || false}
+            microsoftConnected={microsoftStatus?.connected ?? false}
           />
         )}
       </div>

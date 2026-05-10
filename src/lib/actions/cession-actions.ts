@@ -54,6 +54,7 @@ export function buildCessionActions(cfg: CessionConfig) {
           id: spots.id,
           assignedTo: spots.assignedTo,
           resourceType: spots.resourceType,
+          entityId: spots.entityId,
         })
         .from(spots)
         .where(eq(spots.id, parsedInput.spot_id))
@@ -71,6 +72,11 @@ export function buildCessionActions(cfg: CessionConfig) {
       if (spot.assignedTo !== user.id) {
         throw new Error(
           `Solo puedes ceder tu propi${cfg.noun === "plaza" ? "a" : "o"} ${cfg.noun}`
+        );
+      }
+      if (entityId && spot.entityId !== null && spot.entityId !== entityId) {
+        throw new Error(
+          `${cfg.noun.charAt(0).toUpperCase() + cfg.noun.slice(1)} no pertenece a la sede activa`
         );
       }
 
@@ -201,7 +207,12 @@ export function buildCessionActions(cfg: CessionConfig) {
       const user = await getCurrentUser();
       if (!user) return error("No autenticado");
 
-      const userCessions = await getUserCessions(user.id, cfg.resourceType);
+      const entityId = await getEffectiveEntityId();
+      const userCessions = await getUserCessions(
+        user.id,
+        cfg.resourceType,
+        entityId
+      );
       return success(userCessions);
     } catch (err) {
       console.error(`${cfg.logPrefix} getMyCessions error:`, err);
