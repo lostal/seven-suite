@@ -125,7 +125,12 @@ Siguiendo la clasificación RUP, a partir de los casos de uso se identifican tre
 
 Además, existe una clase vista primitiva por cada clase de modelo: `PlazaView`, `ReservaView`, `CesiónView`, `SolicitudAusenciaView`, `AnuncioView`.
 
-**Clases Controlador** — RUP prescribe una clase controladora por caso de uso. Siguiendo esta convención, cada CdU Must tiene su controladora homónima: `ReservarPlazaController`, `CederPlazaController`, `AprobarSolicitudAusenciaController`, etc. en total 17 controladoras (la autenticación se delega a Auth.js y no genera controladora propia). En el paso al diseño real, estas clases no se implementan como tal: se describe cómo colapsan en Server Actions agrupadas por módulo.
+**Clases Controlador** — RUP prescribe una clase controladora por caso de uso. Siguiendo esta
+convención, cada CdU tiene su controladora homónima: `ReservarPlazaController`,
+`CederPlazaController`, `AprobarSolicitudAusenciaController`, etc. en total 28 controladoras
+(la autenticación se delega a Auth.js y no genera controladora propia). En el paso al diseño real,
+estas clases no se implementan como tal: se describe cómo colapsan en Server Actions agrupadas
+por módulo.
 
 ### 4.4.2 Colapso al diseño real
 
@@ -256,33 +261,33 @@ El modelo prescinde de Row Level Security (RLS) de PostgreSQL. La autorización 
 
 La tabla siguiente cierra el ciclo de trazabilidad entre los casos de uso del capítulo 3 y los artefactos de diseño e implementación concretos. Cada fila establece la cadena completa: CdU → módulo → Server Action → query → tabla.
 
-| CdU                            | Prioridad | Módulo                      | Server Action                                                     | Query / tabla principal                           |
-| ------------------------------ | --------- | --------------------------- | ----------------------------------------------------------------- | ------------------------------------------------- |
-| `autenticarse()`               | Must      | `src/lib/auth/`             | `signIn()` Auth.js                                                | `users`, `profiles`                               |
-| `reservarPlaza()`              | Must      | `parking/`                  | `createReservation`                                               | `getAvailableSpots` → `reservations`              |
-| `cancelarReservaParking()`     | Must      | `parking/`                  | `cancelReservation`                                               | `reservations` (UPDATE status)                    |
-| `cederPlaza()`                 | Must      | `parking/cesiones/`         | `createCession`                                                   | `cessions` (INSERT)                               |
-| `cancelarCesion()`             | Must      | `parking/cesiones/`         | `cancelCession`                                                   | `cessions` (UPDATE status)                        |
-| `registrarVisitante()`         | Must      | `parking/visitantes/`       | `createVisitorReservation`                                        | `visitor_reservations` + Resend API               |
-| `reservarPuesto()`             | Must      | `oficinas/`                 | `createOfficeReservation`                                         | `getAvailableOfficeSpots` → `reservations`        |
-| `cancelarReservaPuesto()`      | Must      | `oficinas/`                 | `cancelOfficeReservation`                                         | `reservations` (UPDATE status)                    |
-| `solicitarAusencia()`          | Must      | `vacaciones/`               | `createLeaveRequest`                                              | `leave_requests` (INSERT)                         |
-| `cancelarSolicitudAusencia()`  | Must      | `vacaciones/`               | `cancelLeaveRequest`                                              | `leave_requests` (UPDATE status)                  |
-| `aprobarSolicitudAusencia()`   | Must      | `vacaciones/`               | `approveLeaveRequest`                                             | `leave_requests` (UPDATE status→manager_approved) |
-| `rechazarSolicitudAusencia()`  | Must      | `vacaciones/`               | `rejectLeaveRequest`                                              | `leave_requests` (UPDATE status→rejected)         |
-| `validarSolicitudAusencia()`   | Must      | `vacaciones/`               | `approveLeaveRequest`                                             | `leave_requests` (UPDATE status→hr_approved)      |
-| `rechazarValidacionAusencia()` | Must      | `vacaciones/`               | `rejectLeaveRequest`                                              | `leave_requests` (UPDATE status→rejected)         |
-| `editarPerfil()`               | Must      | `ajustes/`                  | `updateProfile`                                                   | `profiles` (UPDATE)                               |
-| `gestionarPlazas()`            | Must      | `administracion/`           | `createSpot`, `updateSpot`, `deleteSpot`                          | `spots`                                           |
-| `gestionarUsuarios()`          | Must      | `administracion/`           | `updateUserRole`, `assignSpotToUser`, `deleteUser`                | `profiles`, `spots`                               |
-| `configurarSistema()`          | Must      | `configuracion/`            | `updateGlobalConfig`, `updateParkingConfig`, `updateOfficeConfig` | `system_config`, `entity_config`                  |
-| `cancelarVisitante()`          | Should    | `parking/visitantes/`       | `cancelVisitorReservation`                                        | `visitor_reservations` (UPDATE status)            |
-| `configurarReglaCesion()`      | Should    | `ajustes/`                  | `updateCessionRules`                                              | `cession_rules`                                   |
-| `configurarPreferencias()`     | Should    | `ajustes/`                  | `updateNotificationPreferences`, `updateOutlookPreferences`       | `user_preferences`                                |
-| `conectarMicrosoft365()`       | Should    | `ajustes/`                  | OAuth flow + `forceCalendarSync`                                  | `user_microsoft_tokens`                           |
-| `consultarTablon()`            | Should    | `tablon/`                   | — (lectura RSC)                                                   | `announcements` (SELECT)                          |
-| `publicarAnuncio()`            | Should    | `tablon/`                   | `createAnnouncement`, `updateAnnouncement`                        | `announcements`                                   |
-| `consultarDirectorio()`        | Should    | `directorio/`               | — (lectura RSC)                                                   | `profiles`, `entities` (SELECT)                   |
-| `gestionarEntidades()`         | Should    | `administracion/entidades/` | `createEntity`, `updateEntity`, `deleteEntity`                    | `entities`                                        |
-| `configurarModulos()`          | Should    | `administracion/entidades/` | `toggleEntityModule`                                              | `entity_modules`                                  |
-| `consultarAnalytics()`         | Could     | `panel/`                    | — (lectura RSC)                                                   | `stats.ts` → múltiples tablas                     |
+| CdU                            | Módulo                      | Server Action                                                     | Query / tabla principal                           |
+| ------------------------------ | --------------------------- | ----------------------------------------------------------------- | ------------------------------------------------- |
+| `autenticarse()`               | `src/lib/auth/`             | `signIn()` Auth.js                                                | `users`, `profiles`                               |
+| `reservarPlaza()`              | `parking/`                  | `createReservation`                                               | `getAvailableSpots` → `reservations`              |
+| `cancelarReservaParking()`     | `parking/`                  | `cancelReservation`                                               | `reservations` (UPDATE status)                    |
+| `cederPlaza()`                 | `parking/cesiones/`         | `createCession`                                                   | `cessions` (INSERT)                               |
+| `cancelarCesion()`             | `parking/cesiones/`         | `cancelCession`                                                   | `cessions` (UPDATE status)                        |
+| `configurarReglaCesion()`      | `ajustes/`                  | `updateCessionRules`                                              | `cession_rules`                                   |
+| `registrarVisitante()`         | `parking/visitantes/`       | `createVisitorReservation`                                        | `visitor_reservations` + Resend API               |
+| `cancelarVisitante()`          | `parking/visitantes/`       | `cancelVisitorReservation`                                        | `visitor_reservations` (UPDATE status)            |
+| `reservarPuesto()`             | `oficinas/`                 | `createOfficeReservation`                                         | `getAvailableOfficeSpots` → `reservations`        |
+| `cancelarReservaPuesto()`      | `oficinas/`                 | `cancelOfficeReservation`                                         | `reservations` (UPDATE status)                    |
+| `solicitarAusencia()`          | `vacaciones/`               | `createLeaveRequest`                                              | `leave_requests` (INSERT)                         |
+| `cancelarSolicitudAusencia()`  | `vacaciones/`               | `cancelLeaveRequest`                                              | `leave_requests` (UPDATE status)                  |
+| `aprobarSolicitudAusencia()`   | `vacaciones/`               | `approveLeaveRequest`                                             | `leave_requests` (UPDATE status→manager_approved) |
+| `rechazarSolicitudAusencia()`  | `vacaciones/`               | `rejectLeaveRequest`                                              | `leave_requests` (UPDATE status→rejected)         |
+| `validarSolicitudAusencia()`   | `vacaciones/`               | `approveLeaveRequest`                                             | `leave_requests` (UPDATE status→hr_approved)      |
+| `rechazarValidacionAusencia()` | `vacaciones/`               | `rejectLeaveRequest`                                              | `leave_requests` (UPDATE status→rejected)         |
+| `consultarTablon()`            | `tablon/`                   | — (lectura RSC)                                                   | `announcements` (SELECT)                          |
+| `publicarAnuncio()`            | `tablon/`                   | `createAnnouncement`, `updateAnnouncement`                        | `announcements`                                   |
+| `consultarDirectorio()`        | `directorio/`               | — (lectura RSC)                                                   | `profiles`, `entities` (SELECT)                   |
+| `editarPerfil()`               | `ajustes/`                  | `updateProfile`                                                   | `profiles` (UPDATE)                               |
+| `configurarPreferencias()`     | `ajustes/`                  | `updateNotificationPreferences`, `updateOutlookPreferences`       | `user_preferences`                                |
+| `conectarMicrosoft365()`       | `ajustes/`                  | OAuth flow + `forceCalendarSync`                                  | `user_microsoft_tokens`                           |
+| `gestionarPlazas()`            | `administracion/`           | `createSpot`, `updateSpot`, `deleteSpot`                          | `spots`                                           |
+| `gestionarUsuarios()`          | `administracion/`           | `updateUserRole`, `assignSpotToUser`, `deleteUser`                | `profiles`, `spots`                               |
+| `gestionarEntidades()`         | `administracion/entidades/` | `createEntity`, `updateEntity`, `deleteEntity`                    | `entities`                                        |
+| `configurarModulos()`          | `administracion/entidades/` | `toggleEntityModule`                                              | `entity_modules`                                  |
+| `configurarSistema()`          | `ajustes/`                  | `updateGlobalConfig`, `updateParkingConfig`, `updateOfficeConfig` | `system_config`, `entity_config`                  |
+| `consultarAnalytics()`         | `panel/`                    | — (lectura RSC)                                                   | `stats.ts` → múltiples tablas                     |

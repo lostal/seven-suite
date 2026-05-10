@@ -7,15 +7,9 @@ actor "Manager"       as manager
 actor "RRHH"          as rrhh
 actor "Administrador" as admin
 
-actor "«sistema»\nEntra ID"           as entraID      #eeeeee
-actor "«sistema»\nMicrosoft Graph"    as msGraph      #eeeeee
-
-empleado <|-- manager
-manager  <|-- rrhh
-rrhh     <|-- admin
-
 package "Acceso" {
   usecase "autenticarse()"           as UC_AUTH
+  usecase "cerrarSesion()"           as UC_LOGOUT
 }
 
 package "Parking" {
@@ -69,6 +63,7 @@ package "Administración" {
 ' ── Empleado ─────────────────────────────────────────────────────────────────
 
 empleado --> UC_AUTH
+empleado --> UC_LOGOUT
 empleado --> UC_RP
 empleado --> UC_CRP
 empleado --> UC_RV
@@ -105,11 +100,5 @@ admin --> UC_GU
 admin --> UC_CMO
 admin --> UC_CS
 admin --> UC_CA
-
-' ── Actores sistema ──────────────────────────────────────────────────────────
-
-UC_AUTH --> entraID
-UC_CM   --> msGraph
-UC_CRC  --> msGraph
 
 @enduml

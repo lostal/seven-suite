@@ -10,13 +10,13 @@
   - [3.2.1. Diagrama de clases del dominio](#321-diagrama-de-clases-del-dominio)
   - [3.2.2. Diagramas de estados](#322-diagramas-de-estados)
   - [3.2.3. Glosario](#323-glosario)
-  - [3.2.4. Requisitos suplementarios](#324-requisitos-suplementarios)
 - [3.3. Disciplina de requisitos](#33-disciplina-de-requisitos)
-  - [3.3.1. Diagrama de contexto](#331-diagrama-de-contexto)
-  - [3.3.2. Actores del sistema](#332-actores-del-sistema)
-  - [3.3.3. Casos de uso](#333-casos-de-uso)
-  - [3.3.4. Detalle de casos de uso representativos](#334-detalle-de-casos-de-uso-representativos)
-  - [3.3.5. Prototipos de interfaz](#335-prototipos-de-interfaz)
+  - [3.3.1. Actores del sistema](#331-actores-del-sistema)
+  - [3.3.2. Casos de uso](#332-casos-de-uso)
+  - [3.3.3. Detalle de casos de uso representativos](#333-detalle-de-casos-de-uso-representativos)
+  - [3.3.4. Prototipos de interfaz](#334-prototipos-de-interfaz)
+  - [3.3.5. Diagrama de contexto](#335-diagrama-de-contexto)
+- [3.4. Requisitos no funcionales](#34-requisitos-no-funcionales)
 
 El objetivo de esta iteración es delimitar el alcance del sistema mediante la construcción del
 modelo del dominio y la especificación de los casos de uso del MVP. El resultado es el acuerdo
@@ -47,9 +47,12 @@ dos niveles (manager y RRHH) para respetar la estructura organizativa actual de 
 ## 3.2. Modelo del dominio
 
 El modelo del dominio construye una abstracción de la realidad de GRUPOSIETE independiente
-de cualquier decisión de implementación. Sus artefactos (diagrama de clases, diagramas de
+de cualquier decisión de implementación. Sus artefactos (diagrama de clases, diagrama de
 estados y glosario) recogen el vocabulario compartido entre cliente y desarrollador a lo largo
-de todo el proyecto.
+de todo el proyecto. Las relaciones entre clases emplean cuatro tipos semánticos: composición
+(la parte no existe sin el todo), agregación (el todo contiene las partes pero estas tienen
+identidad propia), uso (dependencia transitoria sin propiedad) y asociación (relación entre
+pares independientes).
 
 ### 3.2.1. Diagrama de clases del dominio
 
@@ -62,23 +65,27 @@ humanos y comunicación.
 El área de **organización** refleja la jerarquía de roles mediante herencia: `Empleado` es el rol
 base; `Manager` lo extiende añadiendo la capacidad de tener una plaza asignada y de ceder; `RRHH`
 extiende a `Manager` y añade la validación de ausencias en segundo nivel; `Administrador` tiene
-acceso pleno a la configuración del sistema. Todos pertenecen a una `Entidad`, que representa cada
-sede o empresa del grupo.
+acceso pleno a la configuración del sistema. La `Entidad` —cada sede o empresa del grupo—
+mantiene una relación de composición con `Empleado` y con `Plaza`, ya que tanto los empleados
+como los espacios físicos pertenecen a una entidad concreta. La plaza asignada se modela como
+asociación entre `Manager` y `Plaza`.
 
 El área de **espacios** gira en torno a la entidad `Plaza`, que unifica conceptualmente las plazas de
-aparcamiento y los puestos de oficina mediante el atributo `recurso` debido a su similitud. La `Reserva` vincula a un
-empleado con una plaza en una fecha concreta, con soporte opcional de franja horaria para los
-puestos de oficina. La `Cesión` representa la liberación voluntaria de una plaza asignada por su
-propietario: cuando queda en estado disponible, cualquier empleado puede generar sobre ella una
-`Reserva`, estableciendo así la relación `reserva de cesión` que las vincula. La `ReglaAutoCesión`
-automatiza este proceso cuando el propietario está fuera de la oficina o en días concretos de la
-semana. La `ReservaVisitante` cubre el caso de uso de parking para personas externas gestionadas
-por un empleado.
+aparcamiento y los puestos de oficina mediante el atributo `recurso`. La `Reserva` se vincula con
+`Empleado` y con `Plaza` mediante agregación. La `Cesión` es agregada por `Manager` y está
+asociada a la `Plaza` liberada; cuando queda en estado disponible, cualquier empleado puede
+generar sobre ella una `Reserva`, estableciendo así la asociación `reserva de cesión`. La
+`ReglaAutoCesión` es agregada por `Manager` y automatiza el proceso cuando el propietario está
+fuera de la oficina o en días concretos de la semana. La `ReservaVisitante`, agregada por
+`Empleado` y asociada a `Plaza`, cubre el caso de uso de parking para personas externas.
 
-El área de **RRHH** contiene la `SolicitudAusencia`, cuya complejidad reside en su ciclo de
-aprobación en dos niveles. El área de **comunicación** incluye el `Anuncio` y el
-`CalendarioFestivos`, este último compuesto por `Festivos` individuales y asociado a cada entidad
-para el registro correcto de días laborables.
+El área de **RRHH** contiene la `SolicitudAusencia`. El empleado la agrega al solicitarla,
+mientras que la aprobación y la validación se modelan como uso por parte de `Manager` y `RRHH`
+respectivamente.
+
+El área de **comunicación** incluye el `Anuncio` —en composición con `Entidad`— y el
+`CalendarioFestivos`, compuesto por `Festivos` individuales mediante composición y asociado a
+cada entidad para el registro correcto de días laborables.
 
 ### 3.2.2. Diagramas de estados
 
@@ -109,147 +116,87 @@ o RRHH pueden rechazarla en su respectivo nivel.
 
 ### 3.2.3. Glosario
 
-| Término                | Definición                                                                                                                                                     |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Entidad**            | Cada una de las sedes o empresas que conforman GRUPOSIETE. Cada entidad puede activar o desactivar módulos de forma independiente.                             |
-| **Empleado**           | Usuario autenticado del sistema. Su rol determina las acciones que puede realizar.                                                                             |
-| **Plaza**              | Espacio físico reservable: plaza de aparcamiento o puesto de trabajo en oficina.                                                                               |
-| **Plaza asignada**     | Plaza vinculada de forma permanente a un Manager concreto. Solo este puede cederla.                                                                            |
-| **Reserva**            | Registro que vincula a un empleado con una plaza en una fecha y, opcionalmente, una franja horaria.                                                            |
-| **Cesión**             | Liberación voluntaria de una plaza asignada por su propietario para que otros empleados la reserven en una fecha concreta.                                     |
-| **ReglaAutoCesión**    | Configuración que automatiza la cesión cuando el propietario está fuera de la oficina (detectado vía Microsoft 365) o en días fijos de la semana.              |
-| **Hot desking**        | Modelo de trabajo en el que los puestos de oficina no están asignados de forma permanente sino que se reservan dinámicamente según disponibilidad.             |
-| **SolicitudAusencia**  | Petición formal de ausencia laboral que sigue un flujo de aprobación en dos niveles: manager y RRHH.                                                           |
-| **Visitante**          | Persona externa a GRUPOSIETE para la que un empleado gestiona una reserva de parking. No tiene acceso al portal y recibe únicamente un correo de confirmación. |
-| **Anuncio**            | Comunicación interna publicada por RRHH o Administrador, con ámbito de entidad o global, y con fecha de expiración opcional.                                   |
-| **CalendarioFestivos** | Conjunto de días festivos asociado a una entidad para excluirlos del cómputo de días laborables y de la disponibilidad de reservas.                            |
-| **Módulo**             | Funcionalidad activable o desactivable de forma independiente por entidad desde el panel de administración.                                                    |
-
-### 3.2.4. Requisitos suplementarios
-
-Los requisitos suplementarios especifican propiedades del sistema que trascienden la funcionalidad
-individual de cada caso de uso.
-
-| ID     | Categoría            | Descripción                                                                                                                                               |
-| ------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RNF-01 | Rendimiento          | Las operaciones de reserva y cancelación responderán en menos de 2 segundos bajo carga normal de uso.                                                     |
-| RNF-02 | Disponibilidad       | El sistema estará disponible el 99,5 % del tiempo en horario laboral (L–V, 07:00–21:00).                                                                  |
-| RNF-03 | Seguridad            | La autenticación se delega en Microsoft Entra ID mediante OAuth 2.0/OIDC. No se almacenan contraseñas para cuentas M365.                                  |
-| RNF-04 | Seguridad            | La autorización se gestiona en la capa de aplicación mediante guardas de rol. Ningún dato de una entidad es visible para usuarios de otra entidad.        |
-| RNF-05 | Usabilidad           | La interfaz será responsiva y utilizable desde dispositivos móviles sin necesidad de aplicación nativa.                                                   |
-| RNF-06 | Mantenibilidad       | La arquitectura modular permitirá añadir o desactivar módulos sin modificar el código base existente.                                                     |
-| RNF-07 | Portabilidad         | El sistema se desplegará sobre infraestructura estándar (PostgreSQL, Node.js) sin dependencia de un proveedor cloud concreto.                             |
-| RNF-08 | Notificaciones       | El sistema enviará notificaciones de confirmación y recordatorio a través de Microsoft Teams o correo electrónico según las preferencias de cada usuario. |
-| RNF-09 | Internacionalización | La interfaz estará disponible en español. La arquitectura soportará la incorporación de otros idiomas sin cambios estructurales.                          |
+| Término                | Definición                                                                                                                                                                          |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Entidad**            | Cada una de las sedes o empresas que conforman GRUPOSIETE. Cada entidad puede activar o desactivar módulos de forma independiente.                                                  |
+| **Empleado**           | Usuario autenticado del sistema. Su rol determina las acciones que puede realizar.                                                                                                  |
+| **Manager**            | Rol que extiende a Empleado. Dispone de una plaza asignada de forma permanente, puede cederla a otros empleados y aprueba las solicitudes de ausencia de su equipo en primer nivel. |
+| **RRHH**               | Rol que extiende a Manager. Valida las solicitudes de ausencia en segundo nivel y gestiona la publicación de anuncios corporativos.                                                 |
+| **Administrador**      | Rol que extiende a RRHH. Tiene acceso pleno a la configuración del sistema: gestiona entidades, plazas, usuarios y la activación de módulos.                                        |
+| **Plaza**              | Espacio físico reservable: plaza de aparcamiento o puesto de trabajo en oficina.                                                                                                    |
+| **Plaza asignada**     | Plaza vinculada de forma permanente a un Manager concreto. Solo este puede cederla.                                                                                                 |
+| **Reserva**            | Registro que vincula a un empleado con una plaza en una fecha y, opcionalmente, una franja horaria.                                                                                 |
+| **Cesión**             | Liberación voluntaria de una plaza asignada por su propietario para que otros empleados la reserven en una fecha concreta.                                                          |
+| **ReglaAutoCesión**    | Configuración que automatiza la cesión cuando el propietario está fuera de la oficina (detectado vía Microsoft 365) o en días fijos de la semana.                                   |
+| **ReservaVisitante**   | Reserva de plaza de parking gestionada por un empleado para una persona externa a GRUPOSIETE. Incluye los datos del visitante y genera una notificación por correo electrónico.     |
+| **Hot desking**        | Modelo de trabajo en el que los puestos de oficina no están asignados de forma permanente sino que se reservan dinámicamente según disponibilidad.                                  |
+| **SolicitudAusencia**  | Petición formal de ausencia laboral que sigue un flujo de aprobación en dos niveles: manager y RRHH.                                                                                |
+| **Visitante**          | Persona externa a GRUPOSIETE para la que un empleado gestiona una reserva de parking. No tiene acceso al portal y recibe únicamente un correo de confirmación.                      |
+| **Anuncio**            | Comunicación interna publicada por RRHH o Administrador, con ámbito de entidad o global, y con fecha de expiración opcional.                                                        |
+| **Festivo**            | Día no laborable registrado en un CalendarioFestivos. Puede ser de ámbito nacional, autonómico o local, y marcarse como opcional.                                                   |
+| **CalendarioFestivos** | Conjunto de días festivos asociado a una entidad para excluirlos del cómputo de días laborables y de la disponibilidad de reservas.                                                 |
+| **Módulo**             | Funcionalidad activable o desactivable de forma independiente por entidad desde el panel de administración.                                                                         |
 
 ## 3.3. Disciplina de requisitos
 
-### 3.3.1. Diagrama de contexto
+### 3.3.1. Actores del sistema
 
-El diagrama de contexto representa el sistema como una máquina de estados cuyos estados
-principales corresponden a los módulos del portal. Las transiciones de entrada (`autenticarse()`) y
-salida (`cerrarSesion()`) delimitan la frontera del sistema. Las acciones
-ejecutables dentro de cada módulo se enumeran como comportamientos internos de su estado
-correspondiente, de forma que el diagrama sirve de índice navegable de toda la funcionalidad del
-sistema.
+La jerarquía de actores sigue una cadena de herencia en la que cada nivel añade
+capacidades al anterior.
 
-![Diagrama de contexto](../../modelosUML/svg/contexto.svg)
-<sub>[Código fuente](../../modelosUML/puml/contexto.puml)</sub>
+![Diagrama de actores](../../modelosUML/svg/actores.svg)
+<sub>[Código fuente](../../modelosUML/puml/actores.puml)</sub>
 
-### 3.3.2. Actores del sistema
+| Actor             | Tipo              | Descripción                                                                                                                   |
+| ----------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Empleado**      | Primario          | Usuario base del sistema. Realiza reservas, solicita ausencias y consulta información.                                        |
+| **Manager**       | Primario          | Extiende a Empleado. Dispone de plaza asignada, puede cederla y aprueba solicitudes de ausencia de su equipo en primer nivel. |
+| **RRHH**          | Primario          | Extiende a Manager. Valida solicitudes de ausencia en segundo nivel y publica anuncios.                                       |
+| **Administrador** | Primario          | Extiende a RRHH. Gestiona entidades, plazas, usuarios y la configuración global del sistema.                                  |
+| **Visitante**     | Secundario pasivo | Persona externa sin acceso al portal. Recibe un correo de confirmación cuando un empleado registra una visita en su nombre.   |
 
-| Actor               | Tipo              | Descripción                                                                                                                   |
-| ------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **Empleado**        | Primario          | Usuario base del sistema. Realiza reservas, solicita ausencias y consulta información.                                        |
-| **Manager**         | Primario          | Extiende a Empleado. Dispone de plaza asignada, puede cederla y aprueba solicitudes de ausencia de su equipo en primer nivel. |
-| **RRHH**            | Primario          | Extiende a Manager. Valida solicitudes de ausencia en segundo nivel y publica anuncios.                                       |
-| **Administrador**   | Primario          | Extiende a RRHH. Gestiona entidades, plazas, usuarios y la configuración global del sistema.                                  |
-| **Visitante**       | Secundario pasivo | Persona externa sin acceso al portal. Recibe un correo de confirmación cuando un empleado registra una visita en su nombre.   |
-| **Entra ID**        | Sistema externo   | Proveedor de identidad Microsoft utilizado para la autenticación SSO mediante OAuth 2.0/OIDC.                                 |
-| **Microsoft Graph** | Sistema externo   | API de Microsoft 365 consultada para la detección del estado fuera de oficina y el envío de notificaciones vía Teams.         |
+El sistema interactúa con dos servicios externos que no son actores en el sentido de
+iniciar casos de uso, sino colaboradores de la capa de aplicación: **Microsoft Entra ID**
+como proveedor de identidad (OAuth 2.0/OIDC) y **Microsoft Graph API** para la consulta
+del estado fuera de oficina y el envío de notificaciones por Teams.
 
-### 3.3.3. Casos de uso
+### 3.3.2. Casos de uso
 
 El siguiente diagrama presenta la totalidad de los casos de uso del sistema, agrupados por módulo
-y vinculados a los actores que los inician. La generalización entre actores refleja la herencia de
-capacidades: un Manager puede realizar todo lo que hace un Empleado, y así sucesivamente.
+y vinculados a los actores que los inician. La herencia entre actores se representa en el diagrama
+de actores de la sección anterior.
+
+El desarrollo del sistema se organizó en fases sucesivas conforme al modelo en cascada.
+La primera fase abordó el módulo de acceso (`autenticarse()`). La segunda implementó el
+módulo de parking con reservas, cesiones y gestión de visitantes; la tercera añadió el módulo
+de oficinas con reserva de puestos y franjas horarias. La cuarta fase incorporó el módulo
+de vacaciones con el flujo completo de aprobación en dos niveles, seguida del tablón de
+anuncios y el directorio de empleados. La quinta fase cubrió el panel de administración
+(gestión de plazas, usuarios, entidades y configuración del sistema) junto con el módulo de
+ajustes. La última fase integró el panel de analíticas para administradores.
 
 ![Diagrama de casos de uso](../../modelosUML/svg/casosUso.svg)
 <sub>[Código fuente](../../modelosUML/puml/casosUso.puml)</sub>
 
-La siguiente tabla recoge la priorización de los casos de uso conforme al método MoSCoW,
-estableciendo el alcance del MVP documentado en este trabajo.
-
-| Prioridad  | Caso de uso                     | Módulo         |
-| ---------- | ------------------------------- | -------------- |
-| **Must**   | `autenticarse()`                | Acceso         |
-| **Must**   | `reservarPlaza()`               | Parking        |
-| **Must**   | `cancelarReservaParking()`      | Parking        |
-| **Must**   | `cederPlaza()`                  | Parking        |
-| **Must**   | `cancelarCesion()`              | Parking        |
-| **Must**   | `registrarVisitante()`          | Parking        |
-| **Must**   | `reservarPuesto()`              | Oficinas       |
-| **Must**   | `cancelarReservaPuesto()`       | Oficinas       |
-| **Must**   | `solicitarAusencia()`           | Vacaciones     |
-| **Must**   | `cancelarSolicitudAusencia()`   | Vacaciones     |
-| **Must**   | `aprobarSolicitudAusencia()`    | Vacaciones     |
-| **Must**   | `rechazarSolicitudAusencia()`   | Vacaciones     |
-| **Must**   | `validarSolicitudAusencia()`    | Vacaciones     |
-| **Must**   | `rechazarValidacionAusencia()`  | Vacaciones     |
-| **Must**   | `editarPerfil()`                | Ajustes        |
-| **Must**   | `gestionarPlazas()`             | Administración |
-| **Must**   | `gestionarUsuarios()`           | Administración |
-| **Must**   | `configurarSistema()`           | Administración |
-| **Should** | `cancelarVisitante()`           | Parking        |
-| **Should** | `configurarPreferencias()`      | Ajustes        |
-| **Should** | `conectarMicrosoft365()`        | Ajustes        |
-| **Should** | `consultarTablon()`             | Tablón         |
-| **Should** | `publicarAnuncio()`             | Tablón         |
-| **Should** | `consultarDirectorio()`         | Directorio     |
-| **Should** | `gestionarEntidades()`          | Administración |
-| **Should** | `configurarModulos()`           | Administración |
-| **Could**  | `consultarAnalytics()`          | Administración |
-| **Won't**  | Gestión de nóminas y documentos | —              |
-
-### 3.3.4. Detalle de casos de uso representativos
+### 3.3.3. Detalle de casos de uso representativos
 
 Se detallan a continuación cuatro casos de uso que cubren los flujos más representativos del
 sistema: el flujo estándar de reserva, la lógica específica de cesión, el flujo de aprobación
 multinivel y la gestión de visitantes con notificación externa.
 
-**`reservarPlaza()`** — El empleado accede al calendario de parking, selecciona una fecha
-disponible y elige entre las plazas libres para esa fecha, incluyendo las cesiones vigentes. El
-sistema valida la unicidad (un empleado, una plaza, un día) y confirma la reserva. El flujo
-alternativo en azul recoge la cancelación en cualquier punto del proceso.
-
 ![Detalle reservarPlaza()](../../modelosUML/svg/cuReservarPlaza.svg)
 <sub>[Código fuente](../../modelosUML/puml/cuReservarPlaza.puml)</sub>
-
-**`cederPlaza()`** — El manager accede a su plaza asignada, selecciona la fecha en la que no la
-utilizará y confirma la cesión. El sistema registra la cesión en estado disponible y notifica a los
-empleados que tenían una alerta activa para esa fecha. Es el caso de uso que habilita el modelo de
-reutilización de plazas asignadas.
 
 ![Detalle cederPlaza()](../../modelosUML/svg/cuCederPlaza.svg)
 <sub>[Código fuente](../../modelosUML/puml/cuCederPlaza.puml)</sub>
 
-**`aprobarSolicitudAusencia()`** — El manager accede a la bandeja de solicitudes pendientes de
-su equipo, revisa el detalle de la solicitud seleccionada y toma una decisión con nota opcional. Si
-aprueba, el sistema actualiza el estado a `aprobada_manager` y notifica al equipo de RRHH para la
-validación en segundo nivel.
-
 ![Detalle aprobarSolicitudAusencia()](../../modelosUML/svg/cuAprobarSolicitudAusencia.svg)
 <sub>[Código fuente](../../modelosUML/puml/cuAprobarSolicitudAusencia.puml)</sub>
-
-**`registrarVisitante()`** — El empleado introduce los datos del visitante (nombre, empresa,
-email) y la fecha de la visita, y selecciona una plaza de visitante disponible. El sistema crea la
-reserva y envía automáticamente un correo de confirmación al visitante. Este es el único caso de
-uso en el que el sistema interactúa con un actor externo pasivo sin acceso al portal.
 
 ![Detalle registrarVisitante()](../../modelosUML/svg/cuRegistrarVisitante.svg)
 <sub>[Código fuente](../../modelosUML/puml/cuRegistrarVisitante.puml)</sub>
 
-### 3.3.5. Prototipos de interfaz
+### 3.3.4. Prototipos de interfaz
 
 Los prototipos de baja fidelidad validan la correspondencia entre los casos de uso detallados y la
 interfaz del sistema. Se presentan como wireframes funcionales centrados en la estructura de la
@@ -280,3 +227,32 @@ de la visita (fecha y selección de plaza), con acción de registro y envío aut
 
 ![Prototipo registrarVisitante()](../../modelosUML/svg/protoRegistrarVisitante.svg)
 <sub>[Código fuente](../../modelosUML/puml/protoRegistrarVisitante.puml)</sub>
+
+### 3.3.5. Diagrama de contexto
+
+El diagrama de contexto expresa el sistema como una máquina de estados en la que cada estado
+representa una vista del portal y cada transición corresponde a un caso de uso que lleva al
+usuario de una vista a otra. `SIN_AUTENTICAR` es el estado de entrada; `PORTAL` actúa como
+eje central desde el que se accede a todos los módulos. Los servicios externos (Entra ID y
+Microsoft Graph) no aparecen como estados porque no forman parte de la interfaz del sistema,
+sino que colaboran desde la capa de aplicación.
+
+![Diagrama de contexto](../../modelosUML/svg/contexto.svg)
+<sub>[Código fuente](../../modelosUML/puml/contexto.puml)</sub>
+
+## 3.4. Requisitos no funcionales
+
+Los requisitos no funcionales especifican propiedades del sistema que trascienden la
+funcionalidad individual de cada caso de uso.
+
+| ID     | Categoría            | Descripción                                                                                                                                               |
+| ------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RNF-01 | Rendimiento          | Las operaciones de reserva y cancelación responderán en menos de 2 segundos bajo carga normal de uso.                                                     |
+| RNF-02 | Disponibilidad       | El sistema estará disponible el 99,5 % del tiempo en horario laboral (L–V, 07:00–21:00).                                                                  |
+| RNF-03 | Seguridad            | La autenticación se delega en Microsoft Entra ID mediante OAuth 2.0/OIDC. No se almacenan contraseñas para cuentas M365.                                  |
+| RNF-04 | Seguridad            | La autorización se gestiona en la capa de aplicación mediante guardas de rol. Ningún dato de una entidad es visible para usuarios de otra entidad.        |
+| RNF-05 | Usabilidad           | La interfaz será responsiva y utilizable desde dispositivos móviles sin necesidad de aplicación nativa.                                                   |
+| RNF-06 | Mantenibilidad       | La arquitectura modular permitirá añadir o desactivar módulos sin modificar el código base existente.                                                     |
+| RNF-07 | Portabilidad         | El sistema se desplegará sobre infraestructura estándar (PostgreSQL, Node.js) sin dependencia de un proveedor cloud concreto.                             |
+| RNF-08 | Notificaciones       | El sistema enviará notificaciones de confirmación y recordatorio a través de Microsoft Teams o correo electrónico según las preferencias de cada usuario. |
+| RNF-09 | Internacionalización | La interfaz estará disponible en español. La arquitectura soportará la incorporación de otros idiomas sin cambios estructurales.                          |

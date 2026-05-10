@@ -3,9 +3,10 @@
 skinparam linetype polyline
 hide empty description
 
-state "VACACIONES" as Vacaciones
+state "BANDEJA_SOLICITUDES" as BandejaInicio
+state "BANDEJA_SOLICITUDES" as BandejaFin
 
-Vacaciones -[#green]-> aprobarSolicitudAusencia
+BandejaInicio -[#green]-> aprobarSolicitudAusencia
 
 state aprobarSolicitudAusencia as "aprobarSolicitudAusencia()" {
   state " " as ListandoSolicitudes
@@ -38,12 +39,12 @@ state aprobarSolicitudAusencia as "aprobarSolicitudAusencia()" {
   end note
 }
 
-aprobarSolicitudAusencia -[#green]-> Vacaciones
+aprobarSolicitudAusencia -[#green]-> BandejaFin
 note on link
   decisión registrada
 end note
 
-aprobarSolicitudAusencia -[#blue]-> Vacaciones
+aprobarSolicitudAusencia -[#blue]-> BandejaFin
 note on link
   cancelar
 end note

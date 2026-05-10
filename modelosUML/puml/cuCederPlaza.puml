@@ -3,9 +3,10 @@
 skinparam linetype polyline
 hide empty description
 
-state "PARKING" as Parking
+state "VISTA_CESION" as VistaCesionInicio
+state "VISTA_CESION" as VistaCesionFin
 
-Parking -[#green]-> cederPlaza
+VistaCesionInicio -[#green]-> cederPlaza
 
 state cederPlaza as "cederPlaza()" {
   state " " as VisualizandoPlaza
@@ -38,12 +39,12 @@ state cederPlaza as "cederPlaza()" {
   end note
 }
 
-cederPlaza -[#green]-> Parking
+cederPlaza -[#green]-> VistaCesionFin
 note on link
   cesión registrada
 end note
 
-cederPlaza -[#blue]-> Parking
+cederPlaza -[#blue]-> VistaCesionFin
 note on link
   cancelar
 end note

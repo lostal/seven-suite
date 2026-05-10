@@ -302,7 +302,7 @@ mismo autor, con supervisión iterativa semanal por parte de la tutora académic
 1. **Primera iteración - Requisitos (Capítulo 3):** a partir de sesiones de levantamiento de
    información con personas clave de GRUPOSIETE, se elabora el modelo del dominio, se
    identifican los actores del sistema y se definen los casos de uso del MVP. Se producen prototipos
-   de interfaz de baja y alta fidelidad con plantUML para validar la comprensión de los requisitos.
+   de interfaz de baja fidelidad con plantUML para validar la comprensión de los requisitos.
 
 2. **Segunda iteración - Análisis y diseño (Capítulo 4):** a partir de los casos de uso
    formalizados se derivan las clases de análisis y diseño, se define la arquitectura del sistema y el

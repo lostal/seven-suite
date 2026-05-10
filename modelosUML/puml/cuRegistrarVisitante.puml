@@ -3,9 +3,10 @@
 skinparam linetype polyline
 hide empty description
 
-state "PARKING" as Parking
+state "GESTION_VISITANTES" as GestionVisitantesInicio
+state "GESTION_VISITANTES" as GestionVisitantesFin
 
-Parking -[#green]-> registrarVisitante
+GestionVisitantesInicio -[#green]-> registrarVisitante
 
 state registrarVisitante as "registrarVisitante()" {
   state " " as IntroduciendoDatos
@@ -38,12 +39,12 @@ state registrarVisitante as "registrarVisitante()" {
   end note
 }
 
-registrarVisitante -[#green]-> Parking
+registrarVisitante -[#green]-> GestionVisitantesFin
 note on link
   visitante registrado
 end note
 
-registrarVisitante -[#blue]-> Parking
+registrarVisitante -[#blue]-> GestionVisitantesFin
 note on link
   cancelar
 end note

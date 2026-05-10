@@ -3,9 +3,10 @@
 skinparam linetype polyline
 hide empty description
 
-state "PARKING" as Parking
+state "CALENDARIO_PARKING" as VistaParkingInicio
+state "CALENDARIO_PARKING" as VistaParkingFin
 
-Parking -[#green]-> reservarPlaza
+VistaParkingInicio -[#green]-> reservarPlaza
 
 state reservarPlaza as "reservarPlaza()" {
   state " " as SeleccionandoFecha
@@ -37,12 +38,12 @@ state reservarPlaza as "reservarPlaza()" {
   end note
 }
 
-reservarPlaza -[#green]-> Parking
+reservarPlaza -[#green]-> VistaParkingFin
 note on link
   reserva confirmada
 end note
 
-reservarPlaza -[#blue]-> Parking
+reservarPlaza -[#blue]-> VistaParkingFin
 note on link
   cancelar
 end note

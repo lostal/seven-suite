@@ -1,80 +1,81 @@
 @startuml contexto
 
-left to right direction
-skinparam linetype polyline
 hide empty description
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam stateBorderThickness 1.5
+skinparam arrowThickness 1.2
+skinparam arrowColor #444444
 
 state "SIN_AUTENTICAR" as SinAuth
-
 state "PORTAL" as Portal
 
-state "PARKING" as Parking {
-  Parking : reservarPlaza()
-  Parking : cancelarReservaParking()
-  Parking : cederPlaza()
-  Parking : cancelarCesion()
-  Parking : configurarReglaCesion()
-  Parking : registrarVisitante()
-  Parking : cancelarVisitante()
-}
+state "CALENDARIO_PARKING" as CalParking
+state "VISTA_CESION" as VistaCesion
+state "GESTION_VISITANTES" as GestionVisitantes
+state "CALENDARIO_OFICINAS" as CalOficinas
+state "BANDEJA_SOLICITUDES" as BandejaSolicitudes
+state "TABLON" as Tablon
+state "DIRECTORIO" as Directorio
+state "AJUSTES" as Ajustes
+state "ADMINISTRACION" as Administracion
+state "PANEL_ANALITICAS" as PanelAnaliticas
 
-state "OFICINAS" as Oficinas {
-  Oficinas : reservarPuesto()
-  Oficinas : cancelarReservaPuesto()
-}
+' ── Entrada y salida ────────────────────────────────────────────────────────
 
-state "VACACIONES" as Vacaciones {
-  Vacaciones : solicitarAusencia()
-  Vacaciones : cancelarSolicitudAusencia()
-  Vacaciones : aprobarSolicitudAusencia()
-  Vacaciones : rechazarSolicitudAusencia()
-  Vacaciones : validarSolicitudAusencia()
-  Vacaciones : rechazarValidacionAusencia()
-}
+[*] --> SinAuth
 
-state "TABLÓN" as Tablon {
-  Tablon : consultarTablon()
-  Tablon : publicarAnuncio()
-}
+SinAuth --> Portal : autenticarse()
+note on link
+  Entra ID delega la verificación de identidad
+end note
 
-state "DIRECTORIO" as Directorio {
-  Directorio : consultarDirectorio()
-}
+Portal --> SinAuth : cerrarSesion()
 
-state "AJUSTES" as Ajustes {
-  Ajustes : editarPerfil()
-  Ajustes : configurarPreferencias()
-  Ajustes : conectarMicrosoft365()
-}
+' ── Parking ──────────────────────────────────────────────────────────────────
 
-state "ADMINISTRACIÓN" as Admin {
-  Admin : gestionarEntidades()
-  Admin : gestionarPlazas()
-  Admin : gestionarUsuarios()
-  Admin : configurarModulos()
-  Admin : configurarSistema()
-  Admin : consultarAnalytics()
-}
+Portal --> CalParking : reservarPlaza()
+CalParking --> Portal
 
-[*]        --> SinAuth
+Portal --> GestionVisitantes : registrarVisitante()
+GestionVisitantes --> Portal
 
-SinAuth    --> Portal      : autenticarse()
-Portal     --> SinAuth     : cerrarSesion()
+CalParking --> VistaCesion : cederPlaza()
+VistaCesion --> CalParking : cancelarCesion()
 
-Portal     --> Parking
-Portal     --> Oficinas
-Portal     --> Vacaciones
-Portal     --> Tablon
-Portal     --> Directorio
-Portal     --> Ajustes
-Portal     --> Admin
+' ── Oficinas ─────────────────────────────────────────────────────────────────
 
-Parking    --> Portal
-Oficinas   --> Portal
-Vacaciones --> Portal
-Tablon     --> Portal
+Portal --> CalOficinas : reservarPuesto()
+CalOficinas --> Portal
+
+' ── Vacaciones ───────────────────────────────────────────────────────────────
+
+Portal --> BandejaSolicitudes : solicitarAusencia()
+BandejaSolicitudes --> Portal : aprobarSolicitudAusencia()
+
+' ── Tablón ───────────────────────────────────────────────────────────────────
+
+Portal --> Tablon : consultarTablon()
+Tablon --> Portal : publicarAnuncio()
+
+' ── Directorio ───────────────────────────────────────────────────────────────
+
+Portal --> Directorio : consultarDirectorio()
 Directorio --> Portal
-Ajustes    --> Portal
-Admin      --> Portal
+
+' ── Ajustes ──────────────────────────────────────────────────────────────────
+
+Portal --> Ajustes : editarPerfil()
+Ajustes --> Portal : configurarPreferencias()
+
+' ── Administración ───────────────────────────────────────────────────────────
+
+Portal --> Administracion : gestionarPlazas()
+Administracion --> Portal : gestionarUsuarios()
+
+' ── Panel ────────────────────────────────────────────────────────────────────
+
+Portal --> PanelAnaliticas : consultarAnalytics()
+PanelAnaliticas --> Portal
 
 @enduml

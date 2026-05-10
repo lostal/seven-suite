@@ -17,7 +17,7 @@ title Estados de <b>Cesión</b>
 Disponible --> Reservada  : empleado reserva la cesión
 Disponible --> Cancelada  : propietario cancela\nantes de ser reservada
 
-Reservada  --> Cancelada  : cancelar reserva\nassociada o la cesión
+Reservada  --> Cancelada  : cancelar reserva\nasociada o la cesión
 
 Reservada  --> [*]
 Cancelada  --> [*]

@@ -116,29 +116,33 @@ Empleado    <|-- Manager
 Manager     <|-- RRHH
 RRHH        <|-- Administrador
 
-' ── Asociaciones ─────────────────────────────────────────────────────────────
+' ── Composición (parte no existe sin el todo) ────────────────────────────────
 
-Entidad  "1"    --  "N"   Empleado         : pertenece a >
-Entidad  "1"    --  "N"   Plaza            : dispone de >
+Entidad               "1" *-- "N"   Empleado           : pertenece a >
+Entidad               "1" *-- "N"   Plaza              : dispone de >
+Entidad               "1" *-- "N"   Anuncio            : publica >
+CalendarioFestivos    "1" *-- "N"   Festivo            : agrupa >
 
-Empleado "0..1" --  "0..N" Plaza           : < plaza asignada
+' ── Agregación (el todo contiene las partes, pero las partes tienen identidad propia) ─
 
-Empleado "1"    --  "N"   Reserva          : realiza >
-Plaza    "1"    --  "N"   Reserva          : es objeto de >
+Empleado              "1" o-- "N"   Reserva            : realiza >
+Empleado              "1" o-- "N"   ReservaVisitante   : gestiona >
+Empleado              "1" o-- "N"   SolicitudAusencia  : solicita >
+Manager               "1" o-- "N"   Cesion             : cede >
+Manager               "1" o-- "N"   ReglaAutoCesion    : configura >
 
-Manager  "1"    --  "N"   Cesion           : cede >
-Manager  "1"    --  "N"   ReglaAutoCesion  : configura >
-Cesion   "1"    --  "0..1" Reserva         : < reserva de cesión
+' ── Uso (dependencia transitoria, sin propiedad) ─────────────────────────────
 
-Empleado "1"    --  "N"   ReservaVisitante : gestiona >
-Plaza    "1"    --  "N"   ReservaVisitante : es objeto de >
+Manager               "1" ..> "N"   SolicitudAusencia  : aprueba >
+RRHH                  "1" ..> "N"   SolicitudAusencia  : valida >
 
-Empleado "1"    --  "N"   SolicitudAusencia : solicita >
-Manager  "1"    --  "N"   SolicitudAusencia : aprueba >
-RRHH     "1"    --  "N"   SolicitudAusencia : valida >
+' ── Asociación (relación entre pares independientes) ─────────────────────────
 
-Entidad  "1"    --  "N"   Anuncio           : publica >
-Entidad  "N"    --  "N"   CalendarioFestivos : sigue >
-CalendarioFestivos "1" *-- "N" Festivo
+Manager               "0..1" -- "0..1" Plaza           : < plaza asignada
+Plaza                 "1"    -- "N"    Reserva         : < es objeto de
+Plaza                 "1"    -- "N"    Cesion          : < liberada
+Cesion                "1"    -- "0..1" Reserva         : < reserva de cesión
+Plaza                 "1"    -- "N"    ReservaVisitante: < es objeto de
+Entidad               "N"    -- "N"    CalendarioFestivos : sigue >
 
 @enduml
