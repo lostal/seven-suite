@@ -1,0 +1,35 @@
+@startuml casosUsoAdmin
+
+left to right direction
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+
+actor "RRHH"          as rrhh
+actor "Administrador" as admin
+
+rrhh <|-- admin
+
+package "Administración" {
+  usecase "abrirAdministracion()" as UC_AAD
+  usecase "gestionarEntidades()"  as UC_GE
+  usecase "gestionarPlazas()"     as UC_GP
+  usecase "gestionarUsuarios()"   as UC_GU
+  usecase "configurarModulos()"   as UC_CMO
+  usecase "configurarSistema()"   as UC_CS
+}
+
+package "Panel" {
+  usecase "abrirPanelAnaliticas()" as UC_APA
+  usecase "consultarAnalytics()"   as UC_CA
+}
+
+admin --> UC_AAD
+admin --> UC_GE
+admin --> UC_GP
+admin --> UC_GU
+admin --> UC_CMO
+admin --> UC_CS
+admin --> UC_APA
+admin --> UC_CA
+
+@enduml

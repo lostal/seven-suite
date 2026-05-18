@@ -1,81 +1,84 @@
 @startuml contexto
 
-hide empty description
+left to right direction
+skinparam linetype polyline
 skinparam defaultFontName Arial
-skinparam defaultFontSize 11
+skinparam defaultFontSize 10
 skinparam stateBorderThickness 1.5
 skinparam arrowThickness 1.2
 skinparam arrowColor #444444
 
-state "SIN_AUTENTICAR" as SinAuth
-state "PORTAL" as Portal
+state "SESION_CERRADA" as SinAuth
+state "SISTEMA_DISPONIBLE" as Menu
 
-state "CALENDARIO_PARKING" as CalParking
-state "VISTA_CESION" as VistaCesion
-state "GESTION_VISITANTES" as GestionVisitantes
-state "CALENDARIO_OFICINAS" as CalOficinas
-state "BANDEJA_SOLICITUDES" as BandejaSolicitudes
-state "TABLON" as Tablon
-state "DIRECTORIO" as Directorio
-state "AJUSTES" as Ajustes
-state "ADMINISTRACION" as Administracion
-state "PANEL_ANALITICAS" as PanelAnaliticas
-
-' ── Entrada y salida ────────────────────────────────────────────────────────
+state "CALENDARIO_PARKING_ABIERTO" as CalParking
+state "PLAZA_ABIERTA" as EditPlaza
+state "CESION_ABIERTA" as EditCesion
+state "VISITANTE_ABIERTO" as EditVisitante
+state "CALENDARIO_OFICINAS_ABIERTO" as CalOficinas
+state "PUESTO_ABIERTO" as EditPuesto
+state "BANDEJA_SOLICITUDES_ABIERTA" as Bandeja
+state "SOLICITUD_ABIERTA" as EditSolicitud
+state "TABLON_ABIERTO" as Tablon
+state "ANUNCIO_ABIERTO" as EditAnuncio
+state "DIRECTORIO_ABIERTO" as Directorio
+state "AJUSTES_ABIERTO" as Ajustes
+state "PERFIL_ABIERTO" as EditPerfil
+state "ADMINISTRACION_ABIERTA" as Admin
+state "PANEL_ANALITICAS_ABIERTO" as Panel
 
 [*] --> SinAuth
 
-SinAuth --> Portal : autenticarse()
-note on link
-  Entra ID delega la verificación de identidad
-end note
+SinAuth --> Menu : iniciarSesion()
 
-Portal --> SinAuth : cerrarSesion()
+Menu --> SinAuth : cerrarSesion()
+Menu --> CalParking   : abrirCalendarioParking()
+Menu --> CalOficinas  : abrirCalendarioOficinas()
+Menu --> Bandeja      : abrirBandejaSolicitudes()
+Menu --> Tablon       : abrirTablon()
+Menu --> Directorio   : abrirDirectorio()
+Menu --> Ajustes      : abrirAjustes()
+Menu --> Admin        : abrirAdministracion()
+Menu --> Panel        : abrirPanelAnaliticas()
 
-' ── Parking ──────────────────────────────────────────────────────────────────
+CalParking   --> EditPlaza      : reservarPlaza()
+CalParking   --> EditCesion     : cederPlaza()
+CalParking   --> EditVisitante  : registrarVisitante()
+CalParking   --> CalParking     : cancelarReservaParking()
+CalParking   --> CalParking     : cancelarCesion()
+CalParking   --> CalParking     : cancelarVisitante()
 
-Portal --> CalParking : reservarPlaza()
-CalParking --> Portal
+EditPlaza      --> CalParking   : abrirCalendarioParking()
+EditCesion     --> CalParking   : abrirCalendarioParking()
+EditVisitante  --> CalParking   : abrirCalendarioParking()
 
-Portal --> GestionVisitantes : registrarVisitante()
-GestionVisitantes --> Portal
+CalOficinas  --> EditPuesto     : reservarPuesto()
+CalOficinas  --> CalOficinas    : cancelarReservaPuesto()
 
-CalParking --> VistaCesion : cederPlaza()
-VistaCesion --> CalParking : cancelarCesion()
+EditPuesto    --> CalOficinas   : abrirCalendarioOficinas()
 
-' ── Oficinas ─────────────────────────────────────────────────────────────────
+Bandeja      --> EditSolicitud  : solicitarAusencia()
+Bandeja      --> EditSolicitud  : gestionarSolicitudAusencia()
+Bandeja      --> EditSolicitud  : gestionarValidacionAusencia()
+Bandeja      --> Bandeja        : cancelarSolicitudAusencia()
 
-Portal --> CalOficinas : reservarPuesto()
-CalOficinas --> Portal
+EditSolicitud --> Bandeja       : abrirBandejaSolicitudes()
 
-' ── Vacaciones ───────────────────────────────────────────────────────────────
+Tablon       --> EditAnuncio    : publicarAnuncio()
 
-Portal --> BandejaSolicitudes : solicitarAusencia()
-BandejaSolicitudes --> Portal : aprobarSolicitudAusencia()
+EditAnuncio   --> Tablon        : abrirTablon()
 
-' ── Tablón ───────────────────────────────────────────────────────────────────
+Ajustes      --> EditPerfil     : editarPerfil()
 
-Portal --> Tablon : consultarTablon()
-Tablon --> Portal : publicarAnuncio()
+EditPerfil    --> Ajustes       : abrirAjustes()
 
-' ── Directorio ───────────────────────────────────────────────────────────────
-
-Portal --> Directorio : consultarDirectorio()
-Directorio --> Portal
-
-' ── Ajustes ──────────────────────────────────────────────────────────────────
-
-Portal --> Ajustes : editarPerfil()
-Ajustes --> Portal : configurarPreferencias()
-
-' ── Administración ───────────────────────────────────────────────────────────
-
-Portal --> Administracion : gestionarPlazas()
-Administracion --> Portal : gestionarUsuarios()
-
-' ── Panel ────────────────────────────────────────────────────────────────────
-
-Portal --> PanelAnaliticas : consultarAnalytics()
-PanelAnaliticas --> Portal
+CalParking   --> Menu : completarGestion()
+CalOficinas  --> Menu : completarGestion()
+Bandeja      --> Menu : completarGestion()
+Tablon       --> Menu : completarGestion()
+Directorio   --> Menu : completarGestion()
+Ajustes      --> Menu : completarGestion()
+Admin        --> Menu : completarGestion()
+Panel        --> Menu : completarGestion()
 
 @enduml

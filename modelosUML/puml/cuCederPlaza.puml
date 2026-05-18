@@ -1,50 +1,50 @@
 @startuml cuCederPlaza
 
 skinparam linetype polyline
-hide empty description
-
-state "VISTA_CESION" as VistaCesionInicio
-state "VISTA_CESION" as VistaCesionFin
-
-VistaCesionInicio -[#green]-> cederPlaza
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
 
 state cederPlaza as "cederPlaza()" {
-  state " " as VisualizandoPlaza
-  state " " as SeleccionandoFecha
+  state " " as SolicitandoCesion
+  state " " as ProporcionandoFecha
   state " " as CesionRegistrada
 
-  [*] -[#green]-> VisualizandoPlaza
+  [*] -[#green]-> SolicitandoCesion
   note on link
-    <b>Manager</b> accede a su plaza asignada
+    <b>Manager</b> solicita ceder plaza asignada
   end note
 
-  VisualizandoPlaza -[#green]-> SeleccionandoFecha
+  SolicitandoCesion -[#green]-> ProporcionandoFecha
   note on link
-    <b>Sistema</b> muestra el estado de la plaza asignada
+    <b>Sistema</b> presenta estado de la plaza asignada
     • Reservas propias existentes
     • Cesiones ya registradas
-    <b>Manager</b> solicita ceder la plaza en una fecha
+    • Reglas de auto-cesión configuradas
+    • Permite solicitar ceder plaza
+    • Permite solicitar cancelar
   end note
 
-  SeleccionandoFecha -[#green]-> CesionRegistrada
+  ProporcionandoFecha -[#green]-> CesionRegistrada
   note on link
-    <b>Manager</b> selecciona la fecha de cesión
-    <b>Sistema</b> valida que no exista ya una reserva o cesión
+    <b>Sistema</b> presenta validación de la fecha seleccionada
+    • Verifica que no exista reserva o cesión previa
+    • Permite solicitar confirmar cesión
+    • Permite solicitar cancelar
   end note
 
   CesionRegistrada -[#green]-> [*]
   note on link
-    <b>Sistema</b> registra la cesión en estado //disponible//
-    <b>Sistema</b> notifica a empleados con alertas para esa fecha
+    <b>Manager</b> solicita confirmar cesión
+    <b>Sistema</b> crea cesión y transfiere a calendario
   end note
 }
 
-cederPlaza -[#green]-> VistaCesionFin
+cederPlaza -[#green]-> CALENDARIO_PARKING_ABIERTO
 note on link
   cesión registrada
 end note
 
-cederPlaza -[#blue]-> VistaCesionFin
+cederPlaza -[#blue]-> CALENDARIO_PARKING_ABIERTO
 note on link
   cancelar
 end note

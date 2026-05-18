@@ -142,10 +142,17 @@ o RRHH pueden rechazarla en su respectivo nivel.
 ### 3.3.1. Actores del sistema
 
 La jerarquía de actores sigue una cadena de herencia en la que cada nivel añade
-capacidades al anterior.
+capacidades al anterior. Los diagramas a continuación presentan dicha herencia junto
+con los casos de uso que inicia cada actor, distribuidos en tres vistas temáticas.
 
-![Diagrama de actores](../../modelosUML/svg/actores.svg)
-<sub>[Código fuente](../../modelosUML/puml/actores.puml)</sub>
+![Actores y casos de uso — espacios](../../modelosUML/svg/casosUso.svg)
+<sub>[Código fuente](../../modelosUML/puml/casosUso.puml)</sub>
+
+![Actores y casos de uso — personas](../../modelosUML/svg/casosUsoPersonas.svg)
+<sub>[Código fuente](../../modelosUML/puml/casosUsoPersonas.puml)</sub>
+
+![Actores y casos de uso — administración](../../modelosUML/svg/casosUsoAdmin.svg)
+<sub>[Código fuente](../../modelosUML/puml/casosUsoAdmin.puml)</sub>
 
 | Actor             | Tipo              | Descripción                                                                                                                   |
 | ----------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -162,12 +169,13 @@ del estado fuera de oficina y el envío de notificaciones por Teams.
 
 ### 3.3.2. Casos de uso
 
-El siguiente diagrama presenta la totalidad de los casos de uso del sistema, agrupados por módulo
-y vinculados a los actores que los inician. La herencia entre actores se representa en el diagrama
-de actores de la sección anterior.
+Los tres diagramas de la sección anterior presentan la totalidad de los casos de uso del sistema,
+agrupados por dominio —espacios, personas y administración— y vinculados a los actores que los
+inician mediante la herencia visible en cada vista.
 
 El desarrollo del sistema se organizó en fases sucesivas conforme al modelo en cascada.
-La primera fase abordó el módulo de acceso (`autenticarse()`). La segunda implementó el
+La primera fase abordó la autenticación mediante Entra ID y la estructura base del portal
+(`cerrarSesion()`). La segunda implementó el
 módulo de parking con reservas, cesiones y gestión de visitantes; la tercera añadió el módulo
 de oficinas con reserva de puestos y franjas horarias. La cuarta fase incorporó el módulo
 de vacaciones con el flujo completo de aprobación en dos niveles, seguida del tablón de
@@ -175,14 +183,11 @@ anuncios y el directorio de empleados. La quinta fase cubrió el panel de admini
 (gestión de plazas, usuarios, entidades y configuración del sistema) junto con el módulo de
 ajustes. La última fase integró el panel de analíticas para administradores.
 
-![Diagrama de casos de uso](../../modelosUML/svg/casosUso.svg)
-<sub>[Código fuente](../../modelosUML/puml/casosUso.puml)</sub>
-
 ### 3.3.3. Detalle de casos de uso representativos
 
 Se detallan a continuación cuatro casos de uso que cubren los flujos más representativos del
-sistema: el flujo estándar de reserva, la lógica específica de cesión, el flujo de aprobación
-multinivel y la gestión de visitantes con notificación externa.
+sistema: el flujo estándar de reserva, la lógica específica de cesión, la gestión de solicitudes
+de ausencia por parte del manager y la gestión de visitantes con notificación externa.
 
 ![Detalle reservarPlaza()](../../modelosUML/svg/cuReservarPlaza.svg)
 <sub>[Código fuente](../../modelosUML/puml/cuReservarPlaza.puml)</sub>
@@ -190,8 +195,8 @@ multinivel y la gestión de visitantes con notificación externa.
 ![Detalle cederPlaza()](../../modelosUML/svg/cuCederPlaza.svg)
 <sub>[Código fuente](../../modelosUML/puml/cuCederPlaza.puml)</sub>
 
-![Detalle aprobarSolicitudAusencia()](../../modelosUML/svg/cuAprobarSolicitudAusencia.svg)
-<sub>[Código fuente](../../modelosUML/puml/cuAprobarSolicitudAusencia.puml)</sub>
+![Detalle gestionarSolicitudAusencia()](../../modelosUML/svg/cuGestionarSolicitudAusencia.svg)
+<sub>[Código fuente](../../modelosUML/puml/cuGestionarSolicitudAusencia.puml)</sub>
 
 ![Detalle registrarVisitante()](../../modelosUML/svg/cuRegistrarVisitante.svg)
 <sub>[Código fuente](../../modelosUML/puml/cuRegistrarVisitante.puml)</sub>
@@ -216,10 +221,10 @@ de cesión directa.
 <sub>[Código fuente](../../modelosUML/puml/protoCederPlaza.puml)</sub>
 
 **Aprobar solicitud de ausencia** — Vista de dos zonas: tabla de solicitudes pendientes del
-equipo en la parte superior y panel de detalle con acción de aprobación o rechazo con nota en la
+equipo en la parte superior y panel de detalle con decisión de aprobación o rechazo con nota en la
 parte inferior.
 
-![Prototipo aprobarSolicitudAusencia()](../../modelosUML/svg/protoAprobarSolicitudAusencia.svg)
+![Prototipo gestionarSolicitudAusencia()](../../modelosUML/svg/protoAprobarSolicitudAusencia.svg)
 <sub>[Código fuente](../../modelosUML/puml/protoAprobarSolicitudAusencia.puml)</sub>
 
 **Registrar visitante** — Formulario estructurado en dos bloques: datos del visitante y detalles
@@ -232,10 +237,12 @@ de la visita (fecha y selección de plaza), con acción de registro y envío aut
 
 El diagrama de contexto expresa el sistema como una máquina de estados en la que cada estado
 representa una vista del portal y cada transición corresponde a un caso de uso que lleva al
-usuario de una vista a otra. `SIN_AUTENTICAR` es el estado de entrada; `PORTAL` actúa como
-eje central desde el que se accede a todos los módulos. Los servicios externos (Entra ID y
-Microsoft Graph) no aparecen como estados porque no forman parte de la interfaz del sistema,
-sino que colaboran desde la capa de aplicación.
+usuario de una vista a otra. `SESION_CERRADA` es el estado de entrada; `SISTEMA_DISPONIBLE`
+actúa como hub central desde el que se accede a todos los módulos. Los estados siguen el
+patrón `X_ABIERTO` para vistas de listado y edición, con transiciones autorreflexivas para
+operaciones que no cambian de contexto. El retorno desde cualquier estado al hub central se
+unifica mediante `completarGestion()`. Los servicios externos (Entra ID y Microsoft Graph)
+no aparecen como estados porque colaboran desde la capa de aplicación.
 
 ![Diagrama de contexto](../../modelosUML/svg/contexto.svg)
 <sub>[Código fuente](../../modelosUML/puml/contexto.puml)</sub>

@@ -1,0 +1,47 @@
+@startuml cuGestionarSolicitudAusencia
+
+skinparam linetype polyline
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+
+state gestionarSolicitudAusencia as "gestionarSolicitudAusencia()" {
+  state " " as RevisandoSolicitudes
+  state " " as Decidiendo
+
+  [*] -[#green]-> RevisandoSolicitudes
+  note on link
+    <b>Manager</b> solicita gestionar solicitudes de su equipo
+  end note
+
+  RevisandoSolicitudes -[#green]-> Decidiendo
+  note on link
+    <b>Sistema</b> presenta solicitudes pendientes de aprobación
+    • Empleado solicitante
+    • Tipo, fechas y días laborables
+    • Permite solicitar aprobar
+    • Permite solicitar rechazar
+    • Permite solicitar cancelar
+  end note
+
+  Decidiendo -[#green]-> [*]
+  note on link
+    <b>Sistema</b> presenta detalle completo de la solicitud
+    • Datos del empleado y la ausencia
+    • Campo de nota opcional
+    • Permite solicitar confirmar decisión
+    • Permite solicitar cancelar
+    <b>Manager</b> solicita aprobar o rechazar con nota opcional
+  end note
+}
+
+gestionarSolicitudAusencia -[#green]-> BANDEJA_SOLICITUDES_ABIERTA
+note on link
+  decisión registrada
+end note
+
+gestionarSolicitudAusencia -[#blue]-> BANDEJA_SOLICITUDES_ABIERTA
+note on link
+  cancelar
+end note
+
+@enduml

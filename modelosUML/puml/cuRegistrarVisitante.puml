@@ -1,12 +1,8 @@
 @startuml cuRegistrarVisitante
 
 skinparam linetype polyline
-hide empty description
-
-state "GESTION_VISITANTES" as GestionVisitantesInicio
-state "GESTION_VISITANTES" as GestionVisitantesFin
-
-GestionVisitantesInicio -[#green]-> registrarVisitante
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
 
 state registrarVisitante as "registrarVisitante()" {
   state " " as IntroduciendoDatos
@@ -15,36 +11,40 @@ state registrarVisitante as "registrarVisitante()" {
 
   [*] -[#green]-> IntroduciendoDatos
   note on link
-    <b>Empleado</b> accede al módulo de visitantes
+    <b>Empleado</b> solicita registrar visitante
   end note
 
   IntroduciendoDatos -[#green]-> SeleccionandoPlaza
   note on link
-    <b>Sistema</b> presenta el formulario de registro
-    <b>Empleado</b> introduce los datos del visitante
-    • Nombre, empresa, email
+    <b>Sistema</b> presenta formulario de registro
+    • Nombre, empresa y email del visitante
     • Fecha de la visita
+    • Permite solicitar continuar
+    • Permite solicitar cancelar
   end note
 
   SeleccionandoPlaza -[#green]-> VisitanteRegistrado
   note on link
-    <b>Sistema</b> muestra plazas de visitante disponibles para la fecha
-    <b>Empleado</b> selecciona una plaza y confirma el registro
+    <b>Sistema</b> presenta plazas de visitante disponibles para la fecha
+    • Plazas de visitante libres
+    • Capacidad y ubicación
+    • Permite solicitar confirmar registro
+    • Permite solicitar cancelar
   end note
 
   VisitanteRegistrado -[#green]-> [*]
   note on link
-    <b>Sistema</b> crea la reserva de visitante
-    <b>Sistema</b> envía email de confirmación al visitante
+    <b>Empleado</b> solicita confirmar registro
+    <b>Sistema</b> crea reserva de visitante y transfiere a calendario
   end note
 }
 
-registrarVisitante -[#green]-> GestionVisitantesFin
+registrarVisitante -[#green]-> CALENDARIO_PARKING_ABIERTO
 note on link
   visitante registrado
 end note
 
-registrarVisitante -[#blue]-> GestionVisitantesFin
+registrarVisitante -[#blue]-> CALENDARIO_PARKING_ABIERTO
 note on link
   cancelar
 end note

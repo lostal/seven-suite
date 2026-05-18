@@ -1,0 +1,57 @@
+@startuml casosUsoPersonas
+
+left to right direction
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+
+actor "Empleado" as empleado
+actor "Manager"  as manager
+actor "RRHH"     as rrhh
+
+empleado <|-- manager
+manager  <|-- rrhh
+
+package "Vacaciones" {
+  usecase "abrirBandejaSolicitudes()"     as UC_ABS
+  usecase "solicitarAusencia()"            as UC_SA
+  usecase "cancelarSolicitudAusencia()"    as UC_CSA
+  usecase "gestionarSolicitudAusencia()"   as UC_GSA
+  usecase "gestionarValidacionAusencia()"  as UC_GVA
+}
+
+package "Tablón" {
+  usecase "abrirTablon()"     as UC_AT
+  usecase "consultarTablon()" as UC_CT
+  usecase "publicarAnuncio()" as UC_PA
+}
+
+package "Directorio" {
+  usecase "abrirDirectorio()"     as UC_AD
+  usecase "consultarDirectorio()" as UC_CD
+}
+
+package "Ajustes" {
+  usecase "abrirAjustes()"           as UC_AA
+  usecase "editarPerfil()"           as UC_EP
+  usecase "configurarPreferencias()" as UC_CFP
+  usecase "conectarMicrosoft365()"   as UC_CM
+}
+
+empleado --> UC_ABS
+empleado --> UC_SA
+(UC_CSA) <-- empleado
+empleado --> UC_AT
+(UC_CT) <-- empleado
+empleado --> UC_AD
+(UC_CD) <-- empleado
+empleado --> UC_AA
+(UC_EP) <-- empleado
+(UC_CFP) <-- empleado
+(UC_CM) <-- empleado
+
+manager --> UC_GSA
+
+rrhh --> UC_GVA
+rrhh --> UC_PA
+
+@enduml

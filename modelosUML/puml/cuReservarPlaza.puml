@@ -1,49 +1,51 @@
 @startuml cuReservarPlaza
 
 skinparam linetype polyline
-hide empty description
-
-state "CALENDARIO_PARKING" as VistaParkingInicio
-state "CALENDARIO_PARKING" as VistaParkingFin
-
-VistaParkingInicio -[#green]-> reservarPlaza
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
 
 state reservarPlaza as "reservarPlaza()" {
-  state " " as SeleccionandoFecha
-  state " " as SeleccionandoPlaza
-  state " " as ConfirmandoReserva
+  state " " as SolicitandoPlaza
+  state " " as ProporcionandoDatos
+  state " " as ReservaCreada
 
-  [*] -[#green]-> SeleccionandoFecha
+  [*] -[#green]-> SolicitandoPlaza
   note on link
-    <b>Empleado</b> accede al calendario de parking
+    <b>Empleado</b> solicita reservar plaza
   end note
 
-  SeleccionandoFecha -[#green]-> SeleccionandoPlaza
+  SolicitandoPlaza -[#green]-> ProporcionandoDatos
   note on link
-    <b>Sistema</b> presenta el calendario con disponibilidad por fecha
-    <b>Empleado</b> selecciona una fecha disponible
+    <b>Sistema</b> presenta calendario con disponibilidad por fecha
+    • Días con plazas libres
+    • Días con cesiones disponibles
+    • Días sin disponibilidad
+    • Permite solicitar reservar plaza
+    • Permite solicitar cancelar
   end note
 
-  SeleccionandoPlaza -[#green]-> ConfirmandoReserva
+  ProporcionandoDatos -[#green]-> ReservaCreada
   note on link
-    <b>Sistema</b> muestra las plazas libres para esa fecha
-    • Plazas estándar disponibles
+    <b>Sistema</b> presenta plazas disponibles para la fecha seleccionada
+    • Plazas estándar libres
     • Cesiones disponibles del día
-    <b>Empleado</b> selecciona una plaza y solicita confirmar
+    • Permite solicitar confirmar reserva
+    • Permite solicitar cancelar
   end note
 
-  ConfirmandoReserva -[#green]-> [*]
+  ReservaCreada -[#green]-> [*]
   note on link
-    <b>Sistema</b> crea la reserva y confirma al empleado
+    <b>Empleado</b> solicita confirmar reserva
+    <b>Sistema</b> crea reserva y transfiere a calendario
   end note
 }
 
-reservarPlaza -[#green]-> VistaParkingFin
+reservarPlaza -[#green]-> CALENDARIO_PARKING_ABIERTO
 note on link
   reserva confirmada
 end note
 
-reservarPlaza -[#blue]-> VistaParkingFin
+reservarPlaza -[#blue]-> CALENDARIO_PARKING_ABIERTO
 note on link
   cancelar
 end note

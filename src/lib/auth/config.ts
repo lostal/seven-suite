@@ -11,6 +11,7 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { eq } from "drizzle-orm";
 import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
 import { db } from "@/lib/db";
@@ -41,6 +42,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
       issuer: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID}/v2.0`,
     }),
+    ...(process.env.NODE_ENV !== "production"
+      ? [
+          Credentials({
+            id: "dev-credentials",
+            name: "Dev Login",
+            credentials: {
+              email: { label: "Email", type: "email" },
+            },
+            async authorize(credentials) {
+              const email = credentials.email as string;
+              if (!email) return null;
+
+              const [user] = await db
+                .select()
+                .from(users)
+                .where(eq(users.email, email))
+                .limit(1);
+
+              if (!user) return null;
+              return { id: user.id, email: user.email, name: user.name };
+            },
+          }),
+        ]
+      : []),
   ],
   callbacks: {
     async signIn({ account }) {

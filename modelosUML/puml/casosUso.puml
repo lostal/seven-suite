@@ -1,104 +1,49 @@
 @startuml casosUso
 
 left to right direction
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
 
-actor "Empleado"      as empleado
-actor "Manager"       as manager
-actor "RRHH"          as rrhh
-actor "Administrador" as admin
+actor "Empleado" as empleado
+actor "Manager"  as manager
 
-package "Acceso" {
-  usecase "autenticarse()"           as UC_AUTH
-  usecase "cerrarSesion()"           as UC_LOGOUT
+empleado <|-- manager
+
+package "Sesión" {
+  usecase "cerrarSesion()"     as UC_LOGOUT
+  usecase "completarGestion()" as UC_CG
 }
 
 package "Parking" {
+  usecase "abrirCalendarioParking()" as UC_ACP
   usecase "reservarPlaza()"          as UC_RP
   usecase "cancelarReservaParking()" as UC_CRP
-  usecase "registrarVisitante()"     as UC_RV
-  usecase "cancelarVisitante()"      as UC_CV
   usecase "cederPlaza()"             as UC_CP
   usecase "cancelarCesion()"         as UC_CC
   usecase "configurarReglaCesion()"  as UC_CRC
+  usecase "registrarVisitante()"     as UC_RV
+  usecase "cancelarVisitante()"      as UC_CV
 }
 
 package "Oficinas" {
-  usecase "reservarPuesto()"         as UC_RPO
-  usecase "cancelarReservaPuesto()"  as UC_CRPO
+  usecase "abrirCalendarioOficinas()" as UC_ACO
+  usecase "reservarPuesto()"          as UC_RPO
+  usecase "cancelarReservaPuesto()"   as UC_CRPO
 }
 
-package "Vacaciones" {
-  usecase "solicitarAusencia()"           as UC_SA
-  usecase "cancelarSolicitudAusencia()"   as UC_CSA
-  usecase "aprobarSolicitudAusencia()"    as UC_ASA
-  usecase "rechazarSolicitudAusencia()"   as UC_RSA
-  usecase "validarSolicitudAusencia()"    as UC_VSA
-  usecase "rechazarValidacionAusencia()"  as UC_RVA
-}
-
-package "Tablón" {
-  usecase "consultarTablon()"        as UC_CT
-  usecase "publicarAnuncio()"        as UC_PA
-}
-
-package "Directorio" {
-  usecase "consultarDirectorio()"    as UC_CD
-}
-
-package "Ajustes" {
-  usecase "editarPerfil()"           as UC_EP
-  usecase "configurarPreferencias()" as UC_CFP
-  usecase "conectarMicrosoft365()"   as UC_CM
-}
-
-package "Administración" {
-  usecase "gestionarEntidades()"     as UC_GE
-  usecase "gestionarPlazas()"        as UC_GP
-  usecase "gestionarUsuarios()"      as UC_GU
-  usecase "configurarModulos()"      as UC_CMO
-  usecase "configurarSistema()"      as UC_CS
-  usecase "consultarAnalytics()"     as UC_CA
-}
-
-' ── Empleado ─────────────────────────────────────────────────────────────────
-
-empleado --> UC_AUTH
 empleado --> UC_LOGOUT
+empleado --> UC_CG
+empleado --> UC_ACP
 empleado --> UC_RP
-empleado --> UC_CRP
+(UC_CRP) <-- empleado
 empleado --> UC_RV
-empleado --> UC_CV
+(UC_CV) <-- empleado
+(UC_ACO) <-- empleado
 empleado --> UC_RPO
-empleado --> UC_CRPO
-empleado --> UC_SA
-empleado --> UC_CSA
-empleado --> UC_CT
-empleado --> UC_CD
-empleado --> UC_EP
-empleado --> UC_CFP
-empleado --> UC_CM
-
-' ── Manager ──────────────────────────────────────────────────────────────────
+(UC_CRPO) <-- empleado
 
 manager --> UC_CP
 manager --> UC_CC
 manager --> UC_CRC
-manager --> UC_ASA
-manager --> UC_RSA
-
-' ── RRHH ─────────────────────────────────────────────────────────────────────
-
-rrhh --> UC_VSA
-rrhh --> UC_RVA
-rrhh --> UC_PA
-
-' ── Administrador ────────────────────────────────────────────────────────────
-
-admin --> UC_GE
-admin --> UC_GP
-admin --> UC_GU
-admin --> UC_CMO
-admin --> UC_CS
-admin --> UC_CA
 
 @enduml
