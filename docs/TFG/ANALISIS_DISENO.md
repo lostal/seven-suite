@@ -270,6 +270,9 @@ Esta duplicación deliberada —un solo endpoint, dos niveles de autorización�
 acciones distintas para la misma operación conceptual y responde a la tercera decisión de diseño
 del capítulo 3.
 
+![Secuencia: gestionarSolicitudAusencia()](../../modelosUML/svg/seqGestionarSolicitud.svg)
+<sub>[Código fuente](../../modelosUML/puml/seqGestionarSolicitud.puml)</sub>
+
 ### 4.3.6. Diagrama de despliegue
 
 El diagrama de despliegue muestra los nodos físicos del sistema y cómo se conectan.
