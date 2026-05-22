@@ -65,7 +65,7 @@ humanos y comunicación.
 El área de **organización** refleja la jerarquía de roles mediante herencia: `Empleado` es el rol
 base; `Manager` lo extiende añadiendo la capacidad de tener una plaza asignada y de ceder; `RRHH`
 extiende a `Manager` y añade la validación de ausencias en segundo nivel; `Administrador` tiene
-acceso pleno a la configuración del sistema. La `Entidad` —cada sede o empresa del grupo—
+acceso pleno a la configuración del sistema. La `Entidad` (cada sede o empresa del grupo)
 mantiene una relación de composición con `Empleado` y con `Plaza`, ya que tanto los empleados
 como los espacios físicos pertenecen a una entidad concreta. La plaza asignada se modela como
 asociación entre `Manager` y `Plaza`.
@@ -83,7 +83,7 @@ El área de **RRHH** contiene la `SolicitudAusencia`. El empleado la agrega al s
 mientras que la aprobación y la validación se modelan como uso por parte de `Manager` y `RRHH`
 respectivamente.
 
-El área de **comunicación** incluye el `Anuncio` —en composición con `Entidad`— y el
+El área de **comunicación** incluye el `Anuncio` (en composición con `Entidad`) y el
 `CalendarioFestivos`, compuesto por `Festivos` individuales mediante composición y asociado a
 cada entidad para el registro correcto de días laborables.
 
@@ -145,13 +145,13 @@ La jerarquía de actores sigue una cadena de herencia en la que cada nivel añad
 capacidades al anterior. Los diagramas a continuación presentan dicha herencia junto
 con los casos de uso que inicia cada actor, distribuidos en tres vistas temáticas.
 
-![Actores y casos de uso — espacios](../../modelosUML/svg/casosUso.svg)
+![Actores y casos de uso - espacios](../../modelosUML/svg/casosUso.svg)
 <sub>[Código fuente](../../modelosUML/puml/casosUso.puml)</sub>
 
-![Actores y casos de uso — personas](../../modelosUML/svg/casosUsoPersonas.svg)
+![Actores y casos de uso - personas](../../modelosUML/svg/casosUsoPersonas.svg)
 <sub>[Código fuente](../../modelosUML/puml/casosUsoPersonas.puml)</sub>
 
-![Actores y casos de uso — administración](../../modelosUML/svg/casosUsoAdmin.svg)
+![Actores y casos de uso - administración](../../modelosUML/svg/casosUsoAdmin.svg)
 <sub>[Código fuente](../../modelosUML/puml/casosUsoAdmin.puml)</sub>
 
 | Actor             | Tipo              | Descripción                                                                                                                   |
@@ -170,7 +170,7 @@ del estado fuera de oficina y el envío de notificaciones por Teams.
 ### 3.3.2. Casos de uso
 
 Los tres diagramas de la sección anterior presentan la totalidad de los casos de uso del sistema,
-agrupados por dominio —espacios, personas y administración— y vinculados a los actores que los
+agrupados por dominio (espacios, personas y administración) y vinculados a los actores que los
 inician mediante la herencia visible en cada vista.
 
 El desarrollo del sistema se organizó en fases sucesivas conforme al modelo en cascada.
@@ -207,27 +207,27 @@ Los prototipos de baja fidelidad validan la correspondencia entre los casos de u
 interfaz del sistema. Se presentan como wireframes funcionales centrados en la estructura de la
 pantalla y el flujo de interacción, no en el diseño visual final.
 
-**Reservar plaza** — Vista de dos paneles: calendario mensual con indicación de disponibilidad
+**Reservar plaza**: Vista de dos paneles: calendario mensual con indicación de disponibilidad
 por día en la columna izquierda y lista de plazas disponibles para la fecha seleccionada en la
 derecha, con acción de confirmación.
 
 ![Prototipo reservarPlaza()](../../modelosUML/svg/protoReservarPlaza.svg)
 <sub>[Código fuente](../../modelosUML/puml/protoReservarPlaza.puml)</sub>
 
-**Ceder plaza** — Vista centrada en la plaza asignada del manager, con selector de fecha y acción
+**Ceder plaza**: Vista centrada en la plaza asignada del manager, con selector de fecha y acción
 de cesión directa.
 
 ![Prototipo cederPlaza()](../../modelosUML/svg/protoCederPlaza.svg)
 <sub>[Código fuente](../../modelosUML/puml/protoCederPlaza.puml)</sub>
 
-**Aprobar solicitud de ausencia** — Vista de dos zonas: tabla de solicitudes pendientes del
+**Aprobar solicitud de ausencia**: Vista de dos zonas: tabla de solicitudes pendientes del
 equipo en la parte superior y panel de detalle con decisión de aprobación o rechazo con nota en la
 parte inferior.
 
 ![Prototipo gestionarSolicitudAusencia()](../../modelosUML/svg/protoAprobarSolicitudAusencia.svg)
 <sub>[Código fuente](../../modelosUML/puml/protoAprobarSolicitudAusencia.puml)</sub>
 
-**Registrar visitante** — Formulario estructurado en dos bloques: datos del visitante y detalles
+**Registrar visitante**: Formulario estructurado en dos bloques: datos del visitante y detalles
 de la visita (fecha y selección de plaza), con acción de registro y envío automático de confirmación.
 
 ![Prototipo registrarVisitante()](../../modelosUML/svg/protoRegistrarVisitante.svg)
@@ -255,7 +255,7 @@ funcionalidad individual de cada caso de uso.
 | ID     | Categoría            | Descripción                                                                                                                                               |
 | ------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | RNF-01 | Rendimiento          | Las operaciones de reserva y cancelación responderán en menos de 2 segundos bajo carga normal de uso.                                                     |
-| RNF-02 | Disponibilidad       | El sistema estará disponible el 99,5 % del tiempo en horario laboral (L–V, 07:00–21:00).                                                                  |
+| RNF-02 | Disponibilidad       | El sistema estará disponible el 99,5 % del tiempo en horario laboral (L-V, 07:00-21:00).                                                                  |
 | RNF-03 | Seguridad            | La autenticación se delega en Microsoft Entra ID mediante OAuth 2.0/OIDC. No se almacenan contraseñas para cuentas M365.                                  |
 | RNF-04 | Seguridad            | La autorización se gestiona en la capa de aplicación mediante guardas de rol. Ningún dato de una entidad es visible para usuarios de otra entidad.        |
 | RNF-05 | Usabilidad           | La interfaz será responsiva y utilizable desde dispositivos móviles sin necesidad de aplicación nativa.                                                   |

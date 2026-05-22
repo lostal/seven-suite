@@ -7,16 +7,16 @@
 
 - [2.1. Contexto GRUPOSIETE](#21-contexto-gruposiete)
 - [2.2. Estado del arte](#22-estado-del-arte)
-  - [2.2.1 El trabajo híbrido en España](#221-el-trabajo-híbrido-en-españa)
-  - [2.2.2 Portales ESS: evolución y estado actual](#222-portales-ess-evolución-y-estado-actual)
+  - [2.2.1. El trabajo híbrido en España](#221-el-trabajo-híbrido-en-españa)
+  - [2.2.2. Portales ESS: evolución y estado actual](#222-portales-ess-evolución-y-estado-actual)
   - [2.2.3. Soluciones ESS/RRHH en el mercado español](#223-soluciones-essrrhh-en-el-mercado-español)
   - [2.2.4. Soluciones de gestión de espacios físicos](#224-soluciones-de-gestión-de-espacios-físicos)
   - [2.2.5. Arquitectura modular de software](#225-arquitectura-modular-de-software)
   - [2.2.6. Stack tecnológico: Next.js, PostgreSQL y Drizzle ORM](#226-stack-tecnológico-nextjs-postgresql-y-drizzle-orm)
 - [2.3. Justificación de la propuesta](#23-justificación-de-la-propuesta)
 - [2.4. Objetivos Generales y Específicos](#24-objetivos-generales-y-específicos)
-  - [2.4.1 Objetivo general](#241-objetivo-general)
-  - [2.4.2 Objetivos específicos](#242-objetivos-específicos)
+  - [2.4.1. Objetivo general](#241-objetivo-general)
+  - [2.4.2. Objetivos específicos](#242-objetivos-específicos)
 - [2.5. Estructura del trabajo](#25-estructura-del-trabajo)
 
 Gestionar los RRHH y los espacios en las pequeñas y medianas empresas que están
@@ -70,7 +70,7 @@ La revisión del estado del arte se organiza en cuatro ámbitos: el trabajo híb
 soluciones específicas de gestión de RRHH y espacios, y los fundamentos técnicos de la
 arquitectura propuesta.
 
-### 2.2.1 El trabajo híbrido en España
+### 2.2.1. El trabajo híbrido en España
 
 El teletrabajo en España ha evolucionado desde la pandemia de 2020 hacia una
 estabilización en un nuevo equilibrio híbrido. Según el Instituto Nacional de Estadística, el
@@ -90,9 +90,9 @@ Hablando de regulaciones, la Ley 10/2021, de 9 de julio, de trabajo a distancia
 (BOE-A-2021-11472) establece el marco legal del teletrabajo en España, exigiendo un acuerdo
 bilateral cuando el trabajo remoto supera el 30% de la jornada. A este marco se suma la
 obligación de registro de jornada laboral, que un borrador del Real Decreto en tramitación
-(2025–2026) prevé digitalizar de forma obligatoria para todas las empresas.
+(2025-2026) prevé digitalizar de forma obligatoria para todas las empresas.
 
-### 2.2.2 Portales ESS: evolución y estado actual
+### 2.2.2. Portales ESS: evolución y estado actual
 
 Los portales de autoservicio del empleado (ESS, Employee Self-Service) están dentro del
 campo del e-HRM (Electronic Human Resource Management). Han evolucionado en tres
@@ -266,14 +266,14 @@ contabilidad.
 
 ## 2.4. Objetivos Generales y Específicos
 
-### 2.4.1 Objetivo general
+### 2.4.1. Objetivo general
 
 Desarrollar un portal del empleado modular para GRUPOSIETE que gestione espacios
 corporativos (parking y oficinas) y módulos básicos del panel de empleado, integrado
 nativamente en Microsoft 365, demostrando mediante su implementación una arquitectura
 extensible a módulos futuros de gestión de recursos humanos.
 
-### 2.4.2 Objetivos específicos
+### 2.4.2. Objetivos específicos
 
 - **OS1:** Capturar los requisitos del sistema mediante sesiones de levantamiento de
   información con personas clave de GRUPOSIETE, elaborar el modelo del dominio y definir y

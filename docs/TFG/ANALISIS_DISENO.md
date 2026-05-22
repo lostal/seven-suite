@@ -40,26 +40,26 @@ capítulo anterior, lo que garantiza la trazabilidad desde los requisitos hasta 
 
 El diagrama siguiente presenta las clases de análisis del sistema organizadas en cuatro capas
 horizontales: vistas (azul), controladores (verde), repositorios (naranja) y entidades del dominio
-(amarillo). La organización vertical —las vistas en la parte superior, el dominio en la inferior—
+(amarillo). La organización vertical (las vistas en la parte superior, el dominio en la inferior)
 refleja la dirección de las dependencias: las vistas conocen a los controladores, los controladores
 a los repositorios, y solo los repositorios tocan las entidades del modelo del dominio. Los
-servicios transversales —autenticación, notificaciones, calendario de festivos— residen en la capa
+servicios transversales (autenticación, notificaciones, calendario de festivos) residen en la capa
 de repositorios porque son consumidos por los controladores, no por otras vistas.
 
 ![Panorama de clases de análisis](../../modelosUML/svg/analisisClases.svg)
 <sub>[Código fuente](../../modelosUML/puml/analisisClases.puml)</sub>
 
-La agrupación por capas —y no por módulo funcional— es deliberada. Los módulos (`parking`,
+La agrupación por capas (y no por módulo funcional) es deliberada. Los módulos (`parking`,
 `oficinas`, `vacaciones`...) comparten el mismo patrón estructural: una vista, un controlador y
 un conjunto de repositorios. Representarlos como capas revela ese patrón común y evita la
 ilusión de que cada módulo es una isla arquitectónica independiente. La dependencia unidireccional
-—de arriba hacia abajo— garantiza que los módulos puedan activarse o desactivarse sin modificar
+(de arriba hacia abajo) garantiza que los módulos puedan activarse o desactivarse sin modificar
 el código de los demás (RNF-06).
 
 ### 4.1.2. Colaboración: reservarPlaza()
 
 El caso de uso `reservarPlaza()` representa el flujo de reserva estándar: un empleado
-selecciona una fecha, consulta las plazas disponibles —tanto las libres como las cedidas—
+selecciona una fecha, consulta las plazas disponibles (tanto las libres como las cedidas)
 y confirma la reserva. El diagrama de colaboración muestra cómo las responsabilidades se
 distribuyen entre cuatro clases de análisis.
 
@@ -68,21 +68,21 @@ distribuyen entre cuatro clases de análisis.
 
 `CalendarioParkingView` recibe la solicitud desde el estado `CALENDARIO_PARKING_ABIERTO`
 del diagrama de contexto y se comunica exclusivamente con `ReservaController`. El controlador
-coordina dos operaciones de lectura —cargar plazas disponibles y obtener reservas existentes
-para detectar conflictos— delegando en `PlazaRepository` y `ReservaRepository` respectivamente.
+coordina dos operaciones de lectura (cargar plazas disponibles y obtener reservas existentes
+para detectar conflictos) delegando en `PlazaRepository` y `ReservaRepository` respectivamente.
 La confirmación de reserva sigue el mismo camino: la vista recoge la intención del empleado,
 el controlador valida y el repositorio persiste.
 
 Las clases `Plaza` y `Reserva` son entidades puras del modelo del dominio que los
-repositorios gestionan. Esta separación —la vista no conoce las entidades, el controlador
-no conoce la base de datos— es la que permite cambiar la tecnología de persistencia sin
+repositorios gestionan. Esta separación (la vista no conoce las entidades, el controlador
+no conoce la base de datos) es la que permite cambiar la tecnología de persistencia sin
 que la lógica de negocio se entere.
 
 ### 4.1.3. Colaboración: cederPlaza()
 
 La cesión es el caso de uso que distingue a un `Manager` de un `Empleado`. Solo el
 propietario de una plaza asignada puede cederla. La colaboración introduce un participante
-externo —Microsoft Graph— que no es un actor en el sentido RUP pero colabora con el
+externo (Microsoft Graph) que no es un actor en el sentido RUP pero colabora con el
 controlador proporcionando el estado fuera de oficina del manager. Esta integración
 responde a la segunda decisión de diseño del capítulo 3: los directivos utilizan Outlook
 de forma habitual y el sistema debe aprovechar esa información para sugerir cesiones.
@@ -94,14 +94,14 @@ de forma habitual y el sistema debe aprovechar esa información para sugerir ces
 primero recupera la plaza asignada del manager mediante `PlazaRepository` y después
 registra la cesión en `CesionRepository`. Microsoft Graph colabora en un segundo plano:
 el controlador puede consultar el estado fuera de oficina para sugerir la cesión, pero
-la decisión final siempre es del manager. La cesión intencional —nunca automática— fue
+la decisión final siempre es del manager. La cesión intencional (nunca automática) fue
 la primera decisión de diseño del capítulo anterior y aquí se materializa como
 responsabilidad exclusiva de la vista, que solo ejecuta si el actor la solicita
 explícitamente.
 
 ### 4.1.4. Colaboración: gestionarSolicitudAusencia()
 
-Este caso de uso materializa el flujo de aprobación en dos niveles —manager y RRHH—
+Este caso de uso materializa el flujo de aprobación en dos niveles (manager y RRHH)
 que constituye la tercera decisión de diseño del capítulo 3. La colaboración introduce
 un quinto participante: `NotificacionService`, responsable de informar al empleado y al
 siguiente nivel de aprobación cuando una solicitud cambia de estado.
@@ -109,10 +109,10 @@ siguiente nivel de aprobación cuando una solicitud cambia de estado.
 ![Colaboración: gestionarSolicitudAusencia()](../../modelosUML/svg/colabGestionarSolicitud.svg)
 <sub>[Código fuente](../../modelosUML/puml/colabGestionarSolicitud.puml)</sub>
 
-`BandejaSolicitudesView` presenta dos zonas —lista de solicitudes pendientes y panel de
-detalle— que el prototipo del capítulo 3 ya anticipaba. `AusenciaController` coordina
+`BandejaSolicitudesView` presenta dos zonas (lista de solicitudes pendientes y panel de
+detalle) que el prototipo del capítulo 3 ya anticipaba. `AusenciaController` coordina
 la carga inicial consultando `SolicitudRepository` por las pendientes del actor y
-`EmpleadoRepository` por los datos del solicitante. La resolución —aprobar o rechazar—
+`EmpleadoRepository` por los datos del solicitante. La resolución (aprobar o rechazar)
 actualiza el estado de la solicitud y dispara la notificación correspondiente.
 
 La lógica de dos niveles no requiere dos controladores distintos: el mismo
@@ -124,7 +124,7 @@ principio de composición sobre herencia.
 ### 4.1.5. Colaboración: registrarVisitante()
 
 `registrarVisitante()` es el único caso de uso que genera una interacción con una
-persona externa al sistema —el visitante— mediante el envío de un correo de
+persona externa al sistema (el visitante) mediante el envío de un correo de
 confirmación. La colaboración muestra esta dependencia con el sistema externo Resend,
 que actúa como colaborador de la capa de aplicación.
 
@@ -132,8 +132,8 @@ que actúa como colaborador de la capa de aplicación.
 <sub>[Código fuente](../../modelosUML/puml/colabRegistrarVisitante.puml)</sub>
 
 `VisitanteView` recoge los datos del visitante y la fecha de la visita. El controlador
-consulta las plazas de parking disponibles —reutilizando `PlazaRepository` del módulo de
-parking— y persiste la reserva en `VisitanteRepository`. Resend colabora enviando el
+consulta las plazas de parking disponibles (reutilizando `PlazaRepository` del módulo de
+parking) y persiste la reserva en `VisitanteRepository`. Resend colabora enviando el
 correo de confirmación al visitante. La vista no sabe que se ha enviado un correo; el
 controlador no sabe cómo se envía. Esa separación permite cambiar el proveedor de email
 sin tocar la lógica de negocio.
@@ -153,8 +153,8 @@ recurrentes que se repiten por grupo de entidades y que guían la transición al
 El patrón de apertura aparece en todos los módulos y es la puerta de entrada a las
 operaciones CRUD. El delgado aplica la filosofía C→U: crear con datos mínimos y
 transferir automáticamente a edición para completar. El gordo se reserva para las
-operaciones que requieren múltiples campos o validaciones encadenadas —como la reserva,
-que debe verificar conflictos de fecha, tipo de plaza y entidad—. La eliminación segura
+operaciones que requieren múltiples campos o validaciones encadenadas (como la reserva,
+que debe verificar conflictos de fecha, tipo de plaza y entidad). La eliminación segura
 nunca borra físicamente: transita el estado de la entidad a cancelada y mantiene la
 trazabilidad.
 
@@ -178,12 +178,12 @@ La decisión más relevante es la elección de Server Actions sobre una API REST
 En una SPA convencional, cada `Controller` de análisis se materializaría como un endpoint
 HTTP. Next.js App Router permite que las mutaciones sean funciones de servidor que el
 cliente invoca directamente, eliminando la capa de serialización REST y la duplicación
-de tipos entre cliente y servidor. La validación ocurre en el borde del sistema —al
-entrar la petición, mediante Zod— y una vez dentro el código confía en los tipos. Esta
+de tipos entre cliente y servidor. La validación ocurre en el borde del sistema (al
+entrar la petición, mediante Zod) y una vez dentro el código confía en los tipos. Esta
 decisión responde a RNF-01 (las operaciones deben responder en menos de 2 segundos) y
 RNF-04 (la autorización se gestiona en la capa de aplicación).
 
-La persistencia sobre PostgreSQL autoalojado —no sobre un servicio cloud como Supabase—
+La persistencia sobre PostgreSQL autoalojado (no sobre un servicio cloud como Supabase)
 responde a RNF-07: el sistema no debe depender de un proveedor concreto. Drizzle ORM
 actúa como capa de acceso a datos con tipado inferido del esquema, sin generación de
 código ni migraciones mágicas.
@@ -195,8 +195,8 @@ código ni migraciones mágicas.
 El diagrama de arquitectura sigue el modelo C4 de contenedores: muestra las personas que usan
 el sistema, los contenedores que lo componen, los sistemas externos con los que colabora y las
 relaciones entre ellos. La elección de C4 responde a la necesidad de un plano de despliegue
-independiente del detalle de implementación —el mismo diagrama serviría si el backend se
-reescribiera en otro lenguaje—.
+independiente del detalle de implementación (el mismo diagrama serviría si el backend se
+reescribiera en otro lenguaje).
 
 ![Arquitectura del sistema](../../modelosUML/svg/arquitectura.svg)
 <sub>[Código fuente](../../modelosUML/puml/arquitectura.puml)</sub>
@@ -204,7 +204,7 @@ reescribiera en otro lenguaje—.
 El portal web concentra las tres responsabilidades del servidor en un único contenedor Next.js:
 renderizar páginas, ejecutar mutaciones mediante Server Actions y exponer rutas de API para los
 callbacks de autenticación. PostgreSQL se comunica directamente con el portal mediante Drizzle ORM
-—sin capa intermedia de API REST— lo que elimina la sobrecarga de serialización y reduce la
+(sin capa intermedia de API REST) lo que elimina la sobrecarga de serialización y reduce la
 latencia de las operaciones de lectura (RNF-01). Los tres sistemas externos colaboran desde la
 capa de servidor, nunca desde el navegador: Entra ID gestiona la identidad, Graph API proporciona
 el estado fuera de oficina y las notificaciones por Teams, y Resend envía los correos
@@ -220,7 +220,7 @@ con estereotipos diferenciados y la dirección de las dependencias entre ellos.
 
 Los módulos funcionales del dashboard (`parking/`, `oficinas/`, `vacaciones/`, `tablon/`,
 `administracion/`, `ajustes/` y `panel/`) dependen débilmente de `lib/` mediante flechas
-punteadas —importan lo que necesitan, pero `lib/` no sabe qué módulo lo consume—. Los
+punteadas (importan lo que necesitan, pero `lib/` no sabe qué módulo lo consume). Los
 subpaquetes de `lib/` (`db/`, `auth/`, `queries/`, `actions/`, `calendar/`) tienen
 dependencias internas fuertes: las acciones dependen de las consultas y de la autenticación;
 las consultas dependen del cliente de base de datos. Los paquetes `src/components/` y
@@ -229,44 +229,44 @@ las consultas dependen del cliente de base de datos. Los paquetes `src/component
 ### 4.3.3. Diagrama de clases de diseño
 
 El diagrama presenta las clases de diseño organizadas en los cinco paquetes que corresponden a
-las capas arquitectónicas del sistema. En lugar de enumerar todas las clases —lo que convertiría
-el diagrama en un catálogo— se muestran los representantes de cada capa con los métodos que
+las capas arquitectónicas del sistema. En lugar de enumerar todas las clases (lo que convertiría
+el diagrama en un catálogo) se muestran los representantes de cada capa con los métodos que
 definen su interfaz pública.
 
 ![Diagrama de clases de diseño](../../modelosUML/svg/disenoClases.svg)
 <sub>[Código fuente](../../modelosUML/puml/disenoClases.puml)</sub>
 
-Las páginas de presentación dependen de las acciones mediante flechas punteadas —las conocen,
-pero no las contienen—. Las acciones validan sus datos de entrada contra los esquemas Zod del
+Las páginas de presentación dependen de las acciones mediante flechas punteadas (las conocen,
+pero no las contienen). Las acciones validan sus datos de entrada contra los esquemas Zod del
 paquete de contratos y delegan la persistencia en las interfaces del paquete de acceso a datos.
 La dependencia sobre interfaces en lugar de implementaciones concretas permite sustituir el motor
 de base de datos sin modificar la lógica de negocio (RNF-07). Los servicios de infraestructura
-—`AuthHelpers`, `EmailService` y `CalendarUtils`— son consumidos por las acciones, nunca
+(`AuthHelpers`, `EmailService` y `CalendarUtils`) son consumidos por las acciones, nunca
 directamente por las páginas.
 
 ### 4.3.4. Secuencia: reservarPlaza()
 
-A diferencia del diagrama de colaboración del análisis —que muestra qué clases participan—,
+A diferencia del diagrama de colaboración del análisis (que muestra qué clases participan),
 la secuencia de diseño muestra la interacción real entre los componentes del sistema durante
 la ejecución de `reservarPlaza()`.
 
 ![Secuencia: reservarPlaza()](../../modelosUML/svg/seqReservarPlaza.svg)
 <sub>[Código fuente](../../modelosUML/puml/seqReservarPlaza.puml)</sub>
 
-La página —un Server Component— resuelve la consulta de disponibilidad en el servidor antes
+La página (un Server Component) resuelve la consulta de disponibilidad en el servidor antes
 de renderizar. Cuando el empleado confirma la reserva, la Server Action `createReservation`
 ejecuta tres pasos en secuencia: verifica la autenticación, valida los datos de entrada con
 el esquema Zod y persiste la reserva en PostgreSQL comprobando que no exista conflicto de
-fecha y plaza. La respuesta es siempre un `ActionResult<Reserva>` —unión discriminada entre
-éxito y error— que la página maneja sin recargar.
+fecha y plaza. La respuesta es siempre un `ActionResult<Reserva>` (unión discriminada entre
+éxito y error) que la página maneja sin recargar.
 
 ### 4.3.5. Secuencia: gestionarSolicitudAusencia()
 
 El flujo de aprobación de ausencias es el más complejo del sistema. La secuencia muestra la
-interacción en el primer nivel —la aprobación por el manager—. El segundo nivel —la validación
-por RRHH— sigue exactamente el mismo patrón: la misma Server Action `approveLeaveRequest`,
+interacción en el primer nivel (la aprobación por el manager). El segundo nivel (la validación
+por RRHH) sigue exactamente el mismo patrón: la misma Server Action `approveLeaveRequest`,
 invocada por un usuario con rol de RRHH, transita el estado de `aprobado_manager` a `aprobado`.
-Esta duplicación deliberada —un solo endpoint, dos niveles de autorización— evita tener dos
+Esta duplicación deliberada (un solo endpoint, dos niveles de autorización) evita tener dos
 acciones distintas para la misma operación conceptual y responde a la tercera decisión de diseño
 del capítulo 3.
 
@@ -287,7 +287,7 @@ Actions mediante conexión TCP directa.
 La separación entre el servidor de aplicaciones (Vercel) y el de bases de datos
 (servidor propio) responde al RNF-02: si Vercel experimenta una degradación, la base
 de datos permanece intacta y accesible para otros consumidores. La ausencia de
-proveedores cloud para la persistencia —no hay RDS, no hay Supabase— materializa el
+proveedores cloud para la persistencia (no hay RDS, no hay Supabase) materializa el
 RNF-07: el sistema puede migrarse a otra infraestructura sin reescribir consultas
 ni cambiar dependencias. Los tres servicios externos se comunican por HTTPS estándar,
 sin SDKs propietarios en el lado del cliente.
