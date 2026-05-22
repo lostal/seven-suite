@@ -1,0 +1,39 @@
+@startuml despliegue
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam nodeBorderThickness 1.5
+skinparam arrowColor #444444
+
+top to bottom direction
+
+node "Vercel (Edge)" {
+  node "Next.js App Router" {
+    component "Server Components" as SC
+    component "Server Actions" as SA
+    component "Middleware\n(Auth.js)" as MW
+  }
+}
+
+node "Internet" {
+  cloud "Microsoft Entra ID\n(OAuth 2.0 / OIDC)" as Entra
+  cloud "Microsoft Graph API\n(Teams, fuera oficina)" as Graph
+  cloud "Resend\n(email SMTP)" as Resend
+}
+
+node "Servidor propio (Linux)" {
+  node "Docker Compose" {
+    database "PostgreSQL 16\n(puerto 5432)" as PG
+  }
+}
+
+node "Cliente" {
+  component "Navegador\n(Chrome / Edge / Safari)" as Browser
+}
+
+Browser -d-> SC: HTTPS :443
+SA -d-> PG: pg / TCP :5432
+MW -r-> Entra: OIDC / HTTPS
+SA -r-> Graph: REST / HTTPS
+SA -r-> Resend: SMTP / HTTPS
+
+@enduml

@@ -1,0 +1,36 @@
+@startuml colabRegistrarVisitante
+skinparam linetype polyline
+
+rectangle #CDEBA5 ":CALENDARIO_PARKING_ABIERTO" as Calendario
+rectangle #CDEBA5 ":SISTEMA_DISPONIBLE" as Menu
+rectangle #CDEBA5 ":RESEND" as Resend
+
+package "registrarVisitante()" {
+  rectangle #629EF9 "VisitanteView"            as View
+  rectangle #b5bd68 "VisitanteController"      as Controller
+  rectangle #F2AC4E "VisitanteRepository"      as VisitanteRepo
+  rectangle #F2AC4E "PlazaRepository"          as PlazaRepo
+  rectangle #F2AC4E "ReservaVisitante"         as Visitante
+  rectangle #F2AC4E "Plaza"                    as Plaza
+}
+
+Calendario -r-> View: registrarVisitante()
+
+View -d-> Controller: cargarPlazasDisponibles(fecha)
+
+Controller --> PlazaRepo: obtenerPlazasLibres(fecha, tipo=parking) : Plaza[]
+
+PlazaRepo -- Plaza
+
+View --> Controller: confirmarVisitante(datos, id_plaza, fecha) : ReservaVisitante
+
+Controller --> VisitanteRepo: crear(datos, fecha, id_plaza, id_empleado) : ReservaVisitante
+
+VisitanteRepo -- Visitante
+
+Resend ..> Controller: <<colabora>> enviarConfirmacion(email)
+note on link: Resend API
+
+View ..> Calendario: completarGestion()
+
+@enduml

@@ -1,0 +1,32 @@
+@startuml colabReservarPlaza
+skinparam linetype polyline
+
+rectangle #CDEBA5 ":CALENDARIO_PARKING_ABIERTO" as Calendario
+rectangle #CDEBA5 ":SISTEMA_DISPONIBLE" as Menu
+
+package "reservarPlaza()" {
+  rectangle #629EF9 "CalendarioParkingView"    as View
+  rectangle #b5bd68 "ReservaController"        as Controller
+  rectangle #F2AC4E "PlazaRepository"          as PlazaRepo
+  rectangle #F2AC4E "ReservaRepository"        as ReservaRepo
+  rectangle #F2AC4E "Plaza"                    as Plaza
+  rectangle #F2AC4E "Reserva"                  as Reserva
+}
+
+Calendario -r-> View: reservarPlaza()
+
+View -d-> Controller: cargarPlazasDisponibles(fecha)
+
+Controller --> PlazaRepo: obtenerPlazasLibres(fecha, tipo) : Plaza[]
+Controller --> ReservaRepo: obtenerReservas(fecha) : Reserva[]
+
+PlazaRepo -- Plaza
+ReservaRepo -- Reserva
+
+View --> Controller: confirmarReserva(id_plaza, fecha) : Reserva
+
+Controller --> ReservaRepo: crear(fecha, id_plaza, id_empleado) : Reserva
+
+View ..> Calendario: completarGestion()
+
+@enduml

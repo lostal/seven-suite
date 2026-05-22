@@ -1,0 +1,73 @@
+@startuml analisisClases
+skinparam linetype polyline
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam packageBorderThickness 1.5
+skinparam shadowing false
+hide stereotype
+
+top to bottom direction
+
+' ── Vistas ──────────────────────────────────────────────────────────────────
+
+package "**vistas**" as VISTAS #ECF3FC {
+  rectangle #629EF9 "CalendarioParkingView"     as CPV
+  rectangle #629EF9 "CesionView"                as CV
+  rectangle #629EF9 "VisitanteView"             as VV
+  rectangle #629EF9 "CalendarioOficinasView"    as COV
+  rectangle #629EF9 "BandejaSolicitudesView"    as BSV
+  rectangle #629EF9 "TablonView"                as TV
+  rectangle #629EF9 "DirectorioView"            as DV
+  rectangle #629EF9 "AdminView"                 as AV
+  rectangle #629EF9 "LoginView"                 as LV
+}
+
+' ── Controladores ───────────────────────────────────────────────────────────
+
+package "**controladores**" as CONTROL #E8F0DC {
+  rectangle #b5bd68 "ReservaController"         as RC
+  rectangle #b5bd68 "CesionController"          as CC
+  rectangle #b5bd68 "VisitanteController"       as VC
+  rectangle #b5bd68 "OficinasController"        as OC
+  rectangle #b5bd68 "AusenciaController"        as AC
+  rectangle #b5bd68 "TablonController"          as TC
+  rectangle #b5bd68 "DirectorioController"      as DC
+  rectangle #b5bd68 "AdminController"           as ADMC
+  rectangle #b5bd68 "AuthController"            as AUC
+}
+
+' ── Entidades ───────────────────────────────────────────────────────────────
+
+package "**entidades**" as ENTIDADES #FDF1DE {
+  rectangle #F2AC4E "PlazaRepository"           as PR
+  rectangle #F2AC4E "ReservaRepository"         as RR
+  rectangle #F2AC4E "CesionRepository"          as CR
+  rectangle #F2AC4E "VisitanteRepository"       as VR
+  rectangle #F2AC4E "SolicitudRepository"       as SR
+  rectangle #F2AC4E "AnuncioRepository"         as AR
+  rectangle #F2AC4E "EmpleadoRepository"        as ER
+  rectangle #F2AC4E "EntidadRepository"         as ENR
+  rectangle #F2AC4E "UsuarioRepository"         as UR
+  rectangle #F2AC4E "CalendarioFestivosRepository" as CFR
+  rectangle #F2AC4E "NotificacionService"       as NS
+}
+
+' ── Modelo del dominio ──────────────────────────────────────────────────────
+
+package "**dominio**" as DOMINIO #F5F0D5 {
+  rectangle #F2AC4E "Plaza"                     as PZ
+  rectangle #F2AC4E "Reserva"                   as RS
+  rectangle #F2AC4E "Cesion"                    as CS
+  rectangle #F2AC4E "ReservaVisitante"          as RV
+  rectangle #F2AC4E "SolicitudAusencia"         as SA
+  rectangle #F2AC4E "Anuncio"                   as AN
+  rectangle #F2AC4E "Empleado"                  as EM
+  rectangle #F2AC4E "Entidad"                   as EN
+  rectangle #F2AC4E "CalendarioFestivos"        as CF
+}
+
+VISTAS -d[hidden]-> CONTROL
+CONTROL -d[hidden]-> ENTIDADES
+ENTIDADES -d[hidden]-> DOMINIO
+
+@enduml

@@ -1,0 +1,23 @@
+@startuml arquitectura
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Diagrama de Arquitectura - seven-suite
+
+Person(empleado, "Empleado", "Usuario del portal")
+
+System_Boundary(c1, "seven-suite") {
+    Container(web_app, "Portal Web", "Next.js + React + TypeScript", "Interfaz de usuario y lógica de servidor")
+    ContainerDb(database, "Base de Datos", "PostgreSQL 16", "Almacenamiento persistente")
+}
+
+System_Ext(entra, "Microsoft Entra ID", "Proveedor de identidad OAuth 2.0 / OIDC")
+System_Ext(graph, "Microsoft Graph API", "Estado fuera de oficina, Teams")
+System_Ext(resend, "Resend", "Email transaccional")
+
+Rel(empleado, web_app, "Usa", "HTTPS")
+Rel(web_app, database, "Lee / Escribe", "Drizzle ORM (pg)")
+Rel(web_app, entra, "Autentica", "OIDC")
+Rel(web_app, graph, "Consulta / Notifica", "Graph API")
+Rel(web_app, resend, "Envía correos", "SMTP")
+
+@enduml

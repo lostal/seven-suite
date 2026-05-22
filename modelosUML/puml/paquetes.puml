@@ -23,13 +23,9 @@ title Diagrama de paquetes
 package "src/app/(auth)/" <<core>> as Auth
 
 package "src/app/(dashboard)/" <<core>> as Dashboard {
-  package "parking/" <<modulo>> as PKG_P
-  package "oficinas/" <<modulo>> as PKG_O
-  package "vacaciones/" <<modulo>> as PKG_V
-  package "tablon/" <<modulo>> as PKG_T
-  package "administracion/" <<modulo>> as PKG_A
-  package "ajustes/" <<modulo>> as PKG_AJ
-  package "panel/" <<modulo>> as PKG_PAN
+  package "parking/\noficinas/" <<modulo>> as PKG_Espacios
+  package "vacaciones/\ntablón/directorio/" <<modulo>> as PKG_RRHH
+  package "administracion/\najustes/panel/" <<modulo>> as PKG_Admin
 }
 
 package "src/lib/" <<lib>> as Lib {
@@ -43,22 +39,17 @@ package "src/lib/" <<lib>> as Lib {
 package "src/components/" <<shared>> as Components
 package "src/types/" <<shared>> as Types
 
-' ── Dependencias ─────────────────────────────────────────────
+' ── Dependencias ─────────────────────────────────────────────────────────────
 Dashboard  ..> Lib        : importa lógica compartida
 Dashboard  ..> Components : importa componentes UI
 Dashboard  ..> Types      : tipos de la aplicación
 
-PKG_P  ..> SharedActions  : buildCessionActions("parking")
-PKG_O  ..> SharedActions  : buildCessionActions("office")
+PKG_Espacios  ..> SharedActions  : buildCessionActions("parking")
+PKG_Espacios  ..> SharedActions  : buildCessionActions("office")
 
 SharedActions ..> Queries
 SharedActions ..> LIB_AUTH
 Queries       ..> DB
 Lib           ..> Types
-
-note bottom of DB
-  schema.ts es la fuente única de verdad.
-  Los tipos de la app se infieren de él.
-end note
 
 @enduml

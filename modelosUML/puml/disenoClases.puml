@@ -1,0 +1,92 @@
+@startuml disenoClases
+
+title Diagrama de Clases de Diseño
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam classBorderThickness 1.5
+skinparam arrowThickness 1.2
+skinparam arrowColor #444444
+skinparam classAttributeIconSize 0
+
+hide circle
+
+top to bottom direction
+
+' ── Presentación ─────────────────────────────────────────────────────────────
+
+package "Presentación\n(Server Components)" {
+  class CalendarioParkingPage
+  class BandejaSolicitudesPage
+  class AdminPage
+}
+
+' ── Lógica ───────────────────────────────────────────────────────────────────
+
+package "Lógica\n(Server Actions)" {
+  class ReservaActions {
+    createReservation()
+    cancelReservation()
+    createCession()
+    cancelCession()
+  }
+  class AusenciaActions {
+    submitLeaveRequest()
+    approveLeaveRequest()
+    rejectLeaveRequest()
+  }
+  class AdminActions {
+    createSpot()
+    updateSpot()
+    publishAnnouncement()
+  }
+}
+
+' ── Contratos ────────────────────────────────────────────────────────────────
+
+package "Contratos\n(Zod Schemas)" {
+  class ReservaSchema
+  class CesionSchema
+  class AusenciaSchema
+}
+
+' ── Acceso a Datos ───────────────────────────────────────────────────────────
+
+package "Acceso a Datos\n(Drizzle Queries)" {
+  interface IReservaQuery
+  interface ICesionQuery
+  interface ISolicitudQuery
+}
+
+' ── Infraestructura ──────────────────────────────────────────────────────────
+
+package "Infraestructura" {
+  class DrizzleClient
+  class AuthHelpers
+  class EmailService
+  class CalendarUtils
+}
+
+' ── Dependencias ─────────────────────────────────────────────────────────────
+
+CalendarioParkingPage ..> ReservaActions
+BandejaSolicitudesPage ..> AusenciaActions
+AdminPage ..> AdminActions
+
+ReservaActions ..> ReservaSchema
+ReservaActions ..> CesionSchema
+AusenciaActions ..> AusenciaSchema
+
+ReservaActions --> IReservaQuery
+ReservaActions --> ICesionQuery
+AusenciaActions --> ISolicitudQuery
+
+IReservaQuery ..> DrizzleClient
+ICesionQuery ..> DrizzleClient
+ISolicitudQuery ..> DrizzleClient
+
+ReservaActions ..> AuthHelpers
+ReservaActions ..> EmailService
+AdminActions ..> CalendarUtils
+
+@enduml

@@ -1,48 +1,30 @@
 @startuml seqReservarPlaza
-
+skinparam linetype polyline
 skinparam defaultFontName Arial
-skinparam defaultFontSize 11
-skinparam sequenceArrowThickness 1.2
-skinparam sequenceArrowColor #444444
+skinparam defaultFontSize 10
+skinparam sequenceArrowThickness 1.5
 skinparam participantBorderThickness 1.5
-skinparam backgroundColor #FFFFFF
+skinparam shadowing false
 
-title Secuencia: reservarPlaza()
+actor Empleado as E
+participant "CalendarioParking\nPage" as Page
+participant "createReservation\n(Server Action)" as Action
+database "PostgreSQL" as DB
 
-actor "Empleado" as U
-participant "Página RSC\n/parking" as Page
-participant "Calendario\n(componente cliente)" as CC
-participant "createReservation()\nServer Action" as SA
-participant "Auth + Config\n(helpers / config.ts)" as AuthCfg
-participant "Base de datos\n(Drizzle + PostgreSQL)" as DB
+E -> Page: selecciona fecha
 
-U -> Page : accede a /parking
-Page -> DB : consulta plazas disponibles (fecha, entidad)
-DB --> Page : PlazaConEstado[]
-Page --> U : muestra calendario con plazas
+Page -> Page: consulta disponibilidad\n(spots + reservations)
 
-U -> CC : selecciona fecha y plaza
-CC --> U : diálogo de confirmación
-U -> CC : confirma
+Page --> E: plazas disponibles
 
-CC -> SA : createReservation({ spotId, fecha })
-SA -> AuthCfg : obtiene usuario autenticado + config del módulo
-AuthCfg --> SA : AuthUser · ResourceConfig
+E -> Page: confirma reserva\n(id_plaza, fecha)
 
-alt módulo deshabilitado o fecha fuera del plazo
-  SA --> CC : Error — operación no permitida
-else todo válido
-  SA -> DB : INSERT INTO reservations (spotId, userId, fecha)
-  alt plaza o usuario ya reservados ese día
-    DB --> SA : violación de índice único parcial
-    SA --> CC : Error — plaza ya reservada para esa fecha
-  else
-    DB --> SA : reserva creada { id }
-    SA -> SA : revalidatePath("/parking")
-    SA --> CC : OK — reserva confirmada
-  end
-end
+Page -> Action: createReservation(input)
 
-CC --> U : confirmación o mensaje de error
+Action -> Action: requireAuth()\nreservaSchema.parse(input)
+
+Action -> DB: comprueba conflicto\nINSERT reservation
+
+Action --> Page: ActionResult<Reserva>
 
 @enduml

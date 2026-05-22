@@ -1,293 +1,290 @@
 # 4. Análisis y Diseño
 
-| [← Cap. 3](REQUISITOS.md) | [Índice](../../README.md) |
-| :------------------------ | :-----------------------: |
+| [← Cap. 3](REQUISITOS.md) | [Índice](../../README.md) | [Cap. 5 →](IMPLEMENTACION.md) |
+| :------------------------ | :-----------------------: | ----------------------------: |
 
 ## Contenido
 
-- [4.1 Introducción y enfoque](#41-introducción-y-enfoque)
-- [4.2 Análisis de la arquitectura](#42-análisis-de-la-arquitectura)
-  - [4.2.1 Capas lógicas del sistema](#421-capas-lógicas-del-sistema)
-  - [4.2.2 Flujo de una operación típica](#422-flujo-de-una-operación-típica)
-  - [4.2.3 Sistemas externos y su frontera](#423-sistemas-externos-y-su-frontera)
-- [4.3 Diseño de la arquitectura](#43-diseño-de-la-arquitectura)
-  - [4.3.1 Stack tecnológico](#431-stack-tecnológico)
-  - [4.3.2 Patrón monolito modular plug-in](#432-patrón-monolito-modular-plug-in)
-  - [4.3.3 Diagrama de despliegue](#433-diagrama-de-despliegue)
-- [4.4 Análisis y diseño de clases](#44-análisis-y-diseño-de-clases)
-  - [4.4.1 Clases de análisis (modelo RUP)](#441-clases-de-análisis-modelo-rup)
-  - [4.4.2 Colapso al diseño real](#442-colapso-al-diseño-real)
-  - [4.4.3 Diagrama de clases de diseño](#443-diagrama-de-clases-de-diseño)
-  - [4.4.4 Patrones declarados](#444-patrones-declarados)
-- [4.5 Diseño de casos de uso representativos](#45-diseño-de-casos-de-uso-representativos)
-  - [4.5.1 `reservarPlaza()`](#451-reservarplaza)
-  - [4.5.2 `aprobarSolicitudAusencia()`](#452-aprobarsolicitudausencia)
-  - [4.5.3 `registrarVisitante()`](#453-registrarvisitante)
-- [4.6 Diseño de paquetes](#46-diseño-de-paquetes)
-  - [4.6.1 Árbol de `src/` con responsabilidad por paquete](#461-árbol-de-src-con-responsabilidad-por-paquete)
-  - [4.6.2 Reglas de dependencia](#462-reglas-de-dependencia)
-  - [4.6.3 Diagrama de paquetes](#463-diagrama-de-paquetes)
-- [4.7 Modelo físico de datos](#47-modelo-físico-de-datos)
-  - [4.7.1 Diagrama entidad-relación del subset central](#471-diagrama-entidad-relación-del-subset-central)
-  - [4.7.2 Restricciones críticas del modelo](#472-restricciones-críticas-del-modelo)
-  - [4.7.3 Decisión de autorización en aplicación](#473-decisión-de-autorización-en-aplicación)
-- [4.8 Trazabilidad requisito → diseño](#48-trazabilidad-requisito--diseño)
-
-El objetivo de esta iteración es construir la abstracción del sistema a partir de los casos de uso formalizados en el capítulo anterior. El resultado es el conjunto de artefactos (arquitectura, clases, paquetes y modelo de datos) que sirven de puente entre el contrato con el cliente (capítulo 3) y el código ejecutable (capítulo 5). A diferencia de los documentos de diseño especulativos, el contenido de este capítulo describe la arquitectura que efectivamente se ha construido y es verificable directamente en el código del repositorio.
-
-## 4.1 Introducción y enfoque
-
-La disciplina de análisis y diseño que prescribe RUP tiene como propósito describir el sistema en el lenguaje de los desarrolladores, introducir formalismo y tomar decisiones sobre el funcionamiento interno. En un proyecto donde la implementación ya está completada, este capítulo cumple esa misma función pero con una ventaja adicional: toda decisión de diseño es constatable. No existe la brecha entre diseño y código que suele aparecer cuando el diseño es anterior al desarrollo.
-
-El enfoque seguido en este capítulo es **híbrido**: en el apartado de análisis se expone el modelo clásico RUP con sus clases de análisis (Modelo, Vista, Controlador). En el apartado de diseño se muestra cómo ese modelo se materializa en la arquitectura real. Esta articulación entre el modelo de análisis y el diseño concreto permite verificar la trazabilidad entre los conceptos del dominio (capítulo 3) y el código (capítulo 5).
-
-## 4.2 Análisis de la arquitectura
-
-### 4.2.1 Capas lógicas del sistema
-
-El sistema se organiza en cuatro capas lógicas verticales. La separación no es física (el sistema se despliega en un único proceso Next.js) sino de responsabilidad: cada capa tiene una única razón de cambio, y las dependencias fluyen siempre hacia abajo.
-
-![Capas lógicas del sistema](../../modelosUML/svg/arqCapas.svg)
-<sub>[Código fuente](../../modelosUML/puml/arqCapas.puml)</sub>
-
-| Capa                  | Responsabilidad                                                                                                                         | Artefactos principales                                                                         |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| **Presentación**      | Renderizar la UI y capturar interacciones del usuario. No contiene lógica de negocio.                                                   | `src/app/(dashboard)/*/page.tsx`, layouts, Client Components, `src/components/`                |
-| **Aplicación**        | Orquestar las operaciones del sistema: validar entrada, comprobar autorización, invocar queries y devolver resultado.                   | Server Actions (`actions.ts` de cada módulo), `actionClient`, validaciones Zod, guardas de rol |
-| **Dominio / Negocio** | Encapsular la lógica de negocio reutilizable independiente de la UI: cálculo de disponibilidad, validación de fechas, reglas de cesión. | `src/lib/queries/`, `src/lib/calendar/`, `src/lib/booking-validation.ts`                       |
-| **Persistencia**      | Materializar las entidades del dominio en la base de datos.                                                                             | `src/lib/db/schema.ts`, `src/lib/db/index.ts`, Drizzle ORM, PostgreSQL 16                      |
-
-Los servicios externos (Microsoft Entra ID, Microsoft Graph, Resend) se acceden exclusivamente desde la capa de aplicación, nunca desde la presentación. Esto garantiza que un cambio de proveedor afecta únicamente a las actions correspondientes, sin impacto en la UI.
-
-### 4.2.2 Flujo de una operación típica
-
-Para concretar cómo fluye una operación a través de las capas, se describe el camino de una reserva de parking:
-
-1. **Presentación** — Un Server Component (`/parking/page.tsx`) carga la lista de plazas disponibles para el día seleccionado y la pasa al Client Component de calendario como props. El Client Component renderiza el mapa interactivo y, al confirmar la selección, llama a la Server Action `createReservation`.
-
-2. **Aplicación** — `createReservation` (envuelta en `actionClient`) valida la entrada con el schema Zod, obtiene el usuario autenticado mediante `getCurrentUser()`, comprueba que el módulo está habilitado y que la fecha es válida, e inserta la reserva.
-
-3. **Dominio** — La validación de la fecha de reserva delega en `validateBookingDate()` de `booking-validation.ts`, que comprueba el adelanto máximo y los días permitidos según la configuración del módulo. Las queries de disponibilidad viven en `src/lib/queries/spots.ts`.
-
-4. **Persistencia** — Drizzle construye la sentencia `INSERT INTO reservations ...` con tipado estricto derivado del esquema. Los índices parciales únicos de PostgreSQL garantizan la invariante de unicidad (una plaza, un día, una reserva confirmada) a nivel de base de datos.
-
-5. El resultado asciende en forma de `ActionResult<T>` — un tipo discriminado que el Client Component usa para mostrar confirmación o error, sin que el servidor lance excepciones.
-
-### 4.2.3 Sistemas externos y su frontera
-
-El sistema interactúa con tres servicios externos, cada uno con una función específica y acotada:
-
-| Sistema externo         | Protocolo           | Función en el sistema                                                                                                                               | Módulo que lo invoca                                                  |
-| ----------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| **Microsoft Entra ID**  | OAuth 2.0/OIDC      | Autenticación SSO: el sistema delega la verificación de identidad. Auth.js v5 gestiona el ciclo de vida del token JWT.                              | `src/lib/auth/config.ts`                                              |
-| **Microsoft Graph API** | REST + Bearer token | Lectura del estado Fuera de Oficina del manager para activar autocesiones; envío de notificaciones por Teams; sincronización con Outlook Calendar.  | `src/app/(dashboard)/ajustes/actions.ts`, `src/lib/holidays-sync.ts`  |
-| **Resend**              | REST API            | Envío del email de confirmación al visitante externo. Es el único punto del sistema donde se interactúa con un actor que no tiene acceso al portal. | `src/app/(dashboard)/parking/visitantes/actions.ts`, `src/lib/email/` |
-
-## 4.3 Diseño de la arquitectura
-
-### 4.3.1 Stack tecnológico
-
-Las tecnologías empleadas son Next.js 16 App Router, Auth.js v5, Drizzle ORM y PostgreSQL 16. Lo relevante aquí es cómo se articulan: un único lenguaje (TypeScript) para todo el stack, un único proceso de despliegue, sin capa de API REST separada. Las lecturas ocurren en Server Components directamente contra la base de datos.
-
-### 4.3.2 Patrón monolito modular plug-in
-
-El portal sigue el patrón de monolito modular descrito en el capítulo 2. La estructura se divide en un núcleo fijo y módulos activables:
-
-**Core shell** (siempre activo): autenticación, navegación (`layout.tsx`), configuración del sistema (`system_config` + `config.ts`), auditoría (`audit.ts`) y middleware de protección de rutas (`proxy.ts`).
-
-**Módulos plug-in**: cada módulo reside en su propia carpeta bajo `src/app/(dashboard)/` y puede ser habilitado o deshabilitado por entidad sin modificar el código base. La activación se gestiona en la tabla `entity_modules` y se consulta en el layout mediante `getAllResourceConfigs()`. Los módulos del MVP son: `parking`, `oficinas`, `vacaciones`, `tablon`, `administracion`, `ajustes`, `visitantes`, `directorio`, `mis-reservas` y `panel`.
-
-La lógica que es idéntica entre módulos de la misma familia se extrae a funciones parametrizadas. El caso más representativo es la cesión: `src/lib/actions/cession-actions.ts`, que recibe el tipo de recurso (`"parking"` | `"office"`) y devuelve las actions `createCession` y `cancelCession` configuradas para ese recurso. Los módulos `parking/cesiones/` y `oficinas/cesiones/` importan esta factory y reexportan las actions correspondientes. Este es el mecanismo de composición sobre herencia que se aplica de forma sistemática en el proyecto.
-
-### 4.3.3 Diagrama de despliegue
-
-El diagrama de despliegue refleja los nodos físicos del sistema en producción. El servidor VPS aloja tanto el proceso Next.js como el contenedor PostgreSQL dentro de la misma red Docker, de modo que la base de datos no está expuesta al exterior. El acceso externo llega exclusivamente a través del reverse proxy (nginx) en el puerto 443.
-
-![Diagrama de despliegue](../../modelosUML/svg/arqDespliegue.svg)
-<sub>[Código fuente](../../modelosUML/puml/arqDespliegue.puml)</sub>
-
-## 4.4 Análisis y diseño de clases
-
-### 4.4.1 Clases de análisis (modelo RUP)
-
-Siguiendo la clasificación RUP, a partir de los casos de uso se identifican tres categorías de clases:
-
-**Clases Modelo** — Derivadas directamente del modelo del dominio. Se corresponden con las entidades que persisten en la base de datos: `Empleado`, `Entidad`, `Plaza`, `Reserva`, `Cesión`, `SolicitudAusencia`, `Anuncio`, `CalendarioFestivos`, `ReglaAutoCesión` y `ReservaVisitante`.
-
-**Clases Vista** — Una clase vista por actor primario que representa la ventana principal de interacción:
-
-| Actor         | Clase Vista principal                                        |
-| ------------- | ------------------------------------------------------------ |
-| Empleado      | `DashboardView` — navegación y listado de reservas propias   |
-| Manager       | `CesionesView` — gestión de la plaza asignada y cesiones     |
-| RRHH          | `GestionarAusenciasView` — bandeja de solicitudes pendientes |
-| Administrador | `AdminView` — CRUD de plazas, usuarios y configuración       |
-
-Además, existe una clase vista primitiva por cada clase de modelo: `PlazaView`, `ReservaView`, `CesiónView`, `SolicitudAusenciaView`, `AnuncioView`.
-
-**Clases Controlador** — RUP prescribe una clase controladora por caso de uso. Siguiendo esta
-convención, cada CdU tiene su controladora homónima: `ReservarPlazaController`,
-`CederPlazaController`, `AprobarSolicitudAusenciaController`, etc. en total 28 controladoras
-(la autenticación se delega a Auth.js y no genera controladora propia). En el paso al diseño real,
-estas clases no se implementan como tal: se describe cómo colapsan en Server Actions agrupadas
-por módulo.
-
-### 4.4.2 Colapso al diseño real
-
-En el paso del análisis al diseño, las categorías RUP se materializan de la siguiente manera:
-
-**Modelo → Schema Drizzle + capa de queries**
-
-Las clases Modelo del análisis se mapean directamente sobre las tablas de `src/lib/db/schema.ts`. Los tipos de la aplicación (`Profile`, `Spot`, `Reservation`, `Cession`, `LeaveRequest`, `Announcement`, `VisitorReservation`) se derivan de las tablas mediante `$inferSelect`. Las relaciones entre entidades se expresan mediante las `relations` de Drizzle, que permiten hacer joins declarativos sin SQL crudo.
-
-La lógica de consulta (lo que en el modelo de análisis serían las responsabilidades de las clases Modelo) reside en `src/lib/queries/`: cada archivo encapsula las queries de una entidad (`spots.ts`, `reservations.ts`, `cessions.ts`, `offices.ts`, `leave-requests.ts`, `announcements.ts`, etc.).
-
-**Vista → Server Components + Client Components**
-
-Las clases Vista del análisis se realizan como dos tipos de componentes React:
-
-- **Server Components** (`page.tsx`, `layout.tsx`): ejecutan en el servidor, acceden a la base de datos directamente y pasan los datos como props. No tienen estado de cliente. Corresponden a las vistas primarias del modelo de análisis.
-- **Client Components** (marcados con `"use client"`): gestionan el estado interactivo (calendario, formularios, diálogos de confirmación). Reciben los datos ya procesados como props del Server Component padre. Corresponden a las vistas primitivas del modelo de análisis.
-
-La librería de UI es [shadcn/ui](https://ui.shadcn.com/), que proporciona componentes accesibles y componibles sin añadir runtime bundle significativo.
-
-**Controlador → Server Actions con `actionClient`**
-
-Las clases Controlador del análisis se realizan como Server Actions. En lugar de un archivo por CdU, las actions se agrupan por módulo (p. ej. `parking/actions.ts` reúne las actions de reserva de parking; `vacaciones/actions.ts` las de ausencias), con la excepción de las cessions, que se extraen a `src/lib/actions/` porque son compartidas entre parking y oficinas mediante la factory `buildCessionActions`. Esta agrupación reduce la proliferación de archivos sin romper la cohesión.
-
-El constructor `actionClient` cumple el papel que en el modelo de análisis ejercía la clase controladora: recibe el input, lo valida con Zod, obtiene el contexto de autenticación, ejecuta la lógica y devuelve `ActionResult<T>`. La guarda de rol (equivalente a la comprobación de precondición del CdU) se realiza dentro del handler de cada action invocando las funciones de `src/lib/auth/helpers.ts` o lanzando un error si el rol es insuficiente.
-
-### 4.4.3 Diagrama de clases de diseño
-
-El diagrama siguiente muestra las clases de diseño principales con sus atributos, responsabilidades y relaciones.
-
-![Diagrama de clases de diseño](../../modelosUML/svg/clasesDiseño.svg)
-<sub>[Código fuente](../../modelosUML/puml/clasesDiseño.puml)</sub>
-
-### 4.4.4 Patrones declarados
-
-**Factory parametrizada por tipo de recurso.** El patrón más característico del diseño es `buildCessionActions(cfg)`. Parking y oficinas comparten exactamente la misma lógica de cesión salvo el tipo de recurso, las rutas de revalidación y los mensajes de error. En lugar de duplicar el código o crear una jerarquía de herencia, se parametriza la función con un objeto de configuración `CessionConfig`. Este mismo patrón se aplica en `src/lib/actions/calendar-actions.ts` para las acciones de calendario compartidas.
-
-**`ActionResult<T>` como contrato uniforme.** Todas las Server Actions devuelven un tipo discriminado `ActionResult<T>` que es bien `{ success: true, data: T }` o bien `{ success: false, error: string, fieldErrors? }`. Esto elimina el manejo inconsistente de excepciones en los clientes y permite exhaustividad en los `if (result.success)` de los componentes.
-
-**Guardas de rol por composición.** La autorización no se implementa en un middleware centralizado sino mediante funciones de guarda `assertAdmin()`, `assertHROrAbove()`, `assertManagerOrAbove()`, `assertCanManageReservation()` en `src/lib/auth/` que se invocan al inicio del handler de cada action. Cada guarda comprueba una única condición y lanza si no se cumple, permitiendo componer múltiples guardas en una misma action.
-
-**Una fuente de verdad para el modelo de datos.** `src/lib/db/schema.ts` define todas las tablas, enumeraciones, relaciones e índices. Los tipos TypeScript de la aplicación se derivan de él. No existe ningún archivo de tipos mantenido manualmente para las entidades de la base de datos.
-
-## 4.5 Diseño de casos de uso representativos
-
-Se presentan los diagramas de secuencia de los cuatro casos de uso más representativos del sistema, siguiendo el flujo UI → Action → Query → DB. Los casos se seleccionan porque cubren los cuatro patrones de interacción fundamentales: reserva estándar, cesión por propietario, aprobación multinivel y notificación a actor externo.
-
-### 4.5.1 `reservarPlaza()`
-
-La secuencia muestra el camino completo de la reserva de parking, incluyendo la validación de configuración del módulo, la comprobación de unicidad y el manejo del constraint de base de datos.
-
-![Secuencia reservarPlaza()](../../modelosUML/svg/seqReservarPlaza.svg)
-<sub>[Código fuente](../../modelosUML/puml/seqReservarPlaza.puml)</sub>
-
-### 4.5.2 `aprobarSolicitudAusencia()`
-
-Este caso de uso exhibe la lógica de transición de estado condicional al rol: un manager solo puede aprobar desde `pending` hacia `manager_approved`; RRHH solo puede hacerlo desde `manager_approved` hacia `hr_approved`. La misma action gestiona ambas transiciones con una única consulta de estado previo.
-
-![Secuencia aprobarSolicitudAusencia()](../../modelosUML/svg/seqAprobarSolicitudAusencia.svg)
-<sub>[Código fuente](../../modelosUML/puml/seqAprobarSolicitudAusencia.puml)</sub>
-
-### 4.5.3 `registrarVisitante()`
-
-La única secuencia del sistema que cruza la frontera hacia un actor externo pasivo. Tras la inserción en base de datos, la action llama a `sendVisitorReservationEmail()` que invoca la API de Resend con el email del visitante y un archivo `.ics` adjunto. El campo `notification_sent` garantiza la trazabilidad del envío.
-
-![Secuencia registrarVisitante()](../../modelosUML/svg/seqRegistrarVisitante.svg)
-<sub>[Código fuente](../../modelosUML/puml/seqRegistrarVisitante.puml)</sub>
-
-## 4.6 Diseño de paquetes
-
-### 4.6.1 Árbol de `src/` con responsabilidad por paquete
-
-| Paquete                | Responsabilidad                                                                                                                 |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `src/app/(auth)/`      | Páginas de autenticación (`/login`, `/register`). No requieren sesión activa.                                                   |
-| `src/app/(dashboard)/` | Módulos del portal. Cada subcarpeta es un módulo activable con su propio `page.tsx` y `actions.ts`.                             |
-| `src/app/api/`         | Rutas de API necesarias para integraciones externas: callback de Auth.js, webhook de Microsoft Graph.                           |
-| `src/lib/db/`          | Schema, conexión Drizzle, migraciones, seed, tipos inferidos. Capa de persistencia.                                             |
-| `src/lib/auth/`        | Configuración de Auth.js, helpers de sesión, guardas de rol para Server Components y Server Actions.                            |
-| `src/lib/queries/`     | Funciones de consulta puras: reciben parámetros tipados y devuelven datos tipados. No contienen lógica de negocio.              |
-| `src/lib/actions/`     | Lógica de acción compartida entre módulos (cession-actions, calendar-actions). Exporta factories, no actions directas.          |
-| `src/lib/calendar/`    | Utilidades de calendario reutilizables entre parking y oficinas: `buildMonthRange`, `computeCessionDayStatus`, `iterMonthDays`. |
-| `src/lib/email/`       | Wrappers sobre la API de Resend para los correos del sistema.                                                                   |
-| `src/components/`      | Componentes UI compartidos entre módulos: `ResourceCalendar`, tablas de datos, layouts, `CommandMenu`.                          |
-| `src/types/`           | Tipos de la capa de aplicación: `SpotWithStatus`, `ReservationWithDetails`, `TimeSlot`.                                         |
-
-### 4.6.2 Reglas de dependencia
-
-Las reglas de dependencia entre paquetes siguen el principio de dependencias hacia adentro (de la presentación hacia la persistencia, nunca al revés):
-
-1. **Los módulos de ruta** (`src/app/(dashboard)/*/`) pueden importar de `src/lib/` y `src/components/`. No importan entre sí.
-2. **Las queries** (`src/lib/queries/`) importan únicamente de `src/lib/db/`. No importan de actions ni de componentes.
-3. **Las actions** (`src/lib/actions/`, actions de módulos) importan de `src/lib/queries/`, `src/lib/auth/`, `src/lib/db/` y `src/lib/validations.ts`. No importan de componentes.
-4. **Los componentes** (`src/components/`) importan de `src/types/` y de la librería UI. No importan de `src/lib/db/` directamente.
-5. **`src/lib/db/schema.ts`** no importa nada del proyecto. Es la raíz del grafo de dependencias.
-
-Esta estructura garantiza que un cambio en el esquema de la base de datos produce errores de compilación precisamente en los archivos que acceden a los datos afectados, facilitando el mantenimiento correctivo.
-
-### 4.6.3 Diagrama de paquetes
+- [4.1. Disciplina de análisis](#41-disciplina-de-análisis)
+  - [4.1.1. Panorama de clases de análisis](#411-panorama-de-clases-de-análisis)
+  - [4.1.2. Colaboración: reservarPlaza()](#412-colaboración-reservarplaza)
+  - [4.1.3. Colaboración: cederPlaza()](#413-colaboración-cederplaza)
+  - [4.1.4. Colaboración: gestionarSolicitudAusencia()](#414-colaboración-gestionarsolicitudausencia)
+  - [4.1.5. Colaboración: registrarVisitante()](#415-colaboración-registrarvisitante)
+  - [4.1.6. Patrones de análisis identificados](#416-patrones-de-análisis-identificados)
+- [4.2. Transición al diseño](#42-transición-al-diseño)
+- [4.3. Disciplina de diseño](#43-disciplina-de-diseño)
+  - [4.3.1. Arquitectura del sistema](#431-arquitectura-del-sistema)
+  - [4.3.2. Diagrama de paquetes](#432-diagrama-de-paquetes)
+  - [4.3.3. Diagrama de clases de diseño](#433-diagrama-de-clases-de-diseño)
+  - [4.3.4. Secuencia: reservarPlaza()](#434-secuencia-reservarplaza)
+  - [4.3.5. Secuencia: gestionarSolicitudAusencia()](#435-secuencia-gestionarsolicitudausencia)
+  - [4.3.6. Diagrama de despliegue](#436-diagrama-de-despliegue)
+
+El objetivo de este capítulo es doble. La disciplina de análisis refina los requisitos del capítulo
+anterior para obtener una descripción más precisa que ayude a estructurar el sistema. La disciplina
+de diseño introduce los requisitos no funcionales y el dominio de la solución, preparando el terreno
+para la implementación. El resultado es una abstracción del sistema en la que el código será un
+refinamiento sencillo del diseño: cumplimentar la carne sin cambiar el esqueleto.
+
+## 4.1. Disciplina de análisis
+
+La disciplina de análisis toma como entrada los casos de uso detallados y el modelo del dominio
+del capítulo 3 y produce clases de análisis con responsabilidades bien definidas, agrupadas en tres
+estereotipos: vista, controlador y modelo. Cada caso de uso se resuelve mediante un diagrama de
+colaboración que muestra qué clases participan, qué mensajes se intercambian y a qué otros casos
+de uso se transita. Los cuatro casos de uso seleccionados son los mismos que se detallaron en el
+capítulo anterior, lo que garantiza la trazabilidad desde los requisitos hasta el análisis.
+
+### 4.1.1. Panorama de clases de análisis
+
+El diagrama siguiente presenta las clases de análisis del sistema organizadas en cuatro capas
+horizontales: vistas (azul), controladores (verde), repositorios (naranja) y entidades del dominio
+(amarillo). La organización vertical —las vistas en la parte superior, el dominio en la inferior—
+refleja la dirección de las dependencias: las vistas conocen a los controladores, los controladores
+a los repositorios, y solo los repositorios tocan las entidades del modelo del dominio. Los
+servicios transversales —autenticación, notificaciones, calendario de festivos— residen en la capa
+de repositorios porque son consumidos por los controladores, no por otras vistas.
+
+![Panorama de clases de análisis](../../modelosUML/svg/analisisClases.svg)
+<sub>[Código fuente](../../modelosUML/puml/analisisClases.puml)</sub>
+
+La agrupación por capas —y no por módulo funcional— es deliberada. Los módulos (`parking`,
+`oficinas`, `vacaciones`...) comparten el mismo patrón estructural: una vista, un controlador y
+un conjunto de repositorios. Representarlos como capas revela ese patrón común y evita la
+ilusión de que cada módulo es una isla arquitectónica independiente. La dependencia unidireccional
+—de arriba hacia abajo— garantiza que los módulos puedan activarse o desactivarse sin modificar
+el código de los demás (RNF-06).
+
+### 4.1.2. Colaboración: reservarPlaza()
+
+El caso de uso `reservarPlaza()` representa el flujo de reserva estándar: un empleado
+selecciona una fecha, consulta las plazas disponibles —tanto las libres como las cedidas—
+y confirma la reserva. El diagrama de colaboración muestra cómo las responsabilidades se
+distribuyen entre cuatro clases de análisis.
+
+![Colaboración: reservarPlaza()](../../modelosUML/svg/colabReservarPlaza.svg)
+<sub>[Código fuente](../../modelosUML/puml/colabReservarPlaza.puml)</sub>
+
+`CalendarioParkingView` recibe la solicitud desde el estado `CALENDARIO_PARKING_ABIERTO`
+del diagrama de contexto y se comunica exclusivamente con `ReservaController`. El controlador
+coordina dos operaciones de lectura —cargar plazas disponibles y obtener reservas existentes
+para detectar conflictos— delegando en `PlazaRepository` y `ReservaRepository` respectivamente.
+La confirmación de reserva sigue el mismo camino: la vista recoge la intención del empleado,
+el controlador valida y el repositorio persiste.
+
+Las clases `Plaza` y `Reserva` son entidades puras del modelo del dominio que los
+repositorios gestionan. Esta separación —la vista no conoce las entidades, el controlador
+no conoce la base de datos— es la que permite cambiar la tecnología de persistencia sin
+que la lógica de negocio se entere.
+
+### 4.1.3. Colaboración: cederPlaza()
+
+La cesión es el caso de uso que distingue a un `Manager` de un `Empleado`. Solo el
+propietario de una plaza asignada puede cederla. La colaboración introduce un participante
+externo —Microsoft Graph— que no es un actor en el sentido RUP pero colabora con el
+controlador proporcionando el estado fuera de oficina del manager. Esta integración
+responde a la segunda decisión de diseño del capítulo 3: los directivos utilizan Outlook
+de forma habitual y el sistema debe aprovechar esa información para sugerir cesiones.
+
+![Colaboración: cederPlaza()](../../modelosUML/svg/colabCederPlaza.svg)
+<sub>[Código fuente](../../modelosUML/puml/colabCederPlaza.puml)</sub>
+
+`CesionView` recibe `cederPlaza()` desde el calendario de parking. El controlador
+primero recupera la plaza asignada del manager mediante `PlazaRepository` y después
+registra la cesión en `CesionRepository`. Microsoft Graph colabora en un segundo plano:
+el controlador puede consultar el estado fuera de oficina para sugerir la cesión, pero
+la decisión final siempre es del manager. La cesión intencional —nunca automática— fue
+la primera decisión de diseño del capítulo anterior y aquí se materializa como
+responsabilidad exclusiva de la vista, que solo ejecuta si el actor la solicita
+explícitamente.
+
+### 4.1.4. Colaboración: gestionarSolicitudAusencia()
+
+Este caso de uso materializa el flujo de aprobación en dos niveles —manager y RRHH—
+que constituye la tercera decisión de diseño del capítulo 3. La colaboración introduce
+un quinto participante: `NotificacionService`, responsable de informar al empleado y al
+siguiente nivel de aprobación cuando una solicitud cambia de estado.
+
+![Colaboración: gestionarSolicitudAusencia()](../../modelosUML/svg/colabGestionarSolicitud.svg)
+<sub>[Código fuente](../../modelosUML/puml/colabGestionarSolicitud.puml)</sub>
+
+`BandejaSolicitudesView` presenta dos zonas —lista de solicitudes pendientes y panel de
+detalle— que el prototipo del capítulo 3 ya anticipaba. `AusenciaController` coordina
+la carga inicial consultando `SolicitudRepository` por las pendientes del actor y
+`EmpleadoRepository` por los datos del solicitante. La resolución —aprobar o rechazar—
+actualiza el estado de la solicitud y dispara la notificación correspondiente.
+
+La lógica de dos niveles no requiere dos controladores distintos: el mismo
+`AusenciaController` valida si el actor tiene potestad para resolver en el nivel
+correspondiente. Manager aprueba en primer nivel; RRHH valida en segundo. Esta
+decisión evita duplicar la lógica de carga y notificación y es coherente con el
+principio de composición sobre herencia.
+
+### 4.1.5. Colaboración: registrarVisitante()
+
+`registrarVisitante()` es el único caso de uso que genera una interacción con una
+persona externa al sistema —el visitante— mediante el envío de un correo de
+confirmación. La colaboración muestra esta dependencia con el sistema externo Resend,
+que actúa como colaborador de la capa de aplicación.
+
+![Colaboración: registrarVisitante()](../../modelosUML/svg/colabRegistrarVisitante.svg)
+<sub>[Código fuente](../../modelosUML/puml/colabRegistrarVisitante.puml)</sub>
+
+`VisitanteView` recoge los datos del visitante y la fecha de la visita. El controlador
+consulta las plazas de parking disponibles —reutilizando `PlazaRepository` del módulo de
+parking— y persiste la reserva en `VisitanteRepository`. Resend colabora enviando el
+correo de confirmación al visitante. La vista no sabe que se ha enviado un correo; el
+controlador no sabe cómo se envía. Esa separación permite cambiar el proveedor de email
+sin tocar la lógica de negocio.
+
+### 4.1.6. Patrones de análisis identificados
+
+Del análisis de los treinta y dos casos de uso del sistema emergen cuatro patrones
+recurrentes que se repiten por grupo de entidades y que guían la transición al diseño.
+
+| Patrón                 | Casos de uso representativos                        | Característica                                                                   |
+| ---------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **Apertura**           | `abrirCalendarioParking()`, `abrirDirectorio()`     | Vista presenta lista; controlador coordina carga; repositorio devuelve entidades |
+| **El delgado**         | `crearAnuncio()`, `solicitarAusencia()`             | Vista mínima; creación rápida; transferencia inmediata a edición                 |
+| **El gordo**           | `reservarPlaza()`, `cederPlaza()`, `editarPerfil()` | Vista completa; sesión continua; validación en múltiples pasos                   |
+| **Eliminación segura** | `cancelarReserva()`, `cancelarCesion()`             | Confirmación explícita; validación de dependencias; transición de vuelta         |
+
+El patrón de apertura aparece en todos los módulos y es la puerta de entrada a las
+operaciones CRUD. El delgado aplica la filosofía C→U: crear con datos mínimos y
+transferir automáticamente a edición para completar. El gordo se reserva para las
+operaciones que requieren múltiples campos o validaciones encadenadas —como la reserva,
+que debe verificar conflictos de fecha, tipo de plaza y entidad—. La eliminación segura
+nunca borra físicamente: transita el estado de la entidad a cancelada y mantiene la
+trazabilidad.
+
+## 4.2. Transición al diseño
+
+El análisis describe qué hace el sistema sin atarse a una tecnología concreta. El diseño
+responde a cómo se materializa esa descripción en un stack específico. La tabla siguiente
+documenta la correspondencia entre cada clase de análisis y su contraparte de diseño,
+junto con la decisión técnica que la motiva y el requisito no funcional que la justifica.
+
+| Clase de análisis              | Clase de diseño                      | Decisión técnica                                       | RNF asociado   |
+| ------------------------------ | ------------------------------------ | ------------------------------------------------------ | -------------- |
+| `*View`                        | `*Page` (Next.js Server Component)   | Renderizado en servidor para SEO y carga inicial       | RNF-01, RNF-05 |
+| `*Controller`                  | Server Action (`src/lib/actions/`)   | Mutaciones sin endpoint REST; validación Zod integrada | RNF-04, RNF-06 |
+| `*Repository`                  | Query function (`src/lib/queries/`)  | Funciones Drizzle puras; sin ORM mágico                | RNF-07         |
+| `AuthController`               | `src/lib/auth/` (Auth.js + helpers)  | JWT sobre credenciales; guardas de rol en capa app     | RNF-03, RNF-04 |
+| `NotificacionService`          | `src/lib/email/` (Resend SDK)        | Email transaccional; templates React                   | RNF-08         |
+| `CalendarioFestivosRepository` | `src/lib/calendar/calendar-utils.ts` | Utilidades puras sin dependencia de BD                 | RNF-06         |
+
+La decisión más relevante es la elección de Server Actions sobre una API REST tradicional.
+En una SPA convencional, cada `Controller` de análisis se materializaría como un endpoint
+HTTP. Next.js App Router permite que las mutaciones sean funciones de servidor que el
+cliente invoca directamente, eliminando la capa de serialización REST y la duplicación
+de tipos entre cliente y servidor. La validación ocurre en el borde del sistema —al
+entrar la petición, mediante Zod— y una vez dentro el código confía en los tipos. Esta
+decisión responde a RNF-01 (las operaciones deben responder en menos de 2 segundos) y
+RNF-04 (la autorización se gestiona en la capa de aplicación).
+
+La persistencia sobre PostgreSQL autoalojado —no sobre un servicio cloud como Supabase—
+responde a RNF-07: el sistema no debe depender de un proveedor concreto. Drizzle ORM
+actúa como capa de acceso a datos con tipado inferido del esquema, sin generación de
+código ni migraciones mágicas.
+
+## 4.3. Disciplina de diseño
+
+### 4.3.1. Arquitectura del sistema
+
+El diagrama de arquitectura sigue el modelo C4 de contenedores: muestra las personas que usan
+el sistema, los contenedores que lo componen, los sistemas externos con los que colabora y las
+relaciones entre ellos. La elección de C4 responde a la necesidad de un plano de despliegue
+independiente del detalle de implementación —el mismo diagrama serviría si el backend se
+reescribiera en otro lenguaje—.
+
+![Arquitectura del sistema](../../modelosUML/svg/arquitectura.svg)
+<sub>[Código fuente](../../modelosUML/puml/arquitectura.puml)</sub>
+
+El portal web concentra las tres responsabilidades del servidor en un único contenedor Next.js:
+renderizar páginas, ejecutar mutaciones mediante Server Actions y exponer rutas de API para los
+callbacks de autenticación. PostgreSQL se comunica directamente con el portal mediante Drizzle ORM
+—sin capa intermedia de API REST— lo que elimina la sobrecarga de serialización y reduce la
+latencia de las operaciones de lectura (RNF-01). Los tres sistemas externos colaboran desde la
+capa de servidor, nunca desde el navegador: Entra ID gestiona la identidad, Graph API proporciona
+el estado fuera de oficina y las notificaciones por Teams, y Resend envía los correos
+transaccionales.
+
+### 4.3.2. Diagrama de paquetes
+
+El diagrama de paquetes muestra la organización del código fuente en cuatro niveles
+con estereotipos diferenciados y la dirección de las dependencias entre ellos.
 
 ![Diagrama de paquetes](../../modelosUML/svg/paquetes.svg)
 <sub>[Código fuente](../../modelosUML/puml/paquetes.puml)</sub>
 
-## 4.7 Modelo físico de datos
+Los módulos funcionales del dashboard (`parking/`, `oficinas/`, `vacaciones/`, `tablon/`,
+`administracion/`, `ajustes/` y `panel/`) dependen débilmente de `lib/` mediante flechas
+punteadas —importan lo que necesitan, pero `lib/` no sabe qué módulo lo consume—. Los
+subpaquetes de `lib/` (`db/`, `auth/`, `queries/`, `actions/`, `calendar/`) tienen
+dependencias internas fuertes: las acciones dependen de las consultas y de la autenticación;
+las consultas dependen del cliente de base de datos. Los paquetes `src/components/` y
+`src/types/` son compartidos transversalmente por todos los módulos.
 
-### 4.7.1 Diagrama entidad-relación del subset central
+### 4.3.3. Diagrama de clases de diseño
 
-El modelo físico central comprende las siete tablas que implementan la funcionalidad del MVP. Las tablas de soporte (autenticación, preferencias, tokens M365, festivos, auditoría, configuración) no se incluyen en este diagrama pero forman parte del esquema completo de `schema.ts`.
+El diagrama presenta las clases de diseño organizadas en los cinco paquetes que corresponden a
+las capas arquitectónicas del sistema. En lugar de enumerar todas las clases —lo que convertiría
+el diagrama en un catálogo— se muestran los representantes de cada capa con los métodos que
+definen su interfaz pública.
 
-![Modelo físico de datos](../../modelosUML/svg/modeloFisico.svg)
-<sub>[Código fuente](../../modelosUML/puml/modeloFisico.puml)</sub>
+![Diagrama de clases de diseño](../../modelosUML/svg/disenoClases.svg)
+<sub>[Código fuente](../../modelosUML/puml/disenoClases.puml)</sub>
 
-### 4.7.2 Restricciones críticas del modelo
+Las páginas de presentación dependen de las acciones mediante flechas punteadas —las conocen,
+pero no las contienen—. Las acciones validan sus datos de entrada contra los esquemas Zod del
+paquete de contratos y delegan la persistencia en las interfaces del paquete de acceso a datos.
+La dependencia sobre interfaces en lugar de implementaciones concretas permite sustituir el motor
+de base de datos sin modificar la lógica de negocio (RNF-07). Los servicios de infraestructura
+—`AuthHelpers`, `EmailService` y `CalendarUtils`— son consumidos por las acciones, nunca
+directamente por las páginas.
 
-**Índices parciales únicos en `reservations`.** La invariante «una plaza confirmada por día, un empleado confirmado por día» se impone con dos índices parciales que solo aplican a reservas confirmadas sin franja horaria. El uso de índices parciales —en lugar de constraints simples— permite que los puestos de oficina con time slots acumulen varias reservas el mismo día sin violar la restricción.
+### 4.3.4. Secuencia: reservarPlaza()
 
-**Índice parcial único en `cessions`.** Una plaza no puede tener dos cesiones activas el mismo día. El índice parcial excluye las cesiones canceladas, de modo que una cesión cancelada libera la fecha para una nueva.
+A diferencia del diagrama de colaboración del análisis —que muestra qué clases participan—,
+la secuencia de diseño muestra la interacción real entre los componentes del sistema durante
+la ejecución de `reservarPlaza()`.
 
-**Trigger de sincronización `cessions` ↔ `reservations`.** Cuando se inserta una reserva sobre una cesión activa, el trigger actualiza `cessions.status = 'reserved'`; al cancelar la reserva, lo revierte a `'available'`. La sincronización vive en la base de datos para garantizar atomicidad sin lógica manual en la aplicación.
+![Secuencia: reservarPlaza()](../../modelosUML/svg/seqReservarPlaza.svg)
+<sub>[Código fuente](../../modelosUML/puml/seqReservarPlaza.puml)</sub>
 
-**Constraint de exclusión `btree_gist`.** Para los puestos de oficina con franja horaria, un constraint de exclusión GiST impide solapamientos temporales en la misma plaza y día. Permite coexistir reservas no solapadas y rechaza atómicamente cualquier intento de insertar un solapamiento.
+La página —un Server Component— resuelve la consulta de disponibilidad en el servidor antes
+de renderizar. Cuando el empleado confirma la reserva, la Server Action `createReservation`
+ejecuta tres pasos en secuencia: verifica la autenticación, valida los datos de entrada con
+el esquema Zod y persiste la reserva en PostgreSQL comprobando que no exista conflicto de
+fecha y plaza. La respuesta es siempre un `ActionResult<Reserva>` —unión discriminada entre
+éxito y error— que la página maneja sin recargar.
 
-### 4.7.3 Decisión de autorización en aplicación
+### 4.3.5. Secuencia: gestionarSolicitudAusencia()
 
-El modelo prescinde de Row Level Security (RLS) de PostgreSQL. La autorización se gestiona íntegramente en la capa de aplicación mediante las guardas de rol de `src/lib/auth/`. Esta decisión responde a tres motivos: (1) las consultas con RLS en Drizzle añaden complejidad de configuración sin alinearse con la API del ORM; (2) la lógica de autorización es específica del dominio de negocio (un manager solo gestiona su propio equipo dentro de su entidad) y es más expresiva en TypeScript que en SQL; (3) el aislamiento entre entidades se garantiza añadiendo filtros de `entityId` explícitos en todas las queries que manejan datos sensibles.
+El flujo de aprobación de ausencias es el más complejo del sistema. La secuencia muestra la
+interacción en el primer nivel —la aprobación por el manager—. El segundo nivel —la validación
+por RRHH— sigue exactamente el mismo patrón: la misma Server Action `approveLeaveRequest`,
+invocada por un usuario con rol de RRHH, transita el estado de `aprobado_manager` a `aprobado`.
+Esta duplicación deliberada —un solo endpoint, dos niveles de autorización— evita tener dos
+acciones distintas para la misma operación conceptual y responde a la tercera decisión de diseño
+del capítulo 3.
 
-## 4.8 Trazabilidad requisito → diseño
+### 4.3.6. Diagrama de despliegue
 
-La tabla siguiente cierra el ciclo de trazabilidad entre los casos de uso del capítulo 3 y los artefactos de diseño e implementación concretos. Cada fila establece la cadena completa: CdU → módulo → Server Action → query → tabla.
+El diagrama de despliegue muestra los nodos físicos del sistema y cómo se conectan.
+La aplicación Next.js se ejecuta en la infraestructura Edge de Vercel, lo que garantiza
+baja latencia para los usuarios distribuidos por toda España. PostgreSQL 16 se ejecuta
+en un servidor Linux propio bajo Docker Compose, accesible únicamente desde las Server
+Actions mediante conexión TCP directa.
 
-| CdU                            | Módulo                      | Server Action                                                     | Query / tabla principal                           |
-| ------------------------------ | --------------------------- | ----------------------------------------------------------------- | ------------------------------------------------- |
-| `autenticarse()`               | `src/lib/auth/`             | `signIn()` Auth.js                                                | `users`, `profiles`                               |
-| `reservarPlaza()`              | `parking/`                  | `createReservation`                                               | `getAvailableSpots` → `reservations`              |
-| `cancelarReservaParking()`     | `parking/`                  | `cancelReservation`                                               | `reservations` (UPDATE status)                    |
-| `cederPlaza()`                 | `parking/cesiones/`         | `createCession`                                                   | `cessions` (INSERT)                               |
-| `cancelarCesion()`             | `parking/cesiones/`         | `cancelCession`                                                   | `cessions` (UPDATE status)                        |
-| `configurarReglaCesion()`      | `ajustes/`                  | `updateCessionRules`                                              | `cession_rules`                                   |
-| `registrarVisitante()`         | `parking/visitantes/`       | `createVisitorReservation`                                        | `visitor_reservations` + Resend API               |
-| `cancelarVisitante()`          | `parking/visitantes/`       | `cancelVisitorReservation`                                        | `visitor_reservations` (UPDATE status)            |
-| `reservarPuesto()`             | `oficinas/`                 | `createOfficeReservation`                                         | `getAvailableOfficeSpots` → `reservations`        |
-| `cancelarReservaPuesto()`      | `oficinas/`                 | `cancelOfficeReservation`                                         | `reservations` (UPDATE status)                    |
-| `solicitarAusencia()`          | `vacaciones/`               | `createLeaveRequest`                                              | `leave_requests` (INSERT)                         |
-| `cancelarSolicitudAusencia()`  | `vacaciones/`               | `cancelLeaveRequest`                                              | `leave_requests` (UPDATE status)                  |
-| `aprobarSolicitudAusencia()`   | `vacaciones/`               | `approveLeaveRequest`                                             | `leave_requests` (UPDATE status→manager_approved) |
-| `rechazarSolicitudAusencia()`  | `vacaciones/`               | `rejectLeaveRequest`                                              | `leave_requests` (UPDATE status→rejected)         |
-| `validarSolicitudAusencia()`   | `vacaciones/`               | `approveLeaveRequest`                                             | `leave_requests` (UPDATE status→hr_approved)      |
-| `rechazarValidacionAusencia()` | `vacaciones/`               | `rejectLeaveRequest`                                              | `leave_requests` (UPDATE status→rejected)         |
-| `consultarTablon()`            | `tablon/`                   | — (lectura RSC)                                                   | `announcements` (SELECT)                          |
-| `publicarAnuncio()`            | `tablon/`                   | `createAnnouncement`, `updateAnnouncement`                        | `announcements`                                   |
-| `consultarDirectorio()`        | `directorio/`               | — (lectura RSC)                                                   | `profiles`, `entities` (SELECT)                   |
-| `editarPerfil()`               | `ajustes/`                  | `updateProfile`                                                   | `profiles` (UPDATE)                               |
-| `configurarPreferencias()`     | `ajustes/`                  | `updateNotificationPreferences`, `updateOutlookPreferences`       | `user_preferences`                                |
-| `conectarMicrosoft365()`       | `ajustes/`                  | OAuth flow + `forceCalendarSync`                                  | `user_microsoft_tokens`                           |
-| `gestionarPlazas()`            | `administracion/`           | `createSpot`, `updateSpot`, `deleteSpot`                          | `spots`                                           |
-| `gestionarUsuarios()`          | `administracion/`           | `updateUserRole`, `assignSpotToUser`, `deleteUser`                | `profiles`, `spots`                               |
-| `gestionarEntidades()`         | `administracion/entidades/` | `createEntity`, `updateEntity`, `deleteEntity`                    | `entities`                                        |
-| `configurarModulos()`          | `administracion/entidades/` | `toggleEntityModule`                                              | `entity_modules`                                  |
-| `configurarSistema()`          | `ajustes/`                  | `updateGlobalConfig`, `updateParkingConfig`, `updateOfficeConfig` | `system_config`, `entity_config`                  |
-| `consultarAnalytics()`         | `panel/`                    | — (lectura RSC)                                                   | `stats.ts` → múltiples tablas                     |
+![Diagrama de despliegue](../../modelosUML/svg/despliegue.svg)
+<sub>[Código fuente](../../modelosUML/puml/despliegue.puml)</sub>
+
+La separación entre el servidor de aplicaciones (Vercel) y el de bases de datos
+(servidor propio) responde al RNF-02: si Vercel experimenta una degradación, la base
+de datos permanece intacta y accesible para otros consumidores. La ausencia de
+proveedores cloud para la persistencia —no hay RDS, no hay Supabase— materializa el
+RNF-07: el sistema puede migrarse a otra infraestructura sin reescribir consultas
+ni cambiar dependencias. Los tres servicios externos se comunican por HTTPS estándar,
+sin SDKs propietarios en el lado del cliente.

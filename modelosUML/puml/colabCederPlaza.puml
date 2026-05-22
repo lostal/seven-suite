@@ -1,0 +1,36 @@
+@startuml colabCederPlaza
+skinparam linetype polyline
+
+rectangle #CDEBA5 ":CALENDARIO_PARKING_ABIERTO" as Calendario
+rectangle #CDEBA5 ":SISTEMA_DISPONIBLE" as Menu
+rectangle #CDEBA5 ":MICROSOFT_GRAPH" as Graph
+
+package "cederPlaza()" {
+  rectangle #629EF9 "CesionView"              as View
+  rectangle #b5bd68 "CesionController"        as Controller
+  rectangle #F2AC4E "CesionRepository"        as CesionRepo
+  rectangle #F2AC4E "PlazaRepository"         as PlazaRepo
+  rectangle #F2AC4E "Cesion"                  as Cesion
+  rectangle #F2AC4E "Plaza"                   as Plaza
+}
+
+Calendario -r-> View: cederPlaza()
+
+View -d-> Controller: cargarPlazaAsignada(id_manager)
+
+Controller --> PlazaRepo: obtenerPlazaAsignada(id_manager) : Plaza
+
+PlazaRepo -- Plaza
+
+View --> Controller: registrarCesion(fecha, id_plaza) : Cesion
+
+Controller --> CesionRepo: crear(fecha, id_plaza, id_manager) : Cesion
+
+CesionRepo -- Cesion
+
+Graph ..> Controller: <<colabora>> detectarFueraOficina(id_manager)
+note on link: Microsoft Graph API
+
+View ..> Calendario: completarGestion()
+
+@enduml

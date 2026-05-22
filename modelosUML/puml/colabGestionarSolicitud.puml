@@ -1,0 +1,34 @@
+@startuml colabGestionarSolicitud
+skinparam linetype polyline
+
+rectangle #CDEBA5 ":BANDEJA_SOLICITUDES_ABIERTA" as Bandeja
+rectangle #CDEBA5 ":SISTEMA_DISPONIBLE" as Menu
+
+package "gestionarSolicitudAusencia()" {
+  rectangle #629EF9 "BandejaSolicitudesView"   as View
+  rectangle #b5bd68 "AusenciaController"       as Controller
+  rectangle #F2AC4E "SolicitudRepository"      as SolicitudRepo
+  rectangle #F2AC4E "EmpleadoRepository"       as EmpleadoRepo
+  rectangle #F2AC4E "NotificacionService"      as Notificacion
+  rectangle #F2AC4E "SolicitudAusencia"        as Solicitud
+  rectangle #F2AC4E "Empleado"                 as Empleado
+}
+
+Bandeja -r-> View: gestionarSolicitudAusencia()
+
+View -d-> Controller: cargarSolicitudesPendientes(id_actor)
+
+Controller --> SolicitudRepo: obtenerPendientes(id_entity) : Solicitud[]
+Controller --> EmpleadoRepo: obtenerPorId(id_empleado) : Empleado
+
+SolicitudRepo -- Solicitud
+EmpleadoRepo -- Empleado
+
+View --> Controller: resolverSolicitud(id_solicitud, decision, nota)
+
+Controller --> SolicitudRepo: actualizarEstado(id, estado, nota) : Solicitud
+Controller --> Notificacion: enviarNotificacion(destino, tipo)
+
+View ..> Bandeja: completarGestion()
+
+@enduml
