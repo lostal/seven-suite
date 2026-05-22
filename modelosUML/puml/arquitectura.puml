@@ -18,6 +18,6 @@ Rel(empleado, web_app, "Usa", "HTTPS")
 Rel(web_app, database, "Lee / Escribe", "Drizzle ORM (pg)")
 Rel(web_app, entra, "Autentica", "OIDC")
 Rel(web_app, graph, "Consulta / Notifica", "Graph API")
-Rel(web_app, resend, "Envía correos", "SMTP")
+Rel(web_app, resend, "Envía correos", "HTTPS")
 
 @enduml

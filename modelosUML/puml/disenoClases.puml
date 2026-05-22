@@ -25,20 +25,20 @@ package "Presentación\n(Server Components)" {
 
 package "Lógica\n(Server Actions)" {
   class ReservaActions {
-    createReservation()
-    cancelReservation()
-    createCession()
-    cancelCession()
+    + createReservation(): ActionResult<Reserva>
+    + cancelReservation(): ActionResult<void>
+    + createCession(): ActionResult<Cesión>
+    + cancelCession(): ActionResult<void>
   }
   class AusenciaActions {
-    submitLeaveRequest()
-    approveLeaveRequest()
-    rejectLeaveRequest()
+    + submitLeaveRequest(): ActionResult<LeaveRequest>
+    + approveLeaveRequest(): ActionResult<LeaveRequest>
+    + rejectLeaveRequest(): ActionResult<LeaveRequest>
   }
   class AdminActions {
-    createSpot()
-    updateSpot()
-    publishAnnouncement()
+    + createSpot(): ActionResult<Spot>
+    + updateSpot(): ActionResult<Spot>
+    + publishAnnouncement(): ActionResult<Announcement>
   }
 }
 

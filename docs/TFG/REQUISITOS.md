@@ -91,12 +91,11 @@ cada entidad para el registro correcto de días laborables.
 
 Se documentan los ciclos de vida de las tres entidades con comportamiento dinámico no trivial.
 
-**Reserva**. El ciclo es muy simple: una reserva se crea siempre en estado confirmada
-y solo puede transitar a cancelada. La restricción de unicidad (una plaza, un día, una reserva
-confirmada) se garantiza a nivel de base de datos mediante índices parciales.
-
-![Estados de Reserva](../../modelosUML/svg/estadosReserva.svg)
-<sub>[Código fuente](../../modelosUML/puml/estadosReserva.puml)</sub>
+**Reserva**. Su ciclo de vida es simple: se crea en estado confirmada y solo puede transitar
+a cancelada. La restricción de unicidad (una plaza, un día, una reserva confirmada) se
+garantiza a nivel de base de datos mediante índices parciales. Al tratarse de una entidad
+con dos estados y una única transición, su comportamiento se describe aquí en el glosario
+en lugar de dedicarle un diagrama de estados.
 
 **Cesión**. Nace en estado disponible cuando el propietario la cede. Transita a reservada en
 cuanto un empleado genera una reserva sobre ella, o a cancelada si el propietario la retira antes
@@ -173,15 +172,15 @@ Los tres diagramas de la sección anterior presentan la totalidad de los casos d
 agrupados por dominio (espacios, personas y administración) y vinculados a los actores que los
 inician mediante la herencia visible en cada vista.
 
-El desarrollo del sistema se organizó en fases sucesivas conforme al modelo en cascada.
-La primera fase abordó la autenticación mediante Entra ID y la estructura base del portal
-(`cerrarSesion()`). La segunda implementó el
-módulo de parking con reservas, cesiones y gestión de visitantes; la tercera añadió el módulo
-de oficinas con reserva de puestos y franjas horarias. La cuarta fase incorporó el módulo
+El desarrollo del MVP se organizó en incrementos sucesivos priorizando los casos de uso
+mediante MoSCoW (Must, Should, Could, Won't). El primer incremento abordó la autenticación
+mediante Entra ID y la estructura base del portal (`cerrarSesion()`). El segundo implementó el
+módulo de parking con reservas, cesiones y gestión de visitantes; el tercero añadió el módulo
+de oficinas con reserva de puestos y franjas horarias. El cuarto incremento incorporó el módulo
 de vacaciones con el flujo completo de aprobación en dos niveles, seguida del tablón de
-anuncios y el directorio de empleados. La quinta fase cubrió el panel de administración
+anuncios y el directorio de empleados. El quinto incremento cubrió el panel de administración
 (gestión de plazas, usuarios, entidades y configuración del sistema) junto con el módulo de
-ajustes. La última fase integró el panel de analíticas para administradores.
+ajustes. El último incremento integró el panel de analíticas para administradores.
 
 ### 3.3.3. Detalle de casos de uso representativos
 
