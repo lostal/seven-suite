@@ -317,7 +317,43 @@ async function seed() {
       })
       .onConflictDoNothing();
   }
-  log(`Reservations: ${reservationDays.length} created for Ana`);
+
+  // Additional reservations for a denser calendar (creates "few spots" visuals)
+  const denseReservations: { day: number; spots: number }[] = [
+    { day: 1, spots: 3 },
+    { day: 3, spots: 6 },
+    { day: 5, spots: 2 },
+    { day: 8, spots: 4 },
+    { day: 10, spots: 5 },
+    { day: 12, spots: 3 },
+    { day: 15, spots: 6 },
+    { day: 17, spots: 4 },
+    { day: 20, spots: 2 },
+  ];
+
+  const userIds = [employeeId, UUIDS.users.manager, UUIDS.users.hr];
+  for (const { day, spots: count } of denseReservations) {
+    const dateStr = dstr(addDays(t, day));
+    const taken = new Set<string>();
+    for (let j = 0; j < count; j++) {
+      const spot = centralParkingFree[j % centralParkingFree.length]!;
+      const key = `${spot.id}-${dateStr}`;
+      if (taken.has(key)) continue;
+      taken.add(key);
+      await db
+        .insert(schema.reservations)
+        .values({
+          spotId: spot.id,
+          userId: userIds[j % userIds.length]!,
+          date: dateStr,
+          status: "confirmed",
+        })
+        .onConflictDoNothing();
+    }
+    taken.clear();
+  }
+
+  log("Reservations: 50+ created (dense calendar with Ana, Carlos, Laura)");
 
   // ─── Cessions ──────────────────────────────────────────────────────────
   // Carlos cedes P01 on several days, some get reserved by Ana
@@ -358,7 +394,32 @@ async function seed() {
     })
     .onConflictDoNothing();
 
-  log("Cessions: 5 from Carlos (1 reserved by Ana, 4 available)");
+  // Carlos also cedes P02 on some days
+  const managerSpotP02 = allSpots.find(
+    (s) => s.label === "SC-P02" && s.entityId === UUIDS.entities.central
+  )!;
+
+  const p02CessionDays = [
+    { offset: 0, status: "available" as const },
+    { offset: 3, status: "available" as const },
+    { offset: 6, status: "available" as const },
+    { offset: 9, status: "available" as const },
+    { offset: 12, status: "available" as const },
+  ];
+
+  for (const cd of p02CessionDays) {
+    await db
+      .insert(schema.cessions)
+      .values({
+        spotId: managerSpotP02.id,
+        userId: managerProfileId,
+        date: dstr(addDays(t, cd.offset)),
+        status: cd.status,
+      })
+      .onConflictDoNothing();
+  }
+
+  log("Cessions: 10 from Carlos (P01: 5, P02: 5) — diverse availability");
 
   // ─── Visitor reservation ───────────────────────────────────────────────
 
@@ -378,7 +439,36 @@ async function seed() {
       notificationSent: false,
     })
     .onConflictDoNothing();
-  log("Visitor: 1 reservation created");
+  // Additional visitor reservations
+  const extraVisitors = [
+    {
+      spotId: visitorSpot.id,
+      reservedBy: UUIDS.users.manager,
+      date: dstr(addDays(t, 8)),
+      visitorName: "Pedro Gómez",
+      visitorCompany: "Transportes Gómez S.A.",
+      visitorEmail: "pedro.gomez@transgomez.com",
+      status: "confirmed" as const,
+      notificationSent: false,
+    },
+    {
+      spotId: allSpots.find(
+        (s) => s.label === "SC-P09" && s.resourceType === "parking"
+      )!.id,
+      reservedBy: UUIDS.users.hr,
+      date: dstr(addDays(t, 14)),
+      visitorName: "Elena Torres",
+      visitorCompany: "Consultora Torres & Asociados",
+      visitorEmail: "elena@torresconsultores.es",
+      status: "confirmed" as const,
+      notificationSent: false,
+    },
+  ];
+
+  for (const v of extraVisitors) {
+    await db.insert(schema.visitorReservations).values(v).onConflictDoNothing();
+  }
+  log("Visitors: 3 reservations created");
 
   // ─── Leave requests ────────────────────────────────────────────────────
 
@@ -431,8 +521,54 @@ async function seed() {
   for (const lr of leaveRequests) {
     await db.insert(schema.leaveRequests).values(lr).onConflictDoNothing();
   }
+  // Additional pending requests for a populated bandeja
+  const extraLeaveRequests = [
+    {
+      employeeId: UUIDS.users.manager,
+      leaveType: "vacation" as const,
+      startDate: dstr(new Date(2026, 5, 2)),
+      endDate: dstr(new Date(2026, 5, 6)),
+      status: "pending" as const,
+      reason: "Asuntos personales",
+      workingDays: 5,
+    },
+    {
+      employeeId: UUIDS.users.hr,
+      leaveType: "vacation" as const,
+      startDate: dstr(new Date(2026, 8, 1)),
+      endDate: dstr(new Date(2026, 8, 15)),
+      status: "pending" as const,
+      reason: "Vacaciones de septiembre",
+      workingDays: 11,
+    },
+    {
+      employeeId,
+      leaveType: "vacation" as const,
+      startDate: dstr(new Date(2026, 5, 22)),
+      endDate: dstr(new Date(2026, 5, 24)),
+      status: "pending" as const,
+      reason: "Puente de San Juan",
+      workingDays: 2,
+    },
+    {
+      employeeId,
+      leaveType: "personal" as const,
+      startDate: dstr(addDays(t, 2)),
+      endDate: dstr(addDays(t, 2)),
+      status: "rejected" as const,
+      reason: "Cita médica",
+      managerId: managerProfileId,
+      managerActionAt: new Date(),
+      managerNotes: "Día con mucha carga de trabajo, solicitar otra fecha",
+      workingDays: 1,
+    },
+  ];
+
+  for (const lr of extraLeaveRequests) {
+    await db.insert(schema.leaveRequests).values(lr).onConflictDoNothing();
+  }
   log(
-    "Leave requests: 4 created (pending, manager_approved, approved, personal)"
+    "Leave requests: 8 total (pending, manager_approved, hr_approved, rejected, personal)"
   );
 
   // ─── Announcements ─────────────────────────────────────────────────────

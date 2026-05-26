@@ -282,8 +282,8 @@ extensible a módulos futuros de gestión de recursos humanos.
   Router, PostgreSQL autoalojado con Drizzle ORM, Microsoft Entra ID como proveedor de identidad), el modelo
   lógico y físico de datos en PostgreSQL, y los diagramas de despliegue y paquetes (Capítulo 4).
 - **OS3:** Implementar y validar el MVP funcional con pruebas unitarias (Vitest) y pruebas
-  end-to-end (Playwright), desplegando en un servidor propio mediante pipeline CI/CD con GitHub Actions
-  (Capítulo 5).
+  end-to-end (Playwright), con la base de datos PostgreSQL desplegada en servidor propio y la
+  aplicación en Vercel mediante pipeline CI/CD con GitHub Actions (Capítulo 5).
 - **OS4:** Evaluar la solución mediante métricas de cobertura de tests, rendimiento (Core Web
   Vitals) y usabilidad (SUS), verificar la trazabilidad entre requisitos y entrega, y proponer un
   roadmap de evolución futura (Capítulo 6).
@@ -312,7 +312,7 @@ mismo autor, con supervisión iterativa semanal por parte de la tutora académic
 3. **Tercera iteración - Implementación (Capítulo 5):** el MVP se construye de forma
    incremental comenzando por la capa de autenticación SSO con Microsoft Entra ID, seguida de
    los módulos de reservas y el panel de administración, con pruebas unitarias (Vitest) y end-to-end
-   (Playwright). El despliegue se realiza en un servidor propio mediante CI/CD con GitHub Actions.
+   (Playwright). El despliegue de la aplicación se realiza en Vercel con la base de datos PostgreSQL en servidor propio, mediante CI/CD con GitHub Actions.
 
 4. **Cuarta iteración - Evaluación y conclusiones (Capítulo 6):** se evalúa la solución
    mediante métricas de cobertura de tests, rendimiento (Core Web Vitals) y usabilidad (SUS), se

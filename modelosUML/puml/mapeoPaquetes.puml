@@ -1,0 +1,49 @@
+@startuml mapeoPaquetes
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam componentBorderThickness 1.2
+skinparam arrowThickness 1.2
+skinparam arrowColor #888888
+skinparam backgroundColor #FFFFFF
+skinparam packageBorderThickness 1.2
+
+skinparam package {
+  BackgroundColor<<logico>>  #dce8f5
+  BorderColor<<logico>>      #2d6a9f
+  FontColor<<logico>>        #1a3d5c
+  BackgroundColor<<fisico>>  #d5ecd4
+  BorderColor<<fisico>>      #2e7d32
+  FontColor<<fisico>>        #1b5e20
+}
+
+title Correspondencia diseño → implementación
+
+left to right direction
+
+package "Diseño" <<logico>> {
+  component "Vistas\n(Pages)" as V
+  component "Controladores\n(Server Actions)" as C
+  component "Repositorios\n(Queries)" as R
+  component "Autenticación\n(Auth.js)" as A
+  component "Notificaciones\n(Resend)" as N
+  component "Utilidades\n(Calendar)" as U
+}
+
+package "Implementación" <<fisico>> {
+  folder "src/app/\n(dashboard)/" as FD
+  folder "src/lib/\nactions/" as FA
+  folder "src/lib/\nqueries/" as FQ
+  folder "src/lib/\nauth/" as FCH
+  folder "src/lib/\nemail/" as FE
+  folder "src/lib/\ncalendar/" as FC
+}
+
+V ..> FD : Server Components
+C ..> FA : createReservation\napproveLeaveRequest\n...
+R ..> FQ : getAvailableSpots\ngetReservationsByDate\n...
+A ..> FCH : config.ts\nhelpers.ts
+N ..> FE : sendEmail
+U ..> FC : calendar-utils.ts
+
+@enduml

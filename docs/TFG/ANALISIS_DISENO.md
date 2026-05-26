@@ -140,7 +140,7 @@ sin tocar la lógica de negocio.
 
 ### 4.1.6. Patrones de análisis identificados
 
-Del análisis de los treinta y dos casos de uso del sistema emergen cuatro patrones
+Del análisis de los treinta y cinco casos de uso del sistema emergen cuatro patrones
 recurrentes que se repiten por grupo de entidades y que guían la transición al diseño.
 
 | Patrón                 | Casos de uso representativos                        | Característica                                                                   |

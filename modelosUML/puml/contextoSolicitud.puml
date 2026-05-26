@@ -1,0 +1,87 @@
+@startuml contextoSolicitud
+
+left to right direction
+skinparam linetype polyline
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam stateBorderThickness 1.5
+skinparam arrowThickness 1.2
+skinparam arrowColor #BBBBBB
+skinparam stateBackgroundColor #EEEEEE
+skinparam stateBorderColor #BBBBBB
+skinparam stateFontColor #999999
+
+state "SESION_CERRADA" as SinAuth #EEEEEE
+state "SISTEMA_DISPONIBLE" as Menu #EEEEEE
+
+state "CALENDARIO_PARKING_ABIERTO" as CalParking #EEEEEE
+state "PLAZA_ABIERTA" as EditPlaza #EEEEEE
+state "CESION_ABIERTA" as EditCesion #EEEEEE
+state "VISITANTE_ABIERTO" as EditVisitante #EEEEEE
+state "CALENDARIO_OFICINAS_ABIERTO" as CalOficinas #EEEEEE
+state "PUESTO_ABIERTO" as EditPuesto #EEEEEE
+state "BANDEJA_SOLICITUDES_ABIERTA" as Bandeja #LightGoldenRodYellow
+state "SOLICITUD_ABIERTA" as EditSolicitud #LightGoldenRodYellow
+state "TABLON_ABIERTO" as Tablon #EEEEEE
+state "ANUNCIO_ABIERTO" as EditAnuncio #EEEEEE
+state "DIRECTORIO_ABIERTO" as Directorio #EEEEEE
+state "AJUSTES_ABIERTO" as Ajustes #EEEEEE
+state "PERFIL_ABIERTO" as EditPerfil #EEEEEE
+state "ADMINISTRACION_ABIERTA" as Admin #EEEEEE
+state "PANEL_ANALITICAS_ABIERTO" as Panel #EEEEEE
+
+[*] --> SinAuth
+
+SinAuth -[#BBBBBB]-> Menu : iniciarSesion()
+
+Menu -[#BBBBBB]-> SinAuth : cerrarSesion()
+Menu -[#BBBBBB]-> CalParking   : abrirCalendarioParking()
+Menu -[#BBBBBB]-> CalOficinas  : abrirCalendarioOficinas()
+Menu -[#DAA520,thickness=3]-> Bandeja      : abrirBandejaSolicitudes()
+Menu -[#BBBBBB]-> Tablon       : abrirTablon()
+Menu -[#BBBBBB]-> Directorio   : abrirDirectorio()
+Menu -[#BBBBBB]-> Ajustes      : abrirAjustes()
+Menu -[#BBBBBB]-> Admin        : abrirAdministracion()
+Menu -[#BBBBBB]-> Panel        : abrirPanelAnaliticas()
+
+CalParking   -[#BBBBBB]-> EditPlaza      : reservarPlaza()
+CalParking   -[#BBBBBB]-> EditCesion     : cederPlaza()
+CalParking   -[#BBBBBB]-> EditVisitante  : registrarVisitante()
+CalParking   -[#BBBBBB]-> CalParking     : cancelarReservaParking()
+CalParking   -[#BBBBBB]-> CalParking     : cancelarCesion()
+CalParking   -[#BBBBBB]-> CalParking     : cancelarVisitante()
+
+EditPlaza      -[#BBBBBB]-> CalParking   : abrirCalendarioParking()
+EditCesion     -[#BBBBBB]-> CalParking   : abrirCalendarioParking()
+EditVisitante  -[#BBBBBB]-> CalParking   : abrirCalendarioParking()
+
+CalOficinas  -[#BBBBBB]-> EditPuesto     : reservarPuesto()
+CalOficinas  -[#BBBBBB]-> CalOficinas    : cancelarReservaPuesto()
+
+EditPuesto    -[#BBBBBB]-> CalOficinas   : abrirCalendarioOficinas()
+
+Bandeja      -[#BBBBBB]-> EditSolicitud  : solicitarAusencia()
+Bandeja      -[#DAA520,thickness=3]-> EditSolicitud  : gestionarSolicitudAusencia()
+Bandeja      -[#BBBBBB]-> EditSolicitud  : gestionarValidacionAusencia()
+Bandeja      -[#DAA520,thickness=2]-> Bandeja        : cancelarSolicitudAusencia()
+
+EditSolicitud -[#DAA520,thickness=3]-> Bandeja       : abrirBandejaSolicitudes()
+
+Tablon       -[#BBBBBB]-> EditAnuncio    : publicarAnuncio()
+
+EditAnuncio   -[#BBBBBB]-> Tablon        : abrirTablon()
+
+Ajustes      -[#BBBBBB]-> EditPerfil     : editarPerfil()
+
+EditPerfil    -[#BBBBBB]-> Ajustes       : abrirAjustes()
+
+CalParking   -[#BBBBBB]-> Menu : completarGestion()
+CalOficinas  -[#BBBBBB]-> Menu : completarGestion()
+Bandeja      -[#DAA520,thickness=2]-> Menu : completarGestion()
+Tablon       -[#BBBBBB]-> Menu : completarGestion()
+Directorio   -[#BBBBBB]-> Menu : completarGestion()
+Ajustes      -[#BBBBBB]-> Menu : completarGestion()
+Admin        -[#BBBBBB]-> Menu : completarGestion()
+Panel        -[#BBBBBB]-> Menu : completarGestion()
+
+@enduml
