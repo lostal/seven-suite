@@ -1,23 +1,51 @@
-# 2. Marco teórico
+# 1. Introducción y Marco Teórico
 
-| [← Cap. 1](INTRODUCCION.md) | [Índice](../../README.md) | [Cap. 3 →](REQUISITOS.md) |
-| :-------------------------- | :-----------------------: | ------------------------: |
+| [Índice](../../README.md) | [Cap. 2 →](REQUISITOS.md) |
+| :-----------------------: | ------------------------: |
+
+## 1.1. Introducción
+
+GRUPOSIETE surge tras la unión de ocho empresas dedicadas a la distribución de
+materiales de construcción. Como ocurre habitualmente tras una fusión, se han encontrado con
+varios retos: cada sede tiene procesos distintos, los equipos están repartidos por todo el país y la
+gestión de los recursos compartidos no siempre es eficiente. La empresa tiene sedes en Galicia,
+Cantabria, País Vasco, Navarra, Comunidad Valenciana y Castilla y León. Cuenta con su oficina
+central en Alcobendas, Madrid, que mide 240 metros cuadrados. Sin embargo, no tiene una
+plataforma que permita coordinar el uso de espacios, consultar el directorio de empleados y
+gestionar la documentación laboral desde un solo lugar.
+
+El panel de empleados que se utiliza ahora es parte de a3innuva de Wolters Kluwer. Solo
+sirve para funciones básicas como nóminas y documentación laboral. La coordinación de plazas
+de aparcamiento y puestos de oficina se hace de forma informal mediante mensajes de
+WhatsApp. Esto causa problemas, como que no se utilizan bien los recursos y los empleados no
+tienen una buena experiencia.
+
+Según CBRE España, en oficinas con entornos híbridos, solo el 55% de la capacidad se
+utiliza en promedio, con caídas del 70% los viernes. Esto muestra que es importante gestionar los
+espacios de forma dinámica en las empresas actuales.
+
+Este trabajo de fin de grado busca implementar un portal del empleado para
+GRUPOSIETE. El portal está construido con Next.js, TypeScript y PostgreSQL autoalojado. El portal cubre
+varios módulos principales: gestión de parking con visitantes, reserva de puestos de oficina y
+incorpora un directorio de empleados, gestión de vacaciones con flujo de aprobación y un
+tablón de anuncios interno. La arquitectura modular permite incorporar en el futuro módulos
+adicionales de gestión de RRHH como nóminas y documentación laboral.
 
 ## Contenido
 
-- [2.1. Contexto GRUPOSIETE](#21-contexto-gruposiete)
-- [2.2. Estado del arte](#22-estado-del-arte)
-  - [2.2.1. El trabajo híbrido en España](#221-el-trabajo-híbrido-en-españa)
-  - [2.2.2. Portales ESS: evolución y estado actual](#222-portales-ess-evolución-y-estado-actual)
-  - [2.2.3. Soluciones ESS/RRHH en el mercado español](#223-soluciones-essrrhh-en-el-mercado-español)
-  - [2.2.4. Soluciones de gestión de espacios físicos](#224-soluciones-de-gestión-de-espacios-físicos)
-  - [2.2.5. Arquitectura modular de software](#225-arquitectura-modular-de-software)
-  - [2.2.6. Stack tecnológico: Next.js, PostgreSQL y Drizzle ORM](#226-stack-tecnológico-nextjs-postgresql-y-drizzle-orm)
-- [2.3. Justificación de la propuesta](#23-justificación-de-la-propuesta)
-- [2.4. Objetivos Generales y Específicos](#24-objetivos-generales-y-específicos)
-  - [2.4.1. Objetivo general](#241-objetivo-general)
-  - [2.4.2. Objetivos específicos](#242-objetivos-específicos)
-- [2.5. Estructura del trabajo](#25-estructura-del-trabajo)
+- [1.2. Contexto GRUPOSIETE](#12-contexto-gruposiete)
+- [1.3. Estado del arte](#13-estado-del-arte)
+  - [1.3.1. El trabajo híbrido en España](#131-el-trabajo-híbrido-en-españa)
+  - [1.3.2. Portales ESS: evolución y estado actual](#132-portales-ess-evolución-y-estado-actual)
+  - [1.3.3. Soluciones ESS/RRHH en el mercado español](#133-soluciones-essrrhh-en-el-mercado-español)
+  - [1.3.4. Soluciones de gestión de espacios físicos](#134-soluciones-de-gestión-de-espacios-físicos)
+  - [1.3.5. Arquitectura modular de software](#135-arquitectura-modular-de-software)
+  - [1.3.6. Stack tecnológico: Next.js, PostgreSQL y Drizzle ORM](#136-stack-tecnológico-nextjs-postgresql-y-drizzle-orm)
+- [1.4. Justificación de la propuesta](#14-justificación-de-la-propuesta)
+- [1.5. Objetivos Generales y Específicos](#15-objetivos-generales-y-específicos)
+  - [1.5.1. Objetivo general](#151-objetivo-general)
+  - [1.5.2. Objetivos específicos](#152-objetivos-específicos)
+- [1.6. Estructura del trabajo](#16-estructura-del-trabajo)
 
 Gestionar los RRHH y los espacios en las pequeñas y medianas empresas que están
 empezando a adaptar un sistema de trabajo híbrido puede ser difícil, y más estando en medio de
@@ -26,7 +54,7 @@ GRUPOSIETE, el estado actual de los portales ESS, las herramientas para administ
 las habilidades técnicas que han de emplearse para elaborar la estructura planteada. El objetivo
 es explicar la razón por la que se han tomado ciertas decisiones al planear el proyecto.
 
-## 2.1. Contexto GRUPOSIETE
+## 1.2. Contexto GRUPOSIETE
 
 En 2022, ocho compañías de materiales para la construcción llegaron a un acuerdo para
 fusionarse dando así lugar a GRUPOSIETE. Estas compañías tienen su sede principal en
@@ -63,14 +91,14 @@ finalmente se propuso una solución híbrida entre un portal de empleados para s
 están usando actualmente que, según ellos, no funciona bien (a3innuva) y un sistema de gestión
 de espacios en la sede. Dicha aplicación sería modular y adaptable a cada sede.
 
-## 2.2. Estado del arte
+## 1.3. Estado del arte
 
 La revisión del estado del arte se organiza en cuatro ámbitos: el trabajo híbrido en España
 (que define la razón de existir del proyecto), los portales ESS como aplicaciones de software, las
 soluciones específicas de gestión de RRHH y espacios, y los fundamentos técnicos de la
 arquitectura propuesta.
 
-### 2.2.1. El trabajo híbrido en España
+### 1.3.1. El trabajo híbrido en España
 
 El teletrabajo en España ha evolucionado desde la pandemia de 2020 hacia una
 estabilización en un nuevo equilibrio híbrido. Según el Instituto Nacional de Estadística, el
@@ -92,7 +120,7 @@ bilateral cuando el trabajo remoto supera el 30% de la jornada. A este marco se 
 obligación de registro de jornada laboral, que un borrador del Real Decreto en tramitación
 (2025-2026) prevé digitalizar de forma obligatoria para todas las empresas.
 
-### 2.2.2. Portales ESS: evolución y estado actual
+### 1.3.2. Portales ESS: evolución y estado actual
 
 Los portales de autoservicio del empleado (ESS, Employee Self-Service) están dentro del
 campo del e-HRM (Electronic Human Resource Management). Han evolucionado en tres
@@ -110,7 +138,7 @@ generaciones:
 El mercado global HCM fue valorado en 58.700 millones de dólares en 2024, con un
 crecimiento proyectado hasta 81.100 millones en 2029 (Gartner, 2024).
 
-### 2.2.3. Soluciones ESS/RRHH en el mercado español
+### 1.3.3. Soluciones ESS/RRHH en el mercado español
 
 En España, las soluciones más usadas entre pymes son Personio y Factorial. Personio se
 originó en Alemania y ofrece diversos módulos de gestión de RRHH y cuenta con integraciones
@@ -141,7 +169,7 @@ no tener ningún mecanismo para la gestión de espacios físicos (Wolters Kluwer
 
 _Tabla 1. Comparativa de soluciones ESS/RRHH. \* Precio no público, requiere contacto comercial. Fuente: elaboración propia con datos de mercado consultados en marzo de 2026._
 
-### 2.2.4. Soluciones de gestión de espacios físicos
+### 1.3.4. Soluciones de gestión de espacios físicos
 
 Paralelamente a la evolución de los portales ESS, está apareciendo un mercado específico
 de herramientas para la gestión de espacios de trabajo, impulsado por el auge del modelo híbrido.
@@ -173,7 +201,7 @@ un portal del empleado completo. Las herramientas más cercanas al caso de uso (
 KALENA) funcionan de forma aislada y requieren herramientas adicionales para cubrir el resto
 de necesidades de GRUPOSIETE.
 
-### 2.2.5. Arquitectura modular de software
+### 1.3.5. Arquitectura modular de software
 
 El concepto de modularidad en la ingeniería del software tiene raíces teóricas
 consolidadas. El artículo de Parnas (1972), «On the criteria to be used in decomposing systems
@@ -203,7 +231,7 @@ core con puntos de extensión donde los módulos se conectan de forma independie
 funcionalidades activables o desactivables desde el panel de administración sin modificar código
 base.
 
-### 2.2.6. Stack tecnológico: Next.js, PostgreSQL y Drizzle ORM
+### 1.3.6. Stack tecnológico: Next.js, PostgreSQL y Drizzle ORM
 
 Next.js, el meta-framework React más adoptado según el State of JavaScript 2024,
 introduce con su App Router (estable desde la versión 13.4) un sistema que unifica frontend y
@@ -223,7 +251,7 @@ necesidad de generación de código adicional. La autorización se gestiona de f
 la capa de aplicación mediante guardas de rol, con Auth.js v5 (next-auth) como solución de autenticación
 y DrizzleAdapter como puente entre la sesión y la base de datos.
 
-## 2.3. Justificación de la propuesta
+## 1.4. Justificación de la propuesta
 
 El análisis del estado del arte evidencia que el mercado ofrece soluciones bien
 consolidadas para cada categoría de necesidad de forma individual (portales ESS, herramientas
@@ -264,31 +292,31 @@ o cambios de sede, y proporcionando diversos módulos de panel del empleado y un
 arquitectónica extensible a módulos futuros más complejos de gestión avanzada de RRHH y
 contabilidad.
 
-## 2.4. Objetivos Generales y Específicos
+## 1.5. Objetivos Generales y Específicos
 
-### 2.4.1. Objetivo general
+### 1.5.1. Objetivo general
 
 Desarrollar un portal del empleado modular para GRUPOSIETE que gestione espacios
 corporativos (parking y oficinas) y módulos básicos del panel de empleado, integrado
 nativamente en Microsoft 365, demostrando mediante su implementación una arquitectura
 extensible a módulos futuros de gestión de recursos humanos.
 
-### 2.4.2. Objetivos específicos
+### 1.5.2. Objetivos específicos
 
 - **OS1:** Capturar los requisitos del sistema mediante sesiones de levantamiento de
   información con personas clave de GRUPOSIETE, elaborar el modelo del dominio y definir y
-  priorizar los casos de uso que delimitan el alcance del MVP (Capítulo 3).
+  priorizar los casos de uso que delimitan el alcance del MVP (Capítulo 2).
 - **OS2:** Realizar el análisis y diseño del sistema: definir la arquitectura (Next.js con App
   Router, PostgreSQL autoalojado con Drizzle ORM, Microsoft Entra ID como proveedor de identidad), el modelo
-  lógico y físico de datos en PostgreSQL, y los diagramas de despliegue y paquetes (Capítulo 4).
+  lógico y físico de datos en PostgreSQL, y los diagramas de despliegue y paquetes (Capítulo 3).
 - **OS3:** Implementar y validar el MVP funcional con pruebas unitarias (Vitest) y pruebas
   end-to-end (Playwright), con la base de datos PostgreSQL desplegada en servidor propio y la
-  aplicación en Vercel mediante pipeline CI/CD con GitHub Actions (Capítulo 5).
+  aplicación en Vercel mediante pipeline CI/CD con GitHub Actions (Capítulo 4).
 - **OS4:** Evaluar la solución mediante métricas de cobertura de tests, rendimiento (Core Web
   Vitals) y usabilidad (SUS), verificar la trazabilidad entre requisitos y entrega, y proponer un
-  roadmap de evolución futura (Capítulo 6).
+  roadmap de evolución futura (Capítulo 5).
 
-## 2.5. Estructura del trabajo
+## 1.6. Estructura del trabajo
 
 Para el desarrollo de este proyecto se adopta el Proceso Unificado de Rational (RUP) en
 una adaptación individual, organizada en cuatro iteraciones que se corresponden directamente
@@ -299,22 +327,22 @@ capacidad para gestionar la incertidumbre de los requisitos mediante iteraciones
 estructura de entregables del TFG. La adaptación individual concentra todos los roles en el
 mismo autor, con supervisión iterativa semanal por parte de la tutora académica.
 
-1. **Primera iteración - Requisitos (Capítulo 3):** a partir de sesiones de levantamiento de
+1. **Primera iteración - Requisitos (Capítulo 2):** a partir de sesiones de levantamiento de
    información con personas clave de GRUPOSIETE, se elabora el modelo del dominio, se
    identifican los actores del sistema y se definen los casos de uso del MVP. Se producen prototipos
    de interfaz de baja fidelidad con plantUML para validar la comprensión de los requisitos.
 
-2. **Segunda iteración - Análisis y diseño (Capítulo 4):** a partir de los casos de uso
+2. **Segunda iteración - Análisis y diseño (Capítulo 3):** a partir de los casos de uso
    formalizados se derivan las clases de análisis y diseño, se define la arquitectura del sistema y el
    modelo lógico y físico de datos en PostgreSQL, y se elaboran los diagramas de despliegue y
    paquetes.
 
-3. **Tercera iteración - Implementación (Capítulo 5):** el MVP se construye de forma
+3. **Tercera iteración - Implementación (Capítulo 4):** el MVP se construye de forma
    incremental comenzando por la capa de autenticación SSO con Microsoft Entra ID, seguida de
    los módulos de reservas y el panel de administración, con pruebas unitarias (Vitest) y end-to-end
    (Playwright). El despliegue de la aplicación se realiza en Vercel con la base de datos PostgreSQL en servidor propio, mediante CI/CD con GitHub Actions.
 
-4. **Cuarta iteración - Evaluación y conclusiones (Capítulo 6):** se evalúa la solución
+4. **Cuarta iteración - Evaluación y conclusiones (Capítulo 5):** se evalúa la solución
    mediante métricas de cobertura de tests, rendimiento (Core Web Vitals) y usabilidad (SUS), se
    verifica la trazabilidad entre requisitos y entrega, y se propone un roadmap de evolución que
    contemple módulos adicionales como integración con Personio para nóminas y gestión

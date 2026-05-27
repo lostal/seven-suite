@@ -1,29 +1,29 @@
-# 3. Requisitos
+# 2. Requisitos
 
-| [← Cap. 2](MARCO_TEORICO.md) | [Índice](../../README.md) | [Cap. 4 →](ANALISIS_DISENO.md) |
+| [← Cap. 1](MARCO_TEORICO.md) | [Índice](../../README.md) | [Cap. 3 →](ANALISIS_DISENO.md) |
 | :--------------------------- | :-----------------------: | -----------------------------: |
 
 ## Contenido
 
-- [3.1. Sesiones de levantamiento de información](#31-sesiones-de-levantamiento-de-información)
-- [3.2. Modelo del dominio](#32-modelo-del-dominio)
-  - [3.2.1. Diagrama de clases del dominio](#321-diagrama-de-clases-del-dominio)
-  - [3.2.2. Diagramas de estados](#322-diagramas-de-estados)
-  - [3.2.3. Glosario](#323-glosario)
-- [3.3. Disciplina de requisitos](#33-disciplina-de-requisitos)
-  - [3.3.1. Actores del sistema](#331-actores-del-sistema)
-  - [3.3.2. Casos de uso](#332-casos-de-uso)
-  - [3.3.3. Detalle de casos de uso representativos](#333-detalle-de-casos-de-uso-representativos)
-  - [3.3.4. Prototipos de interfaz](#334-prototipos-de-interfaz)
-  - [3.3.5. Diagrama de contexto](#335-diagrama-de-contexto)
-- [3.4. Requisitos no funcionales](#34-requisitos-no-funcionales)
+- [2.1. Sesiones de levantamiento de información](#21-sesiones-de-levantamiento-de-información)
+- [2.2. Modelo del dominio](#22-modelo-del-dominio)
+  - [2.2.1. Diagrama de clases del dominio](#221-diagrama-de-clases-del-dominio)
+  - [2.2.2. Diagramas de estados](#222-diagramas-de-estados)
+  - [2.2.3. Glosario](#223-glosario)
+- [2.3. Disciplina de requisitos](#23-disciplina-de-requisitos)
+  - [2.3.1. Actores del sistema](#231-actores-del-sistema)
+  - [2.3.2. Casos de uso](#232-casos-de-uso)
+  - [2.3.3. Detalle de casos de uso representativos](#233-detalle-de-casos-de-uso-representativos)
+  - [2.3.4. Prototipos de interfaz](#234-prototipos-de-interfaz)
+  - [2.3.5. Diagrama de contexto](#235-diagrama-de-contexto)
+- [2.4. Requisitos no funcionales](#24-requisitos-no-funcionales)
 
 El objetivo de esta iteración es delimitar el alcance del sistema mediante la construcción del
 modelo del dominio y la especificación de los casos de uso del MVP. El resultado es el acuerdo
 formal entre cliente y desarrollador sobre lo que el sistema debe hacer, expresado en artefactos
 UML trazables al código y a los entregables posteriores.
 
-## 3.1. Sesiones de levantamiento de información
+## 2.1. Sesiones de levantamiento de información
 
 El levantamiento de requisitos se realizó mediante videollamadas con el perfil clave de
 GRUPOSIETE: el director de IT de la empresa que además trabaja en la sede de Alcobendas.
@@ -44,7 +44,7 @@ Microsoft 365 para la detección automática del estado fuera de oficina, ya que
 utilizan Outlook de forma habitual. Tercera: el flujo de aprobación de ausencias debe contemplar
 dos niveles (manager y RRHH) para respetar la estructura organizativa actual de la empresa.
 
-## 3.2. Modelo del dominio
+## 2.2. Modelo del dominio
 
 El modelo del dominio construye una abstracción de la realidad de GRUPOSIETE independiente
 de cualquier decisión de implementación. Sus artefactos (diagrama de clases, diagrama de
@@ -54,7 +54,7 @@ de todo el proyecto. Las relaciones entre clases emplean cuatro tipos semántico
 identidad propia), uso (dependencia transitoria sin propiedad) y asociación (relación entre
 pares independientes).
 
-### 3.2.1. Diagrama de clases del dominio
+### 2.2.1. Diagrama de clases del dominio
 
 El diagrama organiza las entidades en cuatro áreas conceptuales: organización, espacios, recursos
 humanos y comunicación.
@@ -87,7 +87,7 @@ El área de **comunicación** incluye el `Anuncio` (en composición con `Entidad
 `CalendarioFestivos`, compuesto por `Festivos` individuales mediante composición y asociado a
 cada entidad para el registro correcto de días laborables.
 
-### 3.2.2. Diagramas de estados
+### 2.2.2. Diagramas de estados
 
 Se documentan los ciclos de vida de las tres entidades con comportamiento dinámico no trivial.
 
@@ -113,7 +113,7 @@ o RRHH pueden rechazarla en su respectivo nivel.
 ![Estados de SolicitudAusencia](../../modelosUML/svg/estadosSolicitudAusencia.svg)
 <sub>[Código fuente](../../modelosUML/puml/estadosSolicitudAusencia.puml)</sub>
 
-### 3.2.3. Glosario
+### 2.2.3. Glosario
 
 | Término                | Definición                                                                                                                                                                          |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -136,9 +136,9 @@ o RRHH pueden rechazarla en su respectivo nivel.
 | **CalendarioFestivos** | Conjunto de días festivos asociado a una entidad para excluirlos del cómputo de días laborables y de la disponibilidad de reservas.                                                 |
 | **Módulo**             | Funcionalidad activable o desactivable de forma independiente por entidad desde el panel de administración.                                                                         |
 
-## 3.3. Disciplina de requisitos
+## 2.3. Disciplina de requisitos
 
-### 3.3.1. Actores del sistema
+### 2.3.1. Actores del sistema
 
 La jerarquía de actores sigue una cadena de herencia en la que cada nivel añade
 capacidades al anterior. Los diagramas a continuación presentan dicha herencia junto
@@ -166,7 +166,7 @@ iniciar casos de uso, sino colaboradores de la capa de aplicación: **Microsoft 
 como proveedor de identidad (OAuth 2.0/OIDC) y **Microsoft Graph API** para la consulta
 del estado fuera de oficina y el envío de notificaciones por Teams.
 
-### 3.3.2. Casos de uso
+### 2.3.2. Casos de uso
 
 Los tres diagramas de la sección anterior presentan la totalidad de los casos de uso del sistema,
 agrupados por dominio (espacios, personas y administración) y vinculados a los actores que los
@@ -182,7 +182,7 @@ anuncios y el directorio de empleados. El quinto incremento cubrió el panel de 
 (gestión de plazas, usuarios, entidades y configuración del sistema) junto con el módulo de
 ajustes. El último incremento integró el panel de analíticas para administradores.
 
-### 3.3.3. Detalle de casos de uso representativos
+### 2.3.3. Detalle de casos de uso representativos
 
 Se detallan a continuación cuatro casos de uso que cubren los flujos más representativos del
 sistema: el flujo estándar de reserva, la lógica específica de cesión, la gestión de solicitudes
@@ -200,7 +200,7 @@ de ausencia por parte del manager y la gestión de visitantes con notificación 
 ![Detalle registrarVisitante()](../../modelosUML/svg/cuRegistrarVisitante.svg)
 <sub>[Código fuente](../../modelosUML/puml/cuRegistrarVisitante.puml)</sub>
 
-### 3.3.4. Prototipos de interfaz
+### 2.3.4. Prototipos de interfaz
 
 Los prototipos de baja fidelidad validan la correspondencia entre los casos de uso detallados y la
 interfaz del sistema. Se presentan como wireframes funcionales centrados en la estructura de la
@@ -232,7 +232,7 @@ de la visita (fecha y selección de plaza), con acción de registro y envío aut
 ![Prototipo registrarVisitante()](../../modelosUML/svg/protoRegistrarVisitante.svg)
 <sub>[Código fuente](../../modelosUML/puml/protoRegistrarVisitante.puml)</sub>
 
-### 3.3.5. Diagrama de contexto
+### 2.3.5. Diagrama de contexto
 
 El diagrama de contexto expresa el sistema como una máquina de estados en la que cada estado
 representa una vista del portal y cada transición corresponde a un caso de uso que lleva al
@@ -246,7 +246,7 @@ no aparecen como estados porque colaboran desde la capa de aplicación.
 ![Diagrama de contexto](../../modelosUML/svg/contexto.svg)
 <sub>[Código fuente](../../modelosUML/puml/contexto.puml)</sub>
 
-## 3.4. Requisitos no funcionales
+## 2.4. Requisitos no funcionales
 
 Los requisitos no funcionales especifican propiedades del sistema que trascienden la
 funcionalidad individual de cada caso de uso.

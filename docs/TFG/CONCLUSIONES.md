@@ -1,22 +1,22 @@
-# 6. Conclusiones
+# 5. Conclusiones
 
-| [← Cap. 5](IMPLEMENTACION.md) | [Índice](../../README.md) |
+| [← Cap. 4](IMPLEMENTACION.md) | [Índice](../../README.md) |
 | :---------------------------- | :-----------------------: |
 
 ## Contenido
 
-- [6.1. Cumplimiento de objetivos específicos](#61-cumplimiento-de-objetivos-específicos)
-  - [6.1.1. OS1 - Disciplina de requisitos](#611-os1--disciplina-de-requisitos)
-  - [6.1.2. OS2 - Análisis y diseño](#612-os2--análisis-y-diseño)
-  - [6.1.3. OS3 - Implementación y validación](#613-os3--implementación-y-validación)
-  - [6.1.4. OS4 - Evaluación de la solución](#614-os4--evaluación-de-la-solución)
-- [6.2. Discusión de resultados](#62-discusión-de-resultados)
-- [6.3. Recomendaciones](#63-recomendaciones)
-- [6.4. Futuras líneas de actuación](#64-futuras-líneas-de-actuación)
-- [6.5. Reflexión personal](#65-reflexión-personal)
+- [5.1. Cumplimiento de objetivos específicos](#51-cumplimiento-de-objetivos-específicos)
+  - [5.1.1. OS1 - Disciplina de requisitos](#511-os1--disciplina-de-requisitos)
+  - [5.1.2. OS2 - Análisis y diseño](#512-os2--análisis-y-diseño)
+  - [5.1.3. OS3 - Implementación y validación](#513-os3--implementación-y-validación)
+  - [5.1.4. OS4 - Evaluación de la solución](#514-os4--evaluación-de-la-solución)
+- [5.2. Discusión de resultados](#52-discusión-de-resultados)
+- [5.3. Recomendaciones](#53-recomendaciones)
+- [5.4. Futuras líneas de actuación](#54-futuras-líneas-de-actuación)
+- [5.5. Reflexión personal](#55-reflexión-personal)
 
 Este capítulo cierra el documento retomando la hipótesis y los objetivos planteados en el
-capítulo 2 para evaluar, con evidencia concreta, si el proceso de ingeniería condujo a la
+capítulo 1 para evaluar, con evidencia concreta, si el proceso de ingeniería condujo a la
 solución prevista. Es el capítulo opuesto-complementario al marco teórico: donde aquel
 presentaba el escenario y las decisiones de partida, este opina sobre sus resultados con la
 misma fundamentación, cerrando el ciclo de trazabilidad que vertebra todo el trabajo.
@@ -27,32 +27,32 @@ de GRUPOSIETE, optimizando el uso de espacios corporativos sin inversiones adici
 licencias de software_. A continuación se examina el grado de cumplimiento de cada objetivo
 específico y se discuten las decisiones que lo hicieron posible (o que lo limitaron).
 
-## 6.1. Cumplimiento de objetivos específicos
+## 5.1. Cumplimiento de objetivos específicos
 
-### 6.1.1. OS1 - Disciplina de requisitos
+### 5.1.1. OS1 - Disciplina de requisitos
 
 > **OS1:** Capturar los requisitos del sistema mediante sesiones de levantamiento de
 > información con personas clave de GRUPOSIETE, elaborar el modelo del dominio y definir y
 > priorizar los casos de uso que delimitan el alcance del MVP.
 
 Las sesiones de levantamiento con el director de IT de GRUPOSIETE (documentadas en la
-sección 3.1) revelaron tres patrones recurrentes en la operativa diaria: la coordinación
+sección 2.1) revelaron tres patrones recurrentes en la operativa diaria: la coordinación
 informal de plazas de aparcamiento por WhatsApp, la infrautilización de los puestos de
 oficina y el seguimiento de vacaciones mediante hojas de cálculo. Estos patrones se
 tradujeron en los cuatro actores del sistema (Empleado, Manager, RRHH, Administrador) y
-en los once casos de uso priorizados con MoSCoW (sección 3.3.2), de los cuales siete se
+en los once casos de uso priorizados con MoSCoW (sección 2.3.2), de los cuales siete se
 clasificaron como Must para el MVP.
 
-El modelo del dominio (plasmado en el diagrama de clases de la sección 3.2.1) organizó
+El modelo del dominio (plasmado en el diagrama de clases de la sección 2.2.1) organizó
 los conceptos del negocio en cuatro áreas (organización, espacios, RRHH y comunicación)
 con catorce términos definidos en el glosario. Los diagramas de estados de Cesión y
 SolicitudAusencia capturaron las dos entidades con ciclo de vida no trivial. Los cuatro
 casos de uso representativos se detallaron con diagramas de actividad y prototipos de baja
 fidelidad, estableciendo el puente hacia las disciplinas de análisis y diseño.
 
-> **\*Evidencia:** sesiones de levantamiento documentadas (sección 3.1), modelo del dominio
-> con 30+ clases (3.2.1), glosario de 14 términos (3.2.4), 4 actores y 11 CdU priorizados
-> (3.3.2), 4 CdU detallados con prototipos (3.3.3–3.3.4).\*
+> **\*Evidencia:** sesiones de levantamiento documentadas (sección 2.1), modelo del dominio
+> con 30+ clases (2.2.1), glosario de 14 términos (2.2.4), 4 actores y 11 CdU priorizados
+> (2.3.2), 4 CdU detallados con prototipos (2.3.3–2.3.4).\*
 
 ---
 
@@ -60,7 +60,7 @@ La disciplina de requisitos se articuló en torno a una videollamada con el dire
 IT de aproximadamente cuatro horas. En esa única sesión )muy extensa y productiva(
 quedó clara la mayoría de las necesidades reales de la empresa. A partir de ahí
 mantuvimos contacto por Microsoft Teams, intercambiando ideas y refinando el alcance hasta
-llegar al planteamiento final que recogen los capítulos 2 y 3.
+llegar al planteamiento final que recogen los capítulos 1 y 2.
 
 No me arrepiento en absoluto de haber ampliado el alcance durante esta fase. Creo que el
 resultado es una aplicación muy competente que me ha dado tiempo a desarrollar y pulir
@@ -72,34 +72,34 @@ que ya no usaban.
 
 ---
 
-### 6.1.2. OS2 - Análisis y diseño
+### 5.1.2. OS2 - Análisis y diseño
 
 > **OS2:** Realizar el análisis y diseño del sistema: definir la arquitectura (Next.js con
 > App Router, PostgreSQL autoalojado con Drizzle ORM, Microsoft Entra ID como proveedor
 > de identidad), el modelo lógico y físico de datos en PostgreSQL, y los diagramas de
 > despliegue y paquetes.
 
-La disciplina de análisis (sección 4.1) derivó sistemáticamente las clases de análisis
-desde los casos de uso del capítulo 3 y el modelo del dominio. Las veinticinco clases
+La disciplina de análisis (sección 3.1) derivó sistemáticamente las clases de análisis
+desde los casos de uso del capítulo 2 y el modelo del dominio. Las veinticinco clases
 resultantes se organizaron en cuatro capas (vista, controlador, repositorio, dominio) con
 cuatro patrones de colaboración documentados mediante diagramas: Apertura para la carga
 inicial de disponibilidad, El delgado para acciones de escritura simple, El gordo para
 flujos que coordinan múltiples repositorios y Eliminación segura para operaciones de
 cancelación con verificación de estado previo.
 
-La transición al diseño (sección 4.2) se documentó mediante una tabla de trazabilidad que
+La transición al diseño (sección 3.2) se documentó mediante una tabla de trazabilidad que
 mapea cada clase de análisis a su equivalente de diseño. Las vistas se materializaron como
 Server Components de Next.js (`*Page`), los controladores como Server Actions, los
 repositorios como funciones de consulta Drizzle y el modelo del dominio como el esquema
 Drizzle (967 líneas). El diagrama C4 situó el sistema en su contexto, el diagrama de
 despliegue ubicó los nodos físicos (Vercel + PostgreSQL autoalojado) y el diagrama de
 paquetes anticipó la estructura de directorios del repositorio, verificada posteriormente
-en la sección 5.3.
+en la sección 4.3.
 
-> **\*Evidencia:** 25 clases de análisis con 4 patrones de colaboración (4.1), tabla de
-> transición análisis→diseño (4.2), diagrama C4 (4.3.1), diagrama de despliegue (4.3.2),
-> diagrama de paquetes con correspondencia verificada al repositorio (4.3.3 y 5.3),
-> diagramas de secuencia de los 4 CdU representativos (4.3.4).\*
+> **\*Evidencia:** 25 clases de análisis con 4 patrones de colaboración (3.1), tabla de
+> transición análisis→diseño (3.2), diagrama C4 (3.3.1), diagrama de despliegue (3.3.2),
+> diagrama de paquetes con correspondencia verificada al repositorio (3.3.3 y 4.3),
+> diagramas de secuencia de los 4 CdU representativos (3.3.4).\*
 
 ---
 
@@ -120,7 +120,7 @@ dependencias que habrían hecho la migración inviable más adelante.
 
 ---
 
-### 6.1.3. OS3 - Implementación y validación
+### 5.1.3. OS3 - Implementación y validación
 
 > **OS3:** Implementar y validar el MVP funcional con pruebas unitarias (Vitest) y pruebas
 > end-to-end (Playwright), con la base de datos PostgreSQL desplegada en servidor propio y
@@ -129,9 +129,9 @@ dependencias que habrían hecho la migración inviable más adelante.
 El MVP implementa diez módulos funcionales accesibles desde el dashboard
 (administración, ajustes, directorio, mis-reservas, oficinas, panel de analíticas, parking,
 tablón, vacaciones, visitantes), cada uno correspondiente a un estado del diagrama de
-contexto (sección 5.1). Los cuatro casos de uso representativos )reservarPlaza(),
+contexto (sección 4.1). Los cuatro casos de uso representativos )reservarPlaza(),
 cederPlaza(), gestionarSolicitudAusencia() y registrarVisitante()( se mostraron con su
-interfaz real en la sección 5.2, evidenciando la correspondencia entre el diseño y el
+interfaz real en la sección 4.2, evidenciando la correspondencia entre el diseño y el
 código.
 
 La lógica compartida entre parking y oficinas se parametrizó mediante factories
@@ -147,11 +147,11 @@ de Server Actions, queries Zod y utilidades, mientras que las pruebas end-to-end
 Playwright verifican los flujos completos de los casos de uso representativos. El pipeline
 CI/CD mediante GitHub Actions ejecuta `pnpm check` )typecheck, lint, format y tests( en
 cada push, con despliegue automático en Vercel al superar todas las comprobaciones
-(sección 5.4).
+(sección 4.4).
 
-> **\*Evidencia:** 10 módulos funcionales mapeados al diagrama de contexto (5.1), 4 CdU
-> con capturas de interfaz real (5.2.1–5.2.4), tabla de correspondencia arquitectónica
-> (5.3), 45 archivos de test, pipeline CI/CD documentado (5.4).\*
+> **\*Evidencia:** 10 módulos funcionales mapeados al diagrama de contexto (4.1), 4 CdU
+> con capturas de interfaz real (4.2.1–4.2.4), tabla de correspondencia arquitectónica
+> (4.3), 45 archivos de test, pipeline CI/CD documentado (4.4).\*
 
 ---
 
@@ -176,7 +176,7 @@ tranquilidad que no habría tenido trabajando sin integración continua.\_
 
 ---
 
-### 6.1.4. OS4 - Evaluación de la solución
+### 5.1.4. OS4 - Evaluación de la solución
 
 > **OS4:** Evaluar la solución mediante métricas de cobertura de tests, rendimiento (Core
 > Web Vitals) y usabilidad (SUS), verificar la trazabilidad entre requisitos y entrega, y
@@ -230,21 +230,21 @@ parte de la evaluación continua del producto.
 
 #### Trazabilidad requisitos → entrega
 
-La cadena de trazabilidad prometida en la sección 2.5 se verifica a lo largo de todo el
+La cadena de trazabilidad prometida en la sección 1.5 se verifica a lo largo de todo el
 documento:
 
 ```
-Escenario (Cap. 2) → Requisitos (Cap. 3) → Análisis y diseño (Cap. 4) → Solución (Cap. 5) → Evaluación (Cap. 6)
+Escenario (Cap. 1) → Requisitos (Cap. 2) → Análisis y diseño (Cap. 3) → Solución (Cap. 4) → Evaluación (Cap. 5)
 ```
 
-Cada caso de uso priorizado en el capítulo 3 tiene su clase de análisis en el capítulo 4,
-su controlador en el capítulo 5 y su test en la suite de validación. La tabla de
-correspondencia arquitectónica de la sección 5.3 cierra explícitamente el ciclo para los
+Cada caso de uso priorizado en el capítulo 2 tiene su clase de análisis en el capítulo 3,
+su controlador en el capítulo 4 y su test en la suite de validación. La tabla de
+correspondencia arquitectónica de la sección 4.3 cierra explícitamente el ciclo para los
 cuatro casos de uso representativos.
 
-> **\*Evidencia:** tabla de correspondencia arquitectónica (5.3), tabla de trazabilidad
-> análisis→diseño (4.2), priorización MoSCoW con cobertura de tests por CdU (3.3.2 y
-> 5.4).\*
+> **\*Evidencia:** tabla de correspondencia arquitectónica (4.3), tabla de trazabilidad
+> análisis→diseño (3.2), priorización MoSCoW con cobertura de tests por CdU (2.3.2 y
+> 4.4).\*
 
 ---
 
@@ -264,7 +264,7 @@ hilo desde el escenario hasta el código evita muchos callejones sin salida.
 
 ---
 
-## 6.2. Discusión de resultados
+## 5.2. Discusión de resultados
 
 Este apartado reflexiona sobre las decisiones técnicas y de proceso que marcaron el
 desarrollo, sus implicaciones y las alternativas que se descartaron.
@@ -272,7 +272,7 @@ desarrollo, sus implicaciones y las alternativas que se descartaron.
 ### Arquitectura: monolito modular
 
 La decisión de adoptar un monolito modular (frente a microservicios o un monolito
-tradicional) se justificó en el marco teórico (sección 2.2.5) por el tamaño del equipo
+tradicional) se justificó en el marco teórico (sección 1.2.5) por el tamaño del equipo
 (un desarrollador), la necesidad de un despliegue simple y la capacidad de extender el
 sistema mediante módulos activables desde administración.
 
@@ -335,7 +335,7 @@ aunque se contempla como paso inmediatamente posterior al despliegue.
 
 ---
 
-## 6.3. Recomendaciones
+## 5.3. Recomendaciones
 
 A partir de la discusión anterior, se proponen las siguientes recomendaciones
 organizadas por ámbito. No son especulaciones: cada una se fundamenta en una limitación
@@ -370,7 +370,7 @@ herramienta que ya funciona.
 
 ---
 
-## 6.4. Futuras líneas de actuación
+## 5.4. Futuras líneas de actuación
 
 La arquitectura modular y la metodología RUP empleada permiten extender el sistema de
 forma incremental sin reescribir lo existente. Las siguientes líneas de actuación se
@@ -381,7 +381,7 @@ documentado.
 | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | Bot de notificaciones en Microsoft Teams                | El RNF-08 identifica las notificaciones como requisito. Microsoft Graph API ya está integrado para autenticación; añadir notificaciones por Teams es incremental                        | Alta      |
 | Sincronización bidireccional con calendarios de Outlook | La integración con Graph API existente permite extenderla para crear eventos de calendario automáticamente al confirmar una reserva                                                     | Alta      |
-| Integración con Personio/Factorial para nóminas         | Citado en la justificación de la propuesta (2.3) y en la cuarta iteración RUP (2.5). La arquitectura plug-in permite añadir el módulo sin alterar el core                               | Media     |
+| Integración con Personio/Factorial para nóminas         | Citado en la justificación de la propuesta (1.3) y en la cuarta iteración RUP (1.5). La arquitectura plug-in permite añadir el módulo sin alterar el core                               | Media     |
 | Módulo de documentación laboral                         | La tabla `documents` y los enums `document_category` / `document_access` ya existen en el esquema Drizzle. Es una extensión natural del portal ESS                                      | Media     |
 | Aplicación móvil (PWA)                                  | La interfaz ya es responsiva (RNF-05). Convertirla en PWA con notificaciones push y acceso offline requiere configuración adicional, no reescritura                                     | Baja      |
 | Soporte multi-idioma                                    | El RNF-09 de internacionalización está identificado. Next.js App Router soporta i18n mediante middleware de negociación de idioma                                                       | Baja      |
@@ -406,7 +406,7 @@ real de haber seguido un proceso de ingeniería riguroso.
 
 ---
 
-## 6.5. Reflexión personal
+## 5.5. Reflexión personal
 
 Meses antes de este TFG construí un prototipo de aplicación de parking para la sede de
 Alcobendas. Era mucho más simple y no pasaba de ser una prueba de concepto, pero me
@@ -430,7 +430,7 @@ limitaciones de tu producto es tan importante como presumir de sus virtudes.
 El momento de mayor orgullo fue ver la funcionalidad multi-sede funcionando sin apenas
 fricciones. Llegó al final del desarrollo, cuando la base ya era sólida, y encajó como
 una pieza natural. Creo que eso dice mucho sobre la importancia de una buena fase de
-análisis y diseño: si hubiera empezado a programar directamente sin los capítulos 3 y 4,
+análisis y diseño: si hubiera empezado a programar directamente sin los capítulos 2 y 3,
 ese momento probablemente no habría existido, o habría sido mucho más doloroso.
 
 Si pudiera volver al día uno y darme un consejo, sería este: no subestimes el valor de
@@ -446,5 +446,5 @@ creatividad, sino la estructura que permite que las buenas ideas lleguen a buen 
 
 ---
 
-| [← Cap. 5](IMPLEMENTACION.md) | [Índice](../../README.md) |
+| [← Cap. 4](IMPLEMENTACION.md) | [Índice](../../README.md) |
 | :---------------------------- | :-----------------------: |

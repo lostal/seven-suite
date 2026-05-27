@@ -1,25 +1,25 @@
-# 4. Análisis y Diseño
+# 3. Análisis y Diseño
 
-| [← Cap. 3](REQUISITOS.md) | [Índice](../../README.md) | [Cap. 5 →](IMPLEMENTACION.md) |
+| [← Cap. 2](REQUISITOS.md) | [Índice](../../README.md) | [Cap. 4 →](IMPLEMENTACION.md) |
 | :------------------------ | :-----------------------: | ----------------------------: |
 
 ## Contenido
 
-- [4.1. Disciplina de análisis](#41-disciplina-de-análisis)
-  - [4.1.1. Panorama de clases de análisis](#411-panorama-de-clases-de-análisis)
-  - [4.1.2. Colaboración: reservarPlaza()](#412-colaboración-reservarplaza)
-  - [4.1.3. Colaboración: cederPlaza()](#413-colaboración-cederplaza)
-  - [4.1.4. Colaboración: gestionarSolicitudAusencia()](#414-colaboración-gestionarsolicitudausencia)
-  - [4.1.5. Colaboración: registrarVisitante()](#415-colaboración-registrarvisitante)
-  - [4.1.6. Patrones de análisis identificados](#416-patrones-de-análisis-identificados)
-- [4.2. Transición al diseño](#42-transición-al-diseño)
-- [4.3. Disciplina de diseño](#43-disciplina-de-diseño)
-  - [4.3.1. Arquitectura del sistema](#431-arquitectura-del-sistema)
-  - [4.3.2. Diagrama de paquetes](#432-diagrama-de-paquetes)
-  - [4.3.3. Diagrama de clases de diseño](#433-diagrama-de-clases-de-diseño)
-  - [4.3.4. Secuencia: reservarPlaza()](#434-secuencia-reservarplaza)
-  - [4.3.5. Secuencia: gestionarSolicitudAusencia()](#435-secuencia-gestionarsolicitudausencia)
-  - [4.3.6. Diagrama de despliegue](#436-diagrama-de-despliegue)
+- [3.1. Disciplina de análisis](#31-disciplina-de-análisis)
+  - [3.1.1. Panorama de clases de análisis](#311-panorama-de-clases-de-análisis)
+  - [3.1.2. Colaboración: reservarPlaza()](#312-colaboración-reservarplaza)
+  - [3.1.3. Colaboración: cederPlaza()](#313-colaboración-cederplaza)
+  - [3.1.4. Colaboración: gestionarSolicitudAusencia()](#314-colaboración-gestionarsolicitudausencia)
+  - [3.1.5. Colaboración: registrarVisitante()](#315-colaboración-registrarvisitante)
+  - [3.1.6. Patrones de análisis identificados](#316-patrones-de-análisis-identificados)
+- [3.2. Transición al diseño](#32-transición-al-diseño)
+- [3.3. Disciplina de diseño](#33-disciplina-de-diseño)
+  - [3.3.1. Arquitectura del sistema](#331-arquitectura-del-sistema)
+  - [3.3.2. Diagrama de paquetes](#332-diagrama-de-paquetes)
+  - [3.3.3. Diagrama de clases de diseño](#333-diagrama-de-clases-de-diseño)
+  - [3.3.4. Secuencia: reservarPlaza()](#334-secuencia-reservarplaza)
+  - [3.3.5. Secuencia: gestionarSolicitudAusencia()](#335-secuencia-gestionarsolicitudausencia)
+  - [3.3.6. Diagrama de despliegue](#336-diagrama-de-despliegue)
 
 El objetivo de este capítulo es doble. La disciplina de análisis refina los requisitos del capítulo
 anterior para obtener una descripción más precisa que ayude a estructurar el sistema. La disciplina
@@ -27,16 +27,16 @@ de diseño introduce los requisitos no funcionales y el dominio de la solución,
 para la implementación. El resultado es una abstracción del sistema en la que el código será un
 refinamiento sencillo del diseño: cumplimentar la carne sin cambiar el esqueleto.
 
-## 4.1. Disciplina de análisis
+## 3.1. Disciplina de análisis
 
 La disciplina de análisis toma como entrada los casos de uso detallados y el modelo del dominio
-del capítulo 3 y produce clases de análisis con responsabilidades bien definidas, agrupadas en tres
+del capítulo 2 y produce clases de análisis con responsabilidades bien definidas, agrupadas en tres
 estereotipos: vista, controlador y modelo. Cada caso de uso se resuelve mediante un diagrama de
 colaboración que muestra qué clases participan, qué mensajes se intercambian y a qué otros casos
 de uso se transita. Los cuatro casos de uso seleccionados son los mismos que se detallaron en el
 capítulo anterior, lo que garantiza la trazabilidad desde los requisitos hasta el análisis.
 
-### 4.1.1. Panorama de clases de análisis
+### 3.1.1. Panorama de clases de análisis
 
 El diagrama siguiente presenta las clases de análisis del sistema organizadas en cuatro capas
 horizontales: vistas (azul), controladores (verde), repositorios (naranja) y entidades del dominio
@@ -56,7 +56,7 @@ ilusión de que cada módulo es una isla arquitectónica independiente. La depen
 (de arriba hacia abajo) garantiza que los módulos puedan activarse o desactivarse sin modificar
 el código de los demás (RNF-06).
 
-### 4.1.2. Colaboración: reservarPlaza()
+### 3.1.2. Colaboración: reservarPlaza()
 
 El caso de uso `reservarPlaza()` representa el flujo de reserva estándar: un empleado
 selecciona una fecha, consulta las plazas disponibles (tanto las libres como las cedidas)
@@ -78,13 +78,13 @@ repositorios gestionan. Esta separación (la vista no conoce las entidades, el c
 no conoce la base de datos) es la que permite cambiar la tecnología de persistencia sin
 que la lógica de negocio se entere.
 
-### 4.1.3. Colaboración: cederPlaza()
+### 3.1.3. Colaboración: cederPlaza()
 
 La cesión es el caso de uso que distingue a un `Manager` de un `Empleado`. Solo el
 propietario de una plaza asignada puede cederla. La colaboración introduce un participante
 externo (Microsoft Graph) que no es un actor en el sentido RUP pero colabora con el
 controlador proporcionando el estado fuera de oficina del manager. Esta integración
-responde a la segunda decisión de diseño del capítulo 3: los directivos utilizan Outlook
+responde a la segunda decisión de diseño del capítulo 2: los directivos utilizan Outlook
 de forma habitual y el sistema debe aprovechar esa información para sugerir cesiones.
 
 ![Colaboración: cederPlaza()](../../modelosUML/svg/colabCederPlaza.svg)
@@ -99,10 +99,10 @@ la primera decisión de diseño del capítulo anterior y aquí se materializa co
 responsabilidad exclusiva de la vista, que solo ejecuta si el actor la solicita
 explícitamente.
 
-### 4.1.4. Colaboración: gestionarSolicitudAusencia()
+### 3.1.4. Colaboración: gestionarSolicitudAusencia()
 
 Este caso de uso materializa el flujo de aprobación en dos niveles (manager y RRHH)
-que constituye la tercera decisión de diseño del capítulo 3. La colaboración introduce
+que constituye la tercera decisión de diseño del capítulo 2. La colaboración introduce
 un quinto participante: `NotificacionService`, responsable de informar al empleado y al
 siguiente nivel de aprobación cuando una solicitud cambia de estado.
 
@@ -110,7 +110,7 @@ siguiente nivel de aprobación cuando una solicitud cambia de estado.
 <sub>[Código fuente](../../modelosUML/puml/colabGestionarSolicitud.puml)</sub>
 
 `BandejaSolicitudesView` presenta dos zonas (lista de solicitudes pendientes y panel de
-detalle) que el prototipo del capítulo 3 ya anticipaba. `AusenciaController` coordina
+detalle) que el prototipo del capítulo 2 ya anticipaba. `AusenciaController` coordina
 la carga inicial consultando `SolicitudRepository` por las pendientes del actor y
 `EmpleadoRepository` por los datos del solicitante. La resolución (aprobar o rechazar)
 actualiza el estado de la solicitud y dispara la notificación correspondiente.
@@ -121,7 +121,7 @@ correspondiente. Manager aprueba en primer nivel; RRHH valida en segundo. Esta
 decisión evita duplicar la lógica de carga y notificación y es coherente con el
 principio de composición sobre herencia.
 
-### 4.1.5. Colaboración: registrarVisitante()
+### 3.1.5. Colaboración: registrarVisitante()
 
 `registrarVisitante()` es el único caso de uso que genera una interacción con una
 persona externa al sistema (el visitante) mediante el envío de un correo de
@@ -138,7 +138,7 @@ correo de confirmación al visitante. La vista no sabe que se ha enviado un corr
 controlador no sabe cómo se envía. Esa separación permite cambiar el proveedor de email
 sin tocar la lógica de negocio.
 
-### 4.1.6. Patrones de análisis identificados
+### 3.1.6. Patrones de análisis identificados
 
 Del análisis de los treinta y cinco casos de uso del sistema emergen cuatro patrones
 recurrentes que se repiten por grupo de entidades y que guían la transición al diseño.
@@ -158,7 +158,7 @@ que debe verificar conflictos de fecha, tipo de plaza y entidad). La eliminació
 nunca borra físicamente: transita el estado de la entidad a cancelada y mantiene la
 trazabilidad.
 
-## 4.2. Transición al diseño
+## 3.2. Transición al diseño
 
 El análisis describe qué hace el sistema sin atarse a una tecnología concreta. El diseño
 responde a cómo se materializa esa descripción en un stack específico. La tabla siguiente
@@ -188,9 +188,9 @@ responde a RNF-07: el sistema no debe depender de un proveedor concreto. Drizzle
 actúa como capa de acceso a datos con tipado inferido del esquema, sin generación de
 código ni migraciones mágicas.
 
-## 4.3. Disciplina de diseño
+## 3.3. Disciplina de diseño
 
-### 4.3.1. Arquitectura del sistema
+### 3.3.1. Arquitectura del sistema
 
 El diagrama de arquitectura sigue el modelo C4 de contenedores: muestra las personas que usan
 el sistema, los contenedores que lo componen, los sistemas externos con los que colabora y las
@@ -210,7 +210,7 @@ capa de servidor, nunca desde el navegador: Entra ID gestiona la identidad, Grap
 el estado fuera de oficina y las notificaciones por Teams, y Resend envía los correos
 transaccionales.
 
-### 4.3.2. Diagrama de paquetes
+### 3.3.2. Diagrama de paquetes
 
 El diagrama de paquetes muestra la organización del código fuente en cuatro niveles
 con estereotipos diferenciados y la dirección de las dependencias entre ellos.
@@ -226,7 +226,7 @@ dependencias internas fuertes: las acciones dependen de las consultas y de la au
 las consultas dependen del cliente de base de datos. Los paquetes `src/components/` y
 `src/types/` son compartidos transversalmente por todos los módulos.
 
-### 4.3.3. Diagrama de clases de diseño
+### 3.3.3. Diagrama de clases de diseño
 
 El diagrama presenta las clases de diseño organizadas en los cinco paquetes que corresponden a
 las capas arquitectónicas del sistema. En lugar de enumerar todas las clases (lo que convertiría
@@ -244,7 +244,7 @@ de base de datos sin modificar la lógica de negocio (RNF-07). Los servicios de 
 (`AuthHelpers`, `EmailService` y `CalendarUtils`) son consumidos por las acciones, nunca
 directamente por las páginas.
 
-### 4.3.4. Secuencia: reservarPlaza()
+### 3.3.4. Secuencia: reservarPlaza()
 
 A diferencia del diagrama de colaboración del análisis (que muestra qué clases participan),
 la secuencia de diseño muestra la interacción real entre los componentes del sistema durante
@@ -260,7 +260,7 @@ el esquema Zod y persiste la reserva en PostgreSQL comprobando que no exista con
 fecha y plaza. La respuesta es siempre un `ActionResult<Reserva>` (unión discriminada entre
 éxito y error) que la página maneja sin recargar.
 
-### 4.3.5. Secuencia: gestionarSolicitudAusencia()
+### 3.3.5. Secuencia: gestionarSolicitudAusencia()
 
 El flujo de aprobación de ausencias es el más complejo del sistema. La secuencia muestra la
 interacción en el primer nivel (la aprobación por el manager). El segundo nivel (la validación
@@ -268,12 +268,12 @@ por RRHH) sigue exactamente el mismo patrón: la misma Server Action `approveLea
 invocada por un usuario con rol de RRHH, transita el estado de `aprobado_manager` a `aprobado`.
 Esta duplicación deliberada (un solo endpoint, dos niveles de autorización) evita tener dos
 acciones distintas para la misma operación conceptual y responde a la tercera decisión de diseño
-del capítulo 3.
+del capítulo 2.
 
 ![Secuencia: gestionarSolicitudAusencia()](../../modelosUML/svg/seqGestionarSolicitud.svg)
 <sub>[Código fuente](../../modelosUML/puml/seqGestionarSolicitud.puml)</sub>
 
-### 4.3.6. Diagrama de despliegue
+### 3.3.6. Diagrama de despliegue
 
 El diagrama de despliegue muestra los nodos físicos del sistema y cómo se conectan.
 La aplicación Next.js se ejecuta en la infraestructura Edge de Vercel, lo que garantiza
