@@ -23,7 +23,7 @@ arquitectónico.
 
 ## 5.1. Mapa de navegación
 
-El diagrama de contexto —introducido en la sección 3.3.5 como una máquina de estados—
+El diagrama de contexto (introducido en la sección 3.3.5 como una máquina de estados)
 sirve como mapa de navegación de la aplicación. Cada estado representa una vista del portal
 y cada transición un caso de uso que conduce al usuario de una vista a otra.
 
@@ -60,8 +60,8 @@ funciona en dispositivos móviles sin aplicación nativa.
 
 Se muestran a continuación los cuatro casos de uso detallados en el capítulo 3 y analizados
 en el capítulo 4. Para cada uno se presenta, en formato de dos columnas, el diagrama de
-contexto con los estados y transiciones del caso de uso resaltados —el resto atenuado en gris
-para guiar el foco— junto con la captura de la interfaz real implementada.
+contexto con los estados y transiciones del caso de uso resaltados (el resto atenuado en gris
+para guiar el foco) junto con la captura de la interfaz real implementada.
 
 ### 5.2.1. reservarPlaza()
 
@@ -79,14 +79,14 @@ y persiste.
 
 La confirmación de reserva ejecuta la Server Action `createReservation` que verifica
 autenticación, valida con Zod y comprueba conflictos de fecha y plaza antes de persistir en
-PostgreSQL. La respuesta —un `ActionResult<Reserva>`— permite a la página manejar el
+PostgreSQL. La respuesta (un `ActionResult<Reserva>`) permite a la página manejar el
 resultado sin recargar, tal como anticipaba el diagrama de secuencia de la sección 4.3.4.
 
 ### 5.2.2. cederPlaza()
 
 `cederPlaza()` distingue al actor `Manager` del `Empleado`: solo el propietario de una
 plaza asignada puede cederla. La implementación respeta la primera decisión de diseño del
-capítulo 3: la cesión es intencional —nunca automática— y requiere la acción explícita del
+capítulo 3: la cesión es intencional (nunca automática) y requiere la acción explícita del
 manager. Microsoft Graph colabora consultando el estado fuera de oficina para sugerir la
 cesión, materializando la segunda decisión de diseño.
 
@@ -97,10 +97,10 @@ cesión, materializando la segunda decisión de diseño.
 
 ### 5.2.3. gestionarSolicitudAusencia()
 
-Este caso de uso materializa el flujo de aprobación en dos niveles —la tercera decisión
-de diseño— mediante una única Server Action `approveLeaveRequest` que distingue el nivel
-de autorización por el rol del actor. La interfaz presenta dos zonas —lista de solicitudes
-pendientes y panel de detalle— que el prototipo de baja fidelidad del capítulo 3 ya
+Este caso de uso materializa el flujo de aprobación en dos niveles (la tercera decisión
+de diseño) mediante una única Server Action `approveLeaveRequest` que distingue el nivel
+de autorización por el rol del actor. La interfaz presenta dos zonas (lista de solicitudes
+pendientes y panel de detalle) que el prototipo de baja fidelidad del capítulo 3 ya
 anticipaba. La lógica de notificación delega en `NotificacionService`, que envía
 confirmaciones por correo electrónico a través de Resend.
 
@@ -113,7 +113,7 @@ confirmaciones por correo electrónico a través de Resend.
 
 `registrarVisitante()` es el único caso de uso que genera interacción con una persona
 externa al sistema. La implementación reutiliza `PlazaRepository` del módulo de parking
-—evitando duplicar lógica de disponibilidad— y delega el envío del correo de confirmación
+(evitando duplicar lógica de disponibilidad) y delega el envío del correo de confirmación
 en Resend. La vista no sabe que se envió un correo; el controlador no sabe cómo se envía:
 esa separación, documentada en el análisis (sección 4.1.5), permite cambiar el proveedor
 de email sin tocar la lógica de negocio.
@@ -145,7 +145,7 @@ de diseño y el archivo del repositorio que la materializa.
 
 El diagrama de paquetes del capítulo 4 anticipó esta organización: los módulos funcionales
 del dashboard (`parking/`, `oficinas/`, `vacaciones/`, etc.) dependen de `lib/` mediante
-flechas punteadas —importan lo que necesitan, pero `lib/` no sabe qué módulo lo consume—.
+flechas punteadas (importan lo que necesitan, pero `lib/` no sabe qué módulo lo consume).
 La imagen siguiente muestra la correspondencia entre ese diagrama y la estructura real del
 repositorio, evidenciando que cada paquete lógico tiene un directorio físico que lo
 materializa sin desviaciones.
@@ -173,8 +173,8 @@ de los cuatro casos de uso representativos desde la perspectiva del usuario.
 | Unitarias  | Vitest      | `src/lib/actions/`, `src/lib/queries/` |
 | End-to-end | Playwright  | Flujos de los 4 CdU representativos    |
 
-El pipeline CI/CD mediante GitHub Actions ejecuta `pnpm check` —typecheck, lint, format y
-tests— en cada push a la rama principal. El despliegue en Vercel se activa automáticamente
+El pipeline CI/CD mediante GitHub Actions ejecuta `pnpm check` (typecheck, lint, format y
+tests) en cada push a la rama principal. El despliegue en Vercel se activa automáticamente
 al superar todas las comprobaciones, garantizando que solo el código validado llega a
 producción.
 

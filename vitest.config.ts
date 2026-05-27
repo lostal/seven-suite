@@ -31,6 +31,15 @@ export default defineConfig({
         "src/**/*.test.{ts,tsx}",
         "src/**/*.spec.{ts,tsx}",
         "src/__tests__/**",
+        // Archivos de definición/configuración — no contienen lógica de negocio testable
+        "src/lib/db/schema.ts", // ─── Definiciones declarativas de tablas Drizzle
+        "src/lib/db/seed.ts", // ────── Script de seeding de BD
+        "src/lib/db/index.ts", // ───── Singleton cliente Drizzle (requiere BD)
+        "src/lib/db/types.ts", // ───── Re-export de tipos inferidos del schema
+        "src/lib/auth/config.ts", // ── Configuración de Auth.js (depende de contexto live)
+        "src/lib/auth/types.ts", // ─── Declaraciones de módulo (type augmentation)
+        "src/lib/config-types.ts", // ── Definiciones de tipos de configuración
+        "src/lib/calendar/resource-types.ts", // Tipos compartidos de calendario
       ],
       // Umbrales de cobertura — elevados a nivel sobresaliente (mayo 2026).
       // Cobertura real: 81% stmts, 72% branches, 67% funcs, 82% lines.

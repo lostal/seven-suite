@@ -75,14 +75,14 @@ export function OccupancyAreaChart({ data }: OccupancyAreaChartProps) {
         />
         <XAxis
           dataKey="label"
-          stroke="#888888"
+          stroke="hsl(var(--muted-foreground))"
           fontSize={11}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v, i) => labelTick(v, i)}
         />
         <YAxis
-          stroke="#888888"
+          stroke="hsl(var(--muted-foreground))"
           fontSize={11}
           tickLine={false}
           axisLine={false}

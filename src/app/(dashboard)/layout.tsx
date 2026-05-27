@@ -174,7 +174,7 @@ export default async function DashboardLayout({
             "peer-data-[variant=inset]:has-data-[layout=fixed]:h-[calc(100svh-(var(--spacing)*4))]"
           )}
         >
-          {children}
+          <main id="content">{children}</main>
         </SidebarInset>
       </SidebarProvider>
     </SearchProvider>

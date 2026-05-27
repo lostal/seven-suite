@@ -17,15 +17,15 @@
   --secondary: #4d5a63;
   --secondary-foreground: #ffffff;
   --muted: #f3f5f6;
-  --muted-foreground: #6a7881;
+  --muted-foreground: #4d5a63;
   --accent: #f3f5f6;
   --accent-foreground: #353f47;
   --destructive: #e53e3e;
   --destructive-foreground: #ffffff;
   --border: #dde1e3;
   --input: #dde1e3;
-  --ring: #e8b765;
-  --chart-1: #f6c77c;
+  --ring: #c99a2e;
+  --chart-1: #c99a2e;
   --chart-2: #353f47;
   --chart-3: #6a7881;
   --chart-4: #e8b765;

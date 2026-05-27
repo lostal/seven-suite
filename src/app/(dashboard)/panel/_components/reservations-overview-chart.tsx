@@ -53,14 +53,14 @@ export function ReservationsOverviewChart({
         />
         <XAxis
           dataKey="label"
-          stroke="#888888"
+          stroke="hsl(var(--muted-foreground))"
           fontSize={11}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v, i) => tickFormatter(v, i, total)}
         />
         <YAxis
-          stroke="#888888"
+          stroke="hsl(var(--muted-foreground))"
           fontSize={11}
           tickLine={false}
           axisLine={false}
