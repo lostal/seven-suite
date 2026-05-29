@@ -23,6 +23,7 @@ import {
   type UpdateResourceConfigInput,
 } from "@/lib/validations";
 import type { ResourceConfigValues } from "@/lib/config-types";
+import type { ActionResult } from "@/lib/actions";
 
 const DAYS_OF_WEEK = [
   { value: 1, label: "Lunes" },
@@ -46,8 +47,9 @@ interface ResourceConfigFormProps {
   showVisitorBooking?: boolean;
   /** Whether this is a per-entity override (shows restore defaults button) */
   isEntityOverride?: boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onRestoreDefaults?: any;
+  onRestoreDefaults?: (
+    input: Record<string, never>
+  ) => Promise<ActionResult<{ restored: boolean }>>;
 }
 
 // ─── Nullable number input (vacío = sin límite) ───────────────
@@ -446,6 +448,7 @@ export function ResourceConfigForm({
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() es el patrón estándar de RHF
   const values = watch();
 
   const onSubmit = async (data: UpdateResourceConfigInput) => {
@@ -457,7 +460,8 @@ export function ResourceConfigForm({
         return;
       }
       toast.success("Configuración guardada correctamente");
-    } catch {
+    } catch (error) {
+      console.error("Error saving resource config:", error);
       toast.error("Error inesperado al guardar la configuración");
     } finally {
       setIsLoading(false);
@@ -474,7 +478,8 @@ export function ResourceConfigForm({
         return;
       }
       toast.success("Valores restaurados a los defaults globales");
-    } catch {
+    } catch (error) {
+      console.error("Error restoring defaults:", error);
       toast.error("Error inesperado al restaurar");
     } finally {
       setIsRestoring(false);

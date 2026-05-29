@@ -104,6 +104,7 @@ export function VisitorsMutateDrawer({
         },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() es el patrón estándar de RHF
   const selectedDate = form.watch("date");
 
   // Cargar plazas disponibles cuando cambia la fecha.
@@ -131,8 +132,11 @@ export function VisitorsMutateDrawer({
             toast.error("Error al cargar plazas disponibles");
           }
         }
-      } catch {
-        if (!cancelled) toast.error("Error al cargar plazas disponibles");
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Error loading visitor spots:", error);
+          toast.error("Error al cargar plazas disponibles");
+        }
       } finally {
         if (!cancelled) setLoadingSpots(false);
       }
@@ -164,7 +168,8 @@ export function VisitorsMutateDrawer({
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error submitting visitor reservation:", error);
       toast.error(
         isEdit ? "Error al actualizar la reserva" : "Error al crear la reserva"
       );

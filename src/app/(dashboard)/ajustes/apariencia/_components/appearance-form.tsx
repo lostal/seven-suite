@@ -26,7 +26,8 @@ export function AppearanceForm({ preferences }: AppearanceFormProps) {
     setSaving(true);
     try {
       await updateTheme({ theme: value as "light" | "dark" });
-    } catch {
+    } catch (error) {
+      console.error("Error saving theme:", error);
       toast.error("Error al guardar el tema");
     } finally {
       setSaving(false);

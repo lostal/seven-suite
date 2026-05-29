@@ -82,6 +82,7 @@ export function LeaveRequestForm({
         },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() es el patrón estándar de RHF
   const leaveType = form.watch("leave_type");
   const startDate = form.watch("start_date");
   const endDate = form.watch("end_date");
@@ -111,7 +112,8 @@ export function LeaveRequestForm({
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error submitting leave request:", error);
       toast.error("Error al enviar la solicitud");
     } finally {
       setIsSubmitting(false);

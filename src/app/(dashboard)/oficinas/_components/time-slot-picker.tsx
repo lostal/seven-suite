@@ -32,20 +32,34 @@ export function TimeSlotPicker({
 
   React.useEffect(() => {
     if (!spotId || !date) return;
-    setSlots([]);
-    onSelectSlot(null);
-    setLoading(true);
-
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setSlots([]);
+        onSelectSlot(null);
+        setLoading(true);
+      }
+    });
     getOfficeTimeSlotsForSpot(spotId, date)
       .then((result) => {
+        if (cancelled) return;
         if (result.success) {
           setSlots(result.data);
         } else {
           toast.error(result.error ?? "Error al cargar franjas horarias");
         }
       })
-      .catch(() => toast.error("Error al cargar franjas horarias"))
-      .finally(() => setLoading(false));
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Error loading time slots:", error);
+        toast.error("Error al cargar franjas horarias");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [spotId, date, onSelectSlot]);
 
   if (loading) {

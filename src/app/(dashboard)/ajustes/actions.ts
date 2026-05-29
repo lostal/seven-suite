@@ -163,8 +163,8 @@ export const updateParkingConfig = actionClient
 export async function syncHolidaysAction(): Promise<
   ActionResult<{ synced: number; errors: string[] }>
 > {
+  await requireAdmin();
   try {
-    await requireAdmin();
     const result = await syncAllHolidays();
     revalidatePath("/ajustes/general");
     return success(result);

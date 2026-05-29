@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import {
+  createContext,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useContext,
+  useState,
+} from "react";
 import useDialogState from "@/hooks/use-dialog-state";
 import type { Spot } from "@/lib/db/types";
 
@@ -10,7 +17,7 @@ type SpotsContextType = {
   open: SpotsDialogType | null;
   setOpen: (type: SpotsDialogType | null) => void;
   currentRow: Spot | null;
-  setCurrentRow: React.Dispatch<React.SetStateAction<Spot | null>>;
+  setCurrentRow: Dispatch<SetStateAction<Spot | null>>;
   /** Tipo de recurso activo en la pestaña actual — determina el default en "Nueva plaza" */
   activeResourceType: "parking" | "office";
   setActiveResourceType: (rt: "parking" | "office") => void;
@@ -18,14 +25,14 @@ type SpotsContextType = {
   resourceTypeLocked: boolean;
 };
 
-const SpotsContext = React.createContext<SpotsContextType | null>(null);
+const SpotsContext = createContext<SpotsContextType | null>(null);
 
 export function SpotsProvider({
   children,
   defaultResourceType = "parking",
   resourceTypeLocked = false,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   defaultResourceType?: "parking" | "office";
   resourceTypeLocked?: boolean;
 }) {
@@ -53,7 +60,7 @@ export function SpotsProvider({
 }
 
 export function useSpots() {
-  const ctx = React.useContext(SpotsContext);
+  const ctx = useContext(SpotsContext);
   if (!ctx) throw new Error("useSpots must be used within <SpotsProvider>");
   return ctx;
 }

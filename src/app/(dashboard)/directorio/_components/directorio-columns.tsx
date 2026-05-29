@@ -32,7 +32,8 @@ function CopyableCell({
     try {
       await navigator.clipboard.writeText(value);
       toast.success(`${label} copiado al portapapeles`);
-    } catch {
+    } catch (error) {
+      console.error("Error copying to clipboard:", error);
       toast.error("No se pudo copiar al portapapeles");
     }
   };

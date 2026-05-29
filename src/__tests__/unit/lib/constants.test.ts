@@ -32,7 +32,6 @@ describe("ROUTES", () => {
   });
 
   it("ROUTES is readonly (as const)", () => {
-    expect(ROUTES.HOME).toBe("/");
     expect(ROUTES.LOGIN).toBe("/login");
     expect(ROUTES.DASHBOARD).toBe("/panel");
     expect(ROUTES.PARKING).toBe("/parking");
@@ -41,7 +40,8 @@ describe("ROUTES", () => {
 
   it("has expected keys", () => {
     const keys = Object.keys(ROUTES);
-    expect(keys).toContain("HOME");
+    expect(keys).not.toContain("HOME");
+    expect(keys).toContain("LOGIN");
     expect(keys).toContain("LOGIN");
     expect(keys).toContain("DASHBOARD");
     expect(keys).toContain("PARKING");

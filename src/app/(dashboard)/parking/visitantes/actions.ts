@@ -223,6 +223,7 @@ export const createVisitorReservation = actionClient
           "Esta plaza ya tiene una reserva de visitante para este día"
         );
       }
+      console.error("[visitantes] createVisitorReservation insert error", msg);
       throw new Error(`Error al crear reserva de visitante: ${msg}`);
     }
 
@@ -335,6 +336,7 @@ export const updateVisitorReservation = actionClient
           "Esta plaza ya tiene una reserva de visitante para ese día"
         );
       }
+      console.error("[visitantes] updateVisitorReservation update error", msg);
       throw new Error(`Error al actualizar reserva de visitante: ${msg}`);
     }
 
@@ -444,8 +446,12 @@ export const cancelVisitorReservation = actionClient
         .where(cancelConditions)
         .returning({ id: visitorReservations.id });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      throw new Error(`Error al cancelar reserva de visitante: ${msg}`);
+      console.error("[visitantes] cancelVisitorReservation update error", err);
+      throw new Error(
+        err instanceof Error
+          ? `Error al cancelar reserva de visitante: ${err.message}`
+          : "Error al cancelar reserva de visitante"
+      );
     }
 
     if (!updatedRows || updatedRows.length === 0) {

@@ -84,7 +84,8 @@ export function CessionsView({ spot, initialCessions }: CessionsViewProps) {
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error refreshing cessions:", error);
       toast.error("Error al actualizar cesiones");
     } finally {
       setIsRefreshing(false);
@@ -130,7 +131,8 @@ export function CessionsView({ spot, initialCessions }: CessionsViewProps) {
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error creating cessions:", error);
       toast.error("Error al crear cesiones");
     } finally {
       setIsCreating(false);
@@ -152,7 +154,8 @@ export function CessionsView({ spot, initialCessions }: CessionsViewProps) {
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error cancelling cession:", error);
       toast.error("Error al cancelar cesión");
     } finally {
       setCancellingId(null);

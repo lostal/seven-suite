@@ -130,9 +130,8 @@ describe("getTopSpots", () => {
 
   it("agrupa correctamente por etiqueta de plaza", async () => {
     setupSelectMock([
-      { spotLabel: "A-01", spotResourceType: "parking", spotEntityId: null },
-      { spotLabel: "A-01", spotResourceType: "parking", spotEntityId: null },
-      { spotLabel: "B-02", spotResourceType: "parking", spotEntityId: null },
+      { spotLabel: "A-01", count: 2 },
+      { spotLabel: "B-02", count: 1 },
     ]);
 
     const result = await getTopSpots();
@@ -144,10 +143,8 @@ describe("getTopSpots", () => {
 
   it("ordena por conteo descendente", async () => {
     setupSelectMock([
-      { spotLabel: "Z-99", spotResourceType: "parking", spotEntityId: null },
-      { spotLabel: "A-01", spotResourceType: "parking", spotEntityId: null },
-      { spotLabel: "A-01", spotResourceType: "parking", spotEntityId: null },
-      { spotLabel: "A-01", spotResourceType: "parking", spotEntityId: null },
+      { spotLabel: "A-01", count: 3 },
+      { spotLabel: "Z-99", count: 1 },
     ]);
 
     const result = await getTopSpots();
@@ -158,9 +155,8 @@ describe("getTopSpots", () => {
 
   it("respeta el límite especificado", async () => {
     setupSelectMock([
-      { spotLabel: "A-01", spotResourceType: "parking", spotEntityId: null },
-      { spotLabel: "B-02", spotResourceType: "parking", spotEntityId: null },
-      { spotLabel: "C-03", spotResourceType: "parking", spotEntityId: null },
+      { spotLabel: "A-01", count: 1 },
+      { spotLabel: "B-02", count: 1 },
     ]);
 
     const result = await getTopSpots(2);
@@ -169,9 +165,7 @@ describe("getTopSpots", () => {
   });
 
   it("usa '—' para plazas sin etiqueta (spotLabel null)", async () => {
-    setupSelectMock([
-      { spotLabel: null, spotResourceType: "parking", spotEntityId: null },
-    ]);
+    setupSelectMock([{ spotLabel: null, count: 1 }]);
 
     const result = await getTopSpots();
 

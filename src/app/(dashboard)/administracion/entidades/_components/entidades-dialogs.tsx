@@ -425,7 +425,9 @@ function EntidadModulesDialogInner({
   useEffect(() => {
     getEntityModuleStates(entityId)
       .then(setModuleStates)
-      .catch(() => {});
+      .catch((error: unknown) => {
+        console.error("Error loading entity module states:", error);
+      });
   }, [entityId]);
 
   const handleToggle = (moduleKey: EntityModuleKey, enabled: boolean) => {

@@ -95,7 +95,8 @@ export function ManagementCessionSheet({
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (err) {
+      console.error("[management-cession-sheet] Error al crear cesiones:", err);
       toast.error("Error al crear cesiones");
     } finally {
       setIsCreating(false);
@@ -114,7 +115,11 @@ export function ManagementCessionSheet({
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (err) {
+      console.error(
+        "[management-cession-sheet] Error al cancelar cesión:",
+        err
+      );
       toast.error("Error al cancelar cesión");
     } finally {
       setCancellingId(null);

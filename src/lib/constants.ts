@@ -10,9 +10,7 @@ export const APP_DESCRIPTION = "Sistema de gestión de espacios corporativos";
 
 /** Route paths */
 export const ROUTES = {
-  HOME: "/",
   LOGIN: "/login",
-  CALLBACK: "/auth/callback",
   DASHBOARD: "/panel",
   /** Home page for non-admin roles (employee) */
   PARKING: "/parking",
@@ -59,11 +57,6 @@ export function getHomeRouteForRole(
   if (role === "admin") return ROUTES.DASHBOARD;
   return ROUTES.PARKING;
 }
-
-/** External links */
-export const EXTERNAL = {
-  SEDE_ADDRESS: "Sede GRUPOSIETE, Madrid",
-} as const;
 
 // ─── Spot type labels ─────────────────────────────────────────────────────────
 //

@@ -25,7 +25,7 @@ import {
   getLeaveRequestsByEntity,
   type LeaveRequestWithDetails,
 } from "@/lib/queries/leave-requests";
-import { getHolidayDatesSet } from "@/lib/queries/holidays";
+import { getHolidayDatesSetForYears } from "@/lib/queries/holidays";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { eq, and } from "drizzle-orm";
 import { toServerDateStr } from "@/lib/utils";
@@ -49,13 +49,12 @@ async function calcWorkingDays(
     years.add(d.getFullYear());
   }
 
-  // Build a combined set of holiday dates for all years in the range
+  // Build a combined set of holiday dates for all years in the range (single query)
   const holidayDates = new Set<string>();
   if (entityId) {
-    for (const year of years) {
-      const yearHolidays = await getHolidayDatesSet(entityId, year);
-      yearHolidays.forEach((d) => holidayDates.add(d));
-    }
+    const allYears = Array.from(years);
+    const dates = await getHolidayDatesSetForYears(entityId, allYears);
+    dates.forEach((d) => holidayDates.add(d));
   }
 
   let count = 0;

@@ -153,7 +153,8 @@ export async function getMyFeedAnnouncements(): Promise<
     const entityId = await getEffectiveEntityId();
     const data = await getPublishedAnnouncements(entityId);
     return { success: true, data };
-  } catch {
+  } catch (err) {
+    console.error("[tablon] getMyFeedAnnouncements error:", err);
     return { success: false, error: "Error al cargar el tablón" };
   }
 }
@@ -166,7 +167,8 @@ export async function getManageAnnouncements(): Promise<
     const entityId = await getEffectiveEntityId();
     const data = await getAnnouncementsForManagement(entityId);
     return { success: true, data };
-  } catch {
+  } catch (err) {
+    console.error("[tablon] getManageAnnouncements error:", err);
     return { success: false, error: "Error al cargar los comunicados" };
   }
 }

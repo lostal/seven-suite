@@ -81,7 +81,8 @@ export function OfficeCessionSheet({
       } else {
         toast.error(result?.error ?? "Error al crear cesiones");
       }
-    } catch {
+    } catch (error) {
+      console.error("Error creating office cessions:", error);
       toast.error("Error al crear cesiones");
     } finally {
       setIsCreating(false);
@@ -99,7 +100,8 @@ export function OfficeCessionSheet({
       } else {
         toast.error(result?.error ?? "Error al cancelar cesión");
       }
-    } catch {
+    } catch (error) {
+      console.error("Error cancelling office cession:", error);
       toast.error("Error al cancelar cesión");
     } finally {
       setCancellingId(null);

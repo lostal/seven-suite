@@ -223,7 +223,39 @@ export function ListView() {
   // Format date for the server action (YYYY-MM-DD)
   const dateStr = format(selectedDate, "yyyy-MM-dd");
 
-  // Fetch available spots and user reservations
+  React.useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setLoading(true);
+    });
+    Promise.all([getAvailableSpotsForDate(dateStr), getMyParkingReservations()])
+      .then(([spotsResult, reservationsResult]) => {
+        if (cancelled) return;
+        if (spotsResult.success) {
+          setSpots(spotsResult.data);
+        } else {
+          toast.error(spotsResult.error);
+        }
+        if (reservationsResult.success) {
+          setMyReservations(reservationsResult.data);
+        } else {
+          toast.error(reservationsResult.error);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Error loading data:", error);
+        toast.error("Error al cargar los datos");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dateStr]);
+
+  // Fetch available spots and user reservations (for manual refresh)
   const fetchData = React.useCallback(async () => {
     setLoading(true);
     try {
@@ -243,16 +275,13 @@ export function ListView() {
       } else {
         toast.error(reservationsResult.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error loading data:", error);
       toast.error("Error al cargar los datos");
     } finally {
       setLoading(false);
     }
   }, [dateStr]);
-
-  React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   // Book a spot
   const handleBook = async (spotId: string) => {
@@ -269,7 +298,8 @@ export function ListView() {
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error booking spot:", error);
       toast.error("Error al reservar la plaza");
     } finally {
       setBookingSpotId(null);
@@ -288,7 +318,8 @@ export function ListView() {
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error cancelling reservation:", error);
       toast.error("Error al cancelar la reserva");
     } finally {
       setCancellingId(null);

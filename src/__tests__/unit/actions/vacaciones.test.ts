@@ -18,6 +18,7 @@ vi.mock("@/lib/queries/active-entity", () => ({
 }));
 vi.mock("@/lib/queries/holidays", () => ({
   getHolidayDatesSet: vi.fn().mockResolvedValue(new Set<string>()),
+  getHolidayDatesSetForYears: vi.fn().mockResolvedValue(new Set<string>()),
 }));
 vi.mock("@/lib/queries/leave-requests", () => ({
   getUserLeaveRequests: vi.fn().mockResolvedValue([]),

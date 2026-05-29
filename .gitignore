@@ -22,10 +22,6 @@
 Thumbs.db
 desktop.ini
 *.pem
-.claude
-
-# shadcn-admin (referencia local, no forma parte del proyecto)
-/shadcn-admin/
 
 # debug
 npm-debug.log*
@@ -61,5 +57,3 @@ AGENTS.md
 agents.md
 .agent
 .agents
-
-docs/INSTRUCCIONES/pySigHor/

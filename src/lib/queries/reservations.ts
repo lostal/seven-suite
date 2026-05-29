@@ -12,7 +12,7 @@ import {
 } from "@/lib/db/schema";
 import type { ResourceType } from "@/lib/db/types";
 import { toServerDateStr } from "@/lib/utils";
-import { eq, and, gte, inArray, desc, asc } from "drizzle-orm";
+import { eq, and, gte, inArray, desc, asc, or, isNull } from "drizzle-orm";
 
 /**
  * Fila de reserva — tipo compatible con los callers existentes (snake_case).
@@ -51,6 +51,16 @@ export async function getReservationsByDate(
     eq(reservationsTable.status, "confirmed"),
   ];
 
+  if (resourceType) {
+    conditions.push(eq(spotsTable.resourceType, resourceType));
+  }
+
+  if (entityId) {
+    conditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
+  }
+
   const rows = await db
     .select({
       id: reservationsTable.id,
@@ -65,7 +75,6 @@ export async function getReservationsByDate(
       updated_at: reservationsTable.updatedAt,
       spot_label: spotsTable.label,
       spot_resource_type: spotsTable.resourceType,
-      spot_entity_id: spotsTable.entityId,
       user_name: profilesTable.fullName,
     })
     .from(reservationsTable)
@@ -74,31 +83,23 @@ export async function getReservationsByDate(
     .where(and(...conditions))
     .orderBy(desc(reservationsTable.createdAt));
 
-  return rows
-    .filter((r) => {
-      if (resourceType && r.spot_resource_type !== resourceType) return false;
-      if (entityId) {
-        return r.spot_entity_id === entityId || r.spot_entity_id === null;
-      }
-      return true;
+  return rows.map(
+    (r): ReservationRow => ({
+      id: r.id,
+      spot_id: r.spot_id,
+      user_id: r.user_id,
+      date: r.date,
+      status: r.status,
+      notes: r.notes,
+      start_time: r.start_time,
+      end_time: r.end_time,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      spot_label: r.spot_label,
+      user_name: r.user_name ?? "",
+      resource_type: r.spot_resource_type as ResourceType,
     })
-    .map(
-      (r): ReservationRow => ({
-        id: r.id,
-        spot_id: r.spot_id,
-        user_id: r.user_id,
-        date: r.date,
-        status: r.status,
-        notes: r.notes,
-        start_time: r.start_time,
-        end_time: r.end_time,
-        created_at: r.created_at,
-        updated_at: r.updated_at,
-        spot_label: r.spot_label,
-        user_name: r.user_name ?? "",
-        resource_type: r.spot_resource_type as ResourceType,
-      })
-    );
+  );
 }
 
 /**
@@ -114,6 +115,22 @@ export async function getUserReservations(
 ): Promise<ReservationRow[]> {
   const today = toServerDateStr(new Date());
 
+  const conditions = [
+    eq(reservationsTable.userId, userId),
+    eq(reservationsTable.status, "confirmed"),
+    gte(reservationsTable.date, today),
+  ];
+
+  if (resourceType) {
+    conditions.push(eq(spotsTable.resourceType, resourceType));
+  }
+
+  if (entityId) {
+    conditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
+  }
+
   const rows = await db
     .select({
       id: reservationsTable.id,
@@ -128,46 +145,31 @@ export async function getUserReservations(
       updated_at: reservationsTable.updatedAt,
       spot_label: spotsTable.label,
       spot_resource_type: spotsTable.resourceType,
-      spot_entity_id: spotsTable.entityId,
       user_name: profilesTable.fullName,
     })
     .from(reservationsTable)
     .innerJoin(spotsTable, eq(reservationsTable.spotId, spotsTable.id))
     .innerJoin(profilesTable, eq(reservationsTable.userId, profilesTable.id))
-    .where(
-      and(
-        eq(reservationsTable.userId, userId),
-        eq(reservationsTable.status, "confirmed"),
-        gte(reservationsTable.date, today)
-      )
-    )
+    .where(and(...conditions))
     .orderBy(asc(reservationsTable.date));
 
-  return rows
-    .filter((r) => {
-      if (resourceType && r.spot_resource_type !== resourceType) return false;
-      if (entityId) {
-        return r.spot_entity_id === entityId || r.spot_entity_id === null;
-      }
-      return true;
+  return rows.map(
+    (r): ReservationRow => ({
+      id: r.id,
+      spot_id: r.spot_id,
+      user_id: r.user_id,
+      date: r.date,
+      status: r.status,
+      notes: r.notes,
+      start_time: r.start_time,
+      end_time: r.end_time,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      spot_label: r.spot_label,
+      user_name: r.user_name ?? "",
+      resource_type: r.spot_resource_type as ResourceType,
     })
-    .map(
-      (r): ReservationRow => ({
-        id: r.id,
-        spot_id: r.spot_id,
-        user_id: r.user_id,
-        date: r.date,
-        status: r.status,
-        notes: r.notes,
-        start_time: r.start_time,
-        end_time: r.end_time,
-        created_at: r.created_at,
-        updated_at: r.updated_at,
-        spot_label: r.spot_label,
-        user_name: r.user_name ?? "",
-        resource_type: r.spot_resource_type as ResourceType,
-      })
-    );
+  );
 }
 
 /**

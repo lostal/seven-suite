@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
@@ -70,7 +70,7 @@ const systemSections = [
   },
 ] as const;
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <div className="text-muted-foreground px-2 pt-3 pb-1 text-[11px] font-medium">
       {children}

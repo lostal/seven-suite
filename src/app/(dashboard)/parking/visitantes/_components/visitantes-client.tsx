@@ -24,6 +24,33 @@ export function VisitantesClient({
   const [data, setData] = React.useState<VisitorReservationWithDetails[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setIsLoading(true);
+    });
+    getVisitorReservationsAction()
+      .then((result) => {
+        if (cancelled) return;
+        if (result.success) {
+          setData(result.data);
+        } else {
+          toast.error(result.error);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Error loading visitor reservations:", error);
+        toast.error("Error al cargar las reservas de visitantes");
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     try {
@@ -33,16 +60,13 @@ export function VisitantesClient({
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error loading visitor reservations:", error);
       toast.error("Error al cargar las reservas de visitantes");
     } finally {
       setIsLoading(false);
     }
   }, []);
-
-  React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   return (
     <VisitantesProvider

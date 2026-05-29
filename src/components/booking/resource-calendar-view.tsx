@@ -219,13 +219,58 @@ export function ResourceCalendarView({
 
   // ── Refresco tras acción ──────────────────────────────────
 
-  const handleActionSuccess = () => {
+  const handleActionSuccess = React.useCallback(() => {
     monthCache.current.delete(format(currentMonthRef.current, "yyyy-MM"));
     setCessionSelected(new Set());
     setCessionSheetOpen(false);
     setBookingSheetDate(null);
     void loadMonth(currentMonthRef.current);
-  };
+  }, [loadMonth]);
+
+  const bookingSheet = React.useMemo(
+    () =>
+      !hasAssignedSpot
+        ? // eslint-disable-next-line react-hooks/refs
+          renderBookingSheet({
+            date: bookingSheetDate,
+            data: bookingSheetDate ? dayData.get(bookingSheetDate) : undefined,
+            onClose: () => setBookingSheetDate(null),
+            onSuccess: handleActionSuccess,
+          })
+        : null,
+    [
+      hasAssignedSpot,
+      bookingSheetDate,
+      dayData,
+      renderBookingSheet,
+      handleActionSuccess,
+    ]
+  );
+
+  const cessionSheet = React.useMemo(
+    () =>
+      hasAssignedSpot && assignedSpot
+        ? // eslint-disable-next-line react-hooks/refs
+          renderCessionSheet({
+            open: cessionSheetOpen,
+            selectedDates: cessionSelected,
+            spotId: assignedSpot.id,
+            spotLabel: assignedSpot.label,
+            dayData,
+            onClose: () => setCessionSheetOpen(false),
+            onSuccess: handleActionSuccess,
+          })
+        : null,
+    [
+      hasAssignedSpot,
+      assignedSpot,
+      cessionSheetOpen,
+      cessionSelected,
+      dayData,
+      renderCessionSheet,
+      handleActionSuccess,
+    ]
+  );
 
   return (
     <div className="relative">
@@ -241,13 +286,7 @@ export function ResourceCalendarView({
       />
 
       {/* Sheet modo reserva (sin plaza/puesto asignado) */}
-      {!hasAssignedSpot &&
-        renderBookingSheet({
-          date: bookingSheetDate,
-          data: bookingSheetDate ? dayData.get(bookingSheetDate) : undefined,
-          onClose: () => setBookingSheetDate(null),
-          onSuccess: handleActionSuccess,
-        })}
+      {bookingSheet}
 
       {/* Barra de confirmación del modo cesión */}
       {hasAssignedSpot && assignedSpot && (
@@ -291,17 +330,7 @@ export function ResourceCalendarView({
       )}
 
       {/* Sheet modo cesión */}
-      {hasAssignedSpot &&
-        assignedSpot &&
-        renderCessionSheet({
-          open: cessionSheetOpen,
-          selectedDates: cessionSelected,
-          spotId: assignedSpot.id,
-          spotLabel: assignedSpot.label,
-          dayData,
-          onClose: () => setCessionSheetOpen(false),
-          onSuccess: handleActionSuccess,
-        })}
+      {cessionSheet}
 
       {/* Aviso si el usuario no tiene plaza/puesto asignado */}
       {hasAssignedSpot && !assignedSpot && (

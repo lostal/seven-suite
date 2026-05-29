@@ -14,7 +14,7 @@ import {
   profiles as profilesTable,
 } from "@/lib/db/schema";
 import { toServerDateStr } from "@/lib/utils";
-import { eq, and, gte, lte, ne, desc, or, isNull } from "drizzle-orm";
+import { eq, and, gte, lte, ne, desc, or, isNull, count } from "drizzle-orm";
 
 function currentMonthBounds(): { firstOfMonth: string; lastOfMonth: string } {
   const now = new Date();
@@ -185,22 +185,21 @@ export async function getTopSpots(
   }
 
   const rows = await db
-    .select({ spotLabel: spotsTable.label })
+    .select({
+      spotLabel: spotsTable.label,
+      count: count(),
+    })
     .from(reservationsTable)
     .innerJoin(spotsTable, eq(reservationsTable.spotId, spotsTable.id))
-    .where(and(...conditions));
+    .where(and(...conditions))
+    .groupBy(spotsTable.label)
+    .orderBy(desc(count()))
+    .limit(limit);
 
-  // Agrupar por plaza
-  const countBySpot = new Map<string, number>();
-  for (const r of rows) {
-    const label = r.spotLabel ?? "—";
-    countBySpot.set(label, (countBySpot.get(label) ?? 0) + 1);
-  }
-
-  return Array.from(countBySpot.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([spot_label, count]) => ({ spot_label, count }));
+  return rows.map((r) => ({
+    spot_label: r.spotLabel ?? "—",
+    count: r.count,
+  }));
 }
 
 /**

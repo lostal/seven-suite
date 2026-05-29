@@ -133,6 +133,12 @@ export const assignSpotToUserSchema = z.object({
 
 export type AssignSpotToUserInput = z.infer<typeof assignSpotToUserSchema>;
 
+export const assignUserToSpotSchema = z.object({
+  spot_id: z.string().uuid(),
+  user_id: z.string().uuid().nullable(),
+  resource_type: z.enum(["parking", "office"]),
+});
+
 // ─── Settings: Profile ───────────────────────────────────────
 
 export const updateProfileSchema = z.object({
@@ -394,7 +400,10 @@ export type CancelLeaveRequestInput = z.infer<typeof cancelLeaveRequestSchema>;
 
 export const createAnnouncementSchema = z.object({
   title: z.string().min(1, "Título requerido").max(200),
-  body: z.string().min(1, "El contenido no puede estar vacío"),
+  body: z
+    .string()
+    .min(1, "El contenido no puede estar vacío")
+    .max(10000, "El contenido no puede exceder 10.000 caracteres"),
   entity_id: z.string().uuid().nullable().optional(),
   publish: z.boolean().optional(),
 });
@@ -403,7 +412,11 @@ export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 export const updateAnnouncementSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1, "Título requerido").max(200).optional(),
-  body: z.string().min(1, "El contenido no puede estar vacío").optional(),
+  body: z
+    .string()
+    .min(1, "El contenido no puede estar vacío")
+    .max(10000, "El contenido no puede exceder 10.000 caracteres")
+    .optional(),
   entity_id: z.string().uuid().nullable().optional(),
   publish: z.boolean().optional(),
 });

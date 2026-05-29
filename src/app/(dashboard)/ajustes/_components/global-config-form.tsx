@@ -40,6 +40,7 @@ export function GlobalConfigForm({ config }: GlobalConfigFormProps) {
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() es el patrón estándar de RHF
   const values = watch();
 
   const onSubmit = async (data: UpdateGlobalConfigInput) => {
@@ -51,7 +52,8 @@ export function GlobalConfigForm({ config }: GlobalConfigFormProps) {
         return;
       }
       toast.success("Configuración guardada correctamente");
-    } catch {
+    } catch (error) {
+      console.error("Error saving global config:", error);
       toast.error("Error inesperado al guardar la configuración");
     } finally {
       setIsLoading(false);

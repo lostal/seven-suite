@@ -73,30 +73,19 @@ export async function getCessionsByDate(
     .where(and(...conditions))
     .orderBy(desc(cessionsTable.createdAt));
 
-  return rows
-    .filter((c) => {
-      if (resourceType && c.spot_resource_type !== resourceType) {
-        console.warn(
-          "[cessions] getCessionsByDate: fila descartada por resource_type incorrecto",
-          { id: c.id, expected: resourceType, got: c.spot_resource_type }
-        );
-        return false;
-      }
-      return true;
+  return rows.map(
+    (c): CessionWithDetails => ({
+      id: c.id,
+      spot_id: c.spot_id,
+      user_id: c.user_id,
+      date: c.date,
+      status: c.status,
+      created_at: c.created_at,
+      spot_label: c.spot_label,
+      user_name: c.user_name ?? "",
+      resource_type: c.spot_resource_type as ResourceType,
     })
-    .map(
-      (c): CessionWithDetails => ({
-        id: c.id,
-        spot_id: c.spot_id,
-        user_id: c.user_id,
-        date: c.date,
-        status: c.status,
-        created_at: c.created_at,
-        spot_label: c.spot_label,
-        user_name: c.user_name ?? "",
-        resource_type: c.spot_resource_type as ResourceType,
-      })
-    );
+  );
 }
 
 /**
@@ -145,28 +134,17 @@ export async function getUserCessions(
     .where(and(...conditions))
     .orderBy(asc(cessionsTable.date));
 
-  return rows
-    .filter((c) => {
-      if (resourceType && c.spot_resource_type !== resourceType) {
-        console.warn(
-          "[cessions] getUserCessions: fila descartada por resource_type incorrecto",
-          { id: c.id, expected: resourceType, got: c.spot_resource_type }
-        );
-        return false;
-      }
-      return true;
+  return rows.map(
+    (c): CessionWithDetails => ({
+      id: c.id,
+      spot_id: c.spot_id,
+      user_id: c.user_id,
+      date: c.date,
+      status: c.status,
+      created_at: c.created_at,
+      spot_label: c.spot_label,
+      user_name: c.user_name ?? "",
+      resource_type: c.spot_resource_type as ResourceType,
     })
-    .map(
-      (c): CessionWithDetails => ({
-        id: c.id,
-        spot_id: c.spot_id,
-        user_id: c.user_id,
-        date: c.date,
-        status: c.status,
-        created_at: c.created_at,
-        spot_label: c.spot_label,
-        user_name: c.user_name ?? "",
-        resource_type: c.spot_resource_type as ResourceType,
-      })
-    );
+  );
 }

@@ -77,33 +77,45 @@ export function OfficeDaySheet({
 
   const isOpen = date !== null;
 
-  const stableReservationId = React.useRef(myReservationId);
-  const stableSpotLabel = React.useRef(myReservationSpotLabel);
-  const stableStartTime = React.useRef(myReservationStartTime);
-  const stableEndTime = React.useRef(myReservationEndTime);
-  const stableSkeletonCount = React.useRef(availableCount ?? 3);
+  const [stableReservationId, setStableReservationId] =
+    React.useState(myReservationId);
+  const [stableSpotLabel, setStableSpotLabel] = React.useState(
+    myReservationSpotLabel
+  );
+  const [stableStartTime, setStableStartTime] = React.useState(
+    myReservationStartTime
+  );
+  const [stableEndTime, setStableEndTime] =
+    React.useState(myReservationEndTime);
+  const [stableSkeletonCount, setStableSkeletonCount] = React.useState(
+    availableCount ?? 3
+  );
 
-  if (isOpen) {
-    stableReservationId.current = myReservationId;
-    stableSpotLabel.current = myReservationSpotLabel;
-    stableStartTime.current = myReservationStartTime;
-    stableEndTime.current = myReservationEndTime;
-    if (availableCount !== undefined)
-      stableSkeletonCount.current = availableCount;
-  }
+  // Sincroniza los valores estables solo cuando el sheet está abierto.
+  /* eslint-disable react-hooks/set-state-in-effect -- patrón de "freeze" necesario para evitar pop visual al cerrar el sheet */
+  React.useEffect(() => {
+    if (isOpen) {
+      setStableReservationId(myReservationId);
+      setStableSpotLabel(myReservationSpotLabel);
+      setStableStartTime(myReservationStartTime);
+      setStableEndTime(myReservationEndTime);
+      if (availableCount !== undefined) setStableSkeletonCount(availableCount);
+    }
+  }, [
+    isOpen,
+    myReservationId,
+    myReservationSpotLabel,
+    myReservationStartTime,
+    myReservationEndTime,
+    availableCount,
+  ]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Limpiar selección de franja al cambiar puesto o día
   const handleSelectSpot = React.useCallback((spot: SpotWithStatus | null) => {
     setSelectedSpot(spot);
     setSelectedSlot(null);
   }, []);
-
-  React.useEffect(() => {
-    if (!date) return;
-    setSelectedSpot(null);
-    setSelectedSlot(null);
-    loadSpots(date);
-  }, [date]);
 
   const loadSpots = async (d: string) => {
     setLoading(true);
@@ -115,13 +127,23 @@ export function OfficeDaySheet({
         toast.error(result.error ?? "Error al cargar los puestos");
         setSpots([]);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error loading office spots:", error);
       toast.error("Error al cargar los puestos");
       setSpots([]);
     } finally {
       setLoading(false);
     }
   };
+
+  /* eslint-disable react-hooks/set-state-in-effect -- data fetching + reseteo de selección al cambiar de día */
+  React.useEffect(() => {
+    if (!date) return;
+    setSelectedSpot(null);
+    setSelectedSlot(null);
+    loadSpots(date);
+  }, [date]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleBook = async (spot: SpotWithStatus) => {
     if (!date) return;
@@ -148,10 +170,9 @@ export function OfficeDaySheet({
       } else if (result && !result.success) {
         toast.error(result.error ?? "Error al reservar");
       }
-    } catch {
+    } catch (error) {
+      console.error("Error booking office spot:", error);
       toast.error("Error al reservar");
-    } finally {
-      setBookingSpotId(null);
     }
   };
 
@@ -167,10 +188,9 @@ export function OfficeDaySheet({
       } else if (result && !result.success) {
         toast.error(result.error ?? "Error al cancelar");
       }
-    } catch {
+    } catch (error) {
+      console.error("Error cancelling office reservation:", error);
       toast.error("Error al cancelar");
-    } finally {
-      setCancelling(false);
     }
   };
 
@@ -208,7 +228,7 @@ export function OfficeDaySheet({
             <>
               <SheetTitle className="capitalize">{dateLabel}</SheetTitle>
               <SheetDescription>
-                {stableReservationId.current
+                {stableReservationId
                   ? "Ya tienes un puesto reservado para este día"
                   : loading
                     ? "Cargando puestos disponibles…"
@@ -276,7 +296,7 @@ export function OfficeDaySheet({
             {!isInSlotSelectionMode && (
               <>
                 {/* Reserva existente */}
-                {stableReservationId.current && (
+                {stableReservationId && (
                   <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
                     <div className="flex items-center gap-3">
                       <div className="rounded-lg bg-blue-100 p-2.5 dark:bg-blue-900/50">
@@ -284,14 +304,14 @@ export function OfficeDaySheet({
                       </div>
                       <div>
                         <p className="text-sm font-semibold">
-                          {stableSpotLabel.current
-                            ? `Puesto ${stableSpotLabel.current}`
+                          {stableSpotLabel
+                            ? `Puesto ${stableSpotLabel}`
                             : "Puesto reservado"}
                         </p>
-                        {stableStartTime.current ? (
+                        {stableStartTime ? (
                           <p className="text-muted-foreground text-xs">
-                            {stableStartTime.current.slice(0, 5)}–
-                            {stableEndTime.current?.slice(0, 5) ?? ""}
+                            {stableStartTime.slice(0, 5)}–
+                            {stableEndTime?.slice(0, 5) ?? ""}
                           </p>
                         ) : (
                           <p className="text-muted-foreground text-xs">
@@ -320,10 +340,10 @@ export function OfficeDaySheet({
                 )}
 
                 {/* Lista de puestos */}
-                {!stableReservationId.current && (
+                {!stableReservationId && (
                   <div className="space-y-3">
                     {loading ? (
-                      Array.from({ length: stableSkeletonCount.current }).map(
+                      Array.from({ length: stableSkeletonCount }).map(
                         (_, i) => (
                           <Skeleton
                             key={i}

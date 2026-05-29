@@ -70,21 +70,25 @@ export function EmployeeDaySheet({
 
   // Congela los valores visibles mientras el sheet se cierra para evitar pop visual.
   // Solo se actualizan cuando el sheet está abierto (isOpen=true).
-  const stableReservationId = React.useRef(myReservationId);
-  const stableSpotLabel = React.useRef(myReservationSpotLabel);
-  const stableSkeletonCount = React.useRef(availableCount ?? 3);
-  if (isOpen) {
-    stableReservationId.current = myReservationId;
-    stableSpotLabel.current = myReservationSpotLabel;
-    if (availableCount !== undefined)
-      stableSkeletonCount.current = availableCount;
-  }
+  const [stableReservationId, setStableReservationId] =
+    React.useState(myReservationId);
+  const [stableSpotLabel, setStableSpotLabel] = React.useState(
+    myReservationSpotLabel
+  );
+  const [stableSkeletonCount, setStableSkeletonCount] = React.useState(
+    availableCount ?? 3
+  );
 
-  // Cargar plazas al abrir; al cerrar no borrar el contenido (animación suave)
+  // Sincroniza los valores estables solo cuando el sheet está abierto.
+  /* eslint-disable react-hooks/set-state-in-effect -- patrón de "freeze" necesario para evitar pop visual al cerrar el sheet */
   React.useEffect(() => {
-    if (!date) return;
-    loadSpots(date);
-  }, [date]);
+    if (isOpen) {
+      setStableReservationId(myReservationId);
+      setStableSpotLabel(myReservationSpotLabel);
+      if (availableCount !== undefined) setStableSkeletonCount(availableCount);
+    }
+  }, [isOpen, myReservationId, myReservationSpotLabel, availableCount]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const loadSpots = async (d: string) => {
     setLoading(true);
@@ -96,13 +100,22 @@ export function EmployeeDaySheet({
         toast.error(result.error);
         setSpots([]);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error loading spots:", error);
       toast.error("Error al cargar las plazas");
       setSpots([]);
     } finally {
       setLoading(false);
     }
   };
+
+  // Cargar plazas al abrir; al cerrar no borrar el contenido (animación suave)
+  /* eslint-disable react-hooks/set-state-in-effect -- data fetching legítimo, sin alternativa en React 19 sin librería externa */
+  React.useEffect(() => {
+    if (!date) return;
+    loadSpots(date);
+  }, [date]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleBook = async (spotId: string) => {
     if (!date) return;
@@ -116,7 +129,8 @@ export function EmployeeDaySheet({
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error booking:", error);
       toast.error("Error al reservar");
     } finally {
       setBookingId(null);
@@ -135,7 +149,8 @@ export function EmployeeDaySheet({
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error cancelling:", error);
       toast.error("Error al cancelar");
     } finally {
       setCancelling(false);
@@ -155,7 +170,7 @@ export function EmployeeDaySheet({
         <SheetHeader className="px-6 pb-4">
           <SheetTitle className="capitalize">{dateLabel}</SheetTitle>
           <SheetDescription>
-            {stableReservationId.current
+            {stableReservationId
               ? "Ya tienes una plaza reservada para este día"
               : loading
                 ? "Cargando plazas disponibles…"
@@ -168,7 +183,7 @@ export function EmployeeDaySheet({
         <ScrollArea className="min-h-0 flex-1">
           <div className="space-y-3 px-6 pb-6">
             {/* Reserva existente del usuario */}
-            {stableReservationId.current && (
+            {stableReservationId && (
               <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
                 <div className="flex items-center gap-3">
                   <div className="rounded-lg bg-blue-100 p-2.5 dark:bg-blue-900/50">
@@ -176,8 +191,8 @@ export function EmployeeDaySheet({
                   </div>
                   <div>
                     <p className="text-sm font-semibold">
-                      {stableSpotLabel.current
-                        ? `Plaza ${stableSpotLabel.current}`
+                      {stableSpotLabel
+                        ? `Plaza ${stableSpotLabel}`
                         : "Plaza reservada"}
                     </p>
                     <p className="text-muted-foreground text-xs">
@@ -205,14 +220,12 @@ export function EmployeeDaySheet({
             )}
 
             {/* Lista de plazas disponibles */}
-            {!stableReservationId.current && (
+            {!stableReservationId && (
               <div className="space-y-3">
                 {loading ? (
-                  Array.from({ length: stableSkeletonCount.current }).map(
-                    (_, i) => (
-                      <Skeleton key={i} className="h-18 w-full rounded-xl" />
-                    )
-                  )
+                  Array.from({ length: stableSkeletonCount }).map((_, i) => (
+                    <Skeleton key={i} className="h-18 w-full rounded-xl" />
+                  ))
                 ) : spots.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-center">
                     <div className="bg-muted mb-3 rounded-full p-4">

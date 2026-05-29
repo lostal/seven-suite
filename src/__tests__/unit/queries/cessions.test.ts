@@ -46,28 +46,13 @@ describe("getUserCessions", () => {
     resetDbMocks();
   });
 
-  it("filtra filas con resource_type incorrecto (no devuelve filas con resource_type erróneo)", async () => {
-    // With Drizzle INNER JOIN, rows with incorrect resource_type are filtered by JS guard.
-    setupSelectMock([makeCessionRow({ spotResourceType: "office" })]);
+  it("el filtro resourceType se aplica mediante SQL", async () => {
+    setupSelectMock([makeCessionRow({ spotResourceType: "parking" })]);
 
     const result = await getUserCessions(USER_ID, "parking");
 
-    expect(result).toHaveLength(0);
-  });
-
-  it("filtra filas con resource_type incorrecto y emite console.warn", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    setupSelectMock([makeCessionRow({ spotResourceType: "office" })]);
-
-    const result = await getUserCessions(USER_ID, "parking");
-
-    expect(result).toHaveLength(0);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("getUserCessions"),
-      expect.objectContaining({ expected: "parking", got: "office" })
-    );
-
-    warnSpy.mockRestore();
+    expect(result).toHaveLength(1);
+    expect(result[0]?.resource_type).toBe("parking");
   });
 
   it("happy path: devuelve cesión con resource_type correcto", async () => {
@@ -133,18 +118,13 @@ describe("getCessionsByDate", () => {
     }
   });
 
-  it("descarta filas con resourceType incorrecto y emite console.warn", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    setupSelectMock([makeCessionRow({ spotResourceType: "office" })]);
+  it("filtra por resourceType mediante SQL (no JS guard)", async () => {
+    setupSelectMock([makeCessionRow({ spotResourceType: "parking" })]);
 
     const result = await getCessionsByDate("2026-06-01", "parking");
 
-    expect(result).toHaveLength(0);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("getCessionsByDate"),
-      expect.objectContaining({ expected: "parking", got: "office" })
-    );
-    warnSpy.mockRestore();
+    expect(result).toHaveLength(1);
+    expect(result[0]?.resource_type).toBe("parking");
   });
 
   it("mapea user_name null a string vacía", async () => {

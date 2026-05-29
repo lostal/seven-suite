@@ -374,18 +374,6 @@ export function ReservationsView() {
   const [bookingSpotId, setBookingSpotId] = React.useState<string | null>(null);
   const [cancellingId, setCancellingId] = React.useState<string | null>(null);
 
-  // Load user reservations on mount
-  React.useEffect(() => {
-    loadMyReservations();
-  }, []);
-
-  // Load spots when date changes
-  React.useEffect(() => {
-    if (selectedDate) {
-      loadSpotsForDate(selectedDate);
-    }
-  }, [selectedDate]);
-
   const loadMyReservations = async () => {
     try {
       const result = await getMyParkingReservations();
@@ -394,7 +382,8 @@ export function ReservationsView() {
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error loading reservations:", error);
       toast.error("Error al cargar tus reservas");
     }
   };
@@ -411,13 +400,68 @@ export function ReservationsView() {
         toast.error(result.error);
         setSpots([]);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error loading spots:", error);
       toast.error("Error al cargar las plazas");
       setSpots([]);
     } finally {
       setLoading(false);
     }
   };
+
+  // Load user reservations on mount
+  React.useEffect(() => {
+    let cancelled = false;
+    getMyParkingReservations()
+      .then((result) => {
+        if (cancelled) return;
+        if (result.success) {
+          setMyReservations(result.data);
+        } else {
+          toast.error(result.error);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Error loading reservations:", error);
+        toast.error("Error al cargar tus reservas");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Load spots when date changes
+  React.useEffect(() => {
+    if (!selectedDate) return;
+    let cancelled = false;
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
+    queueMicrotask(() => {
+      if (!cancelled) setLoading(true);
+    });
+    getAvailableSpotsForDate(dateStr)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.success) {
+          setSpots(result.data);
+        } else {
+          toast.error(result.error);
+          setSpots([]);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Error loading spots:", error);
+        toast.error("Error al cargar las plazas");
+        setSpots([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate]);
 
   const handleSelectDate = (date: Date) => {
     setSelectedDate(date);
@@ -443,7 +487,8 @@ export function ReservationsView() {
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error booking spot:", error);
       toast.error("Error al reservar la plaza");
     } finally {
       setBookingSpotId(null);
@@ -464,7 +509,8 @@ export function ReservationsView() {
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error cancelling reservation:", error);
       toast.error("Error al cancelar la reserva");
     } finally {
       setCancellingId(null);

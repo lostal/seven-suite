@@ -498,7 +498,8 @@ export function MisReservasClient({
       } else {
         toast.error(result?.error ?? "Error al cancelar");
       }
-    } catch {
+    } catch (error) {
+      console.error("Error cancelling reservation:", error);
       toast.error("Error al cancelar la reserva");
     } finally {
       setCancellingId(null);
@@ -524,7 +525,8 @@ export function MisReservasClient({
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error cancelling cession:", error);
       toast.error("Error al cancelar la cesión");
     } finally {
       setCancellingId(null);

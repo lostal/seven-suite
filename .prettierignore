@@ -1,5 +1,8 @@
 pnpm-lock.yaml
-shadcn-admin
+playwright-report
+test-results
+out
+build
 .agent
 .agents
 coverage

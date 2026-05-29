@@ -50,7 +50,8 @@ export function VisitorsDeleteDialog({
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error cancelling visitor reservation:", error);
       toast.error("Error al cancelar la reserva");
     } finally {
       setIsLoading(false);

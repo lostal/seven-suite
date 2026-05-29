@@ -91,7 +91,8 @@ export function ManageLeaveClient({
       const result = await getEntityLeaveRequests();
       if (result.success) setData(result.data);
       else toast.error(result.error);
-    } catch {
+    } catch (error) {
+      console.error("Error loading leave requests:", error);
       toast.error("Error al cargar las solicitudes");
     } finally {
       setIsLoading(false);

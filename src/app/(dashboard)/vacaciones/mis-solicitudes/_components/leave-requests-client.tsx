@@ -45,7 +45,8 @@ export function LeaveRequestsClient({
       } else {
         toast.error(result.error);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error loading my leave requests:", error);
       toast.error("Error al cargar las solicitudes");
     } finally {
       setIsLoading(false);

@@ -53,12 +53,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "coverage/**",
     "playwright-report/**",
-    "src/lib/supabase/database.types.ts", // auto-generated
-    "shadcn-admin/**", // plantilla de referencia
-    "skills/**", // archivos de skills
-    ".agent/**", // agentes de VS Code
-    ".agents/**", // agentes de VS Code
-    ".claude/worktrees/**", // worktrees temporales de Claude Code
+    ".agent/**",
+    ".agents/**",
   ]),
 ]);
 

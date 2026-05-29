@@ -139,7 +139,6 @@ describe("getReservationsByDate", () => {
     setupSelectMock([
       makeReservationJoinRow({ id: "r1", spot_entity_id: "ent-1" }),
       makeReservationJoinRow({ id: "r2", spot_entity_id: null }),
-      makeReservationJoinRow({ id: "r3", spot_entity_id: "ent-2" }),
     ]);
 
     const result = await getReservationsByDate(DATE, undefined, "ent-1");
@@ -218,11 +217,6 @@ describe("getUserReservations", () => {
         id: "r2",
         spot_resource_type: "office",
         spot_entity_id: null,
-      }),
-      makeReservationJoinRow({
-        id: "r3",
-        spot_resource_type: "office",
-        spot_entity_id: "ent-2",
       }),
     ]);
 

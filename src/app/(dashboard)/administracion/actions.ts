@@ -12,7 +12,6 @@ import { db } from "@/lib/db";
 import { profiles, spots, users } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
-import { z } from "zod/v4";
 import { logAuditEvent } from "@/lib/audit";
 import {
   createSpotSchema,
@@ -20,6 +19,7 @@ import {
   deleteSpotSchema,
   updateUserRoleSchema,
   assignSpotToUserSchema,
+  assignUserToSpotSchema,
   deleteUserSchema,
 } from "@/lib/validations";
 import { getActiveEntityId } from "@/lib/queries/active-entity";
@@ -346,13 +346,7 @@ export const assignSpotToUser = actionClient
  * Asigna (o desasigna) un usuario a una plaza — perspectiva desde la plaza.
  */
 export const assignUserToSpot = actionClient
-  .schema(
-    z.object({
-      spot_id: z.string().uuid(),
-      user_id: z.string().uuid().nullable(),
-      resource_type: z.enum(["parking", "office"]),
-    })
-  )
+  .schema(assignUserToSpotSchema)
   .action(async ({ parsedInput }) => {
     const { spot_id, user_id, resource_type } = parsedInput;
     await requireAdmin();
