@@ -1,0 +1,155 @@
+@startuml dominioObjetos
+
+hide circle
+
+skinparam backgroundColor transparent
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam objectBorderThickness 1.5
+skinparam arrowThickness 1.2
+skinparam arrowColor #444444
+skinparam object {
+  BackgroundColor<<organización>> #dce8f5
+  BorderColor<<organización>>     #2d6a9f
+  BackgroundColor<<espacios>>     #d5ecd4
+  BorderColor<<espacios>>         #2e7d32
+  BackgroundColor<<rrhh>>         #fde8cc
+  BorderColor<<rrhh>>             #c45e0a
+  BackgroundColor<<comunicación>> #f5f0d5
+  BorderColor<<comunicación>>     #9c8c10
+}
+
+' ── Organización ─────────────────────────────────────────────────────────────
+
+object "<color:#2d6a9f>**Alcobendas : Entidad**</color>" as alcobendas <<organización>> {
+  nombre      = "GRUPOSIETE Alcobendas"
+  codigoCorto = "ALC"
+  activa      = true
+}
+
+object "<color:#2d6a9f>**juan.garcia : Manager**</color>" as juan <<organización>> {
+  nombre = "Juan García"
+  email  = "juan.garcia@gruposiete.es"
+  cargo  = "Director de IT"
+  dni    = "12345678A"
+}
+
+object "<color:#2d6a9f>**maria.lopez : Empleado**</color>" as maria <<organización>> {
+  nombre = "María López"
+  email  = "maria.lopez@gruposiete.es"
+  cargo  = "Desarrolladora"
+  dni    = "87654321B"
+}
+
+object "<color:#2d6a9f>**laura.sanchez : RRHH**</color>" as laura <<organización>> {
+  nombre = "Laura Sánchez"
+  email  = "laura.sanchez@gruposiete.es"
+  cargo  = "Responsable de RRHH"
+  dni    = "11223344C"
+}
+
+' ── Espacios ─────────────────────────────────────────────────────────────────
+
+object "<color:#2e7d32>**P-12 : Plaza**</color>" as p12 <<espacios>> {
+  etiqueta = "Plaza 12"
+  recurso  = "parking"
+  tipo     = "standard"
+  activa   = true
+}
+
+object "<color:#2e7d32>**P-05 : Plaza**</color>" as p05 <<espacios>> {
+  etiqueta = "Plaza 5"
+  recurso  = "parking"
+  tipo     = "visitor"
+  activa   = true
+}
+
+object "<color:#2e7d32>**res_20260615 : Reserva**</color>" as reserva <<espacios>> {
+  fecha      = "2026-06-15"
+  horaInicio = "08:00"
+  horaFin    = "17:00"
+  estado     = "confirmada"
+}
+
+object "<color:#2e7d32>**ces_20260615 : Cesión**</color>" as cesion <<espacios>> {
+  fecha  = "2026-06-15"
+  estado = "reservada"
+}
+
+object "<color:#2e7d32>**regla_viernes : ReglaAutoCesión**</color>" as regla <<espacios>> {
+  recurso   = "parking"
+  tipo      = "day_of_week"
+  díaSemana = "viernes"
+}
+
+object "<color:#2e7d32>**vis_20260616 : ReservaVisitante**</color>" as visitante <<espacios>> {
+  fecha            = "2026-06-16"
+  nombreVisitante  = "Carlos Fernández"
+  empresaVisitante = "Construcciones Norte"
+  emailVisitante   = "carlos@construccionesnorte.es"
+  estado           = "confirmada"
+}
+
+' ── RRHH ─────────────────────────────────────────────────────────────────────
+
+object "<color:#c45e0a>**sol_20260620 : SolicitudAusencia**</color>" as ausencia <<rrhh>> {
+  tipo           = "vacaciones"
+  fechaInicio    = "2026-06-20"
+  fechaFin       = "2026-07-04"
+  diasLaborables = 10
+  estado         = "aprobado_manager"
+}
+
+' ── Comunicación ─────────────────────────────────────────────────────────────
+
+object "<color:#9c8c10>**anuncio_fusion : Anuncio**</color>" as anuncio <<comunicación>> {
+  título      = "Actualización plan de integración"
+  cuerpo      = "Se informa a todos los empleados..."
+  publicadoEn = "2026-05-01"
+  expiraEn    = ""
+}
+
+object "<color:#9c8c10>**calendario_2026 : CalendarioFestivos**</color>" as calendario <<comunicación>> {
+  nombre    = "Calendario Madrid 2026"
+  comunidad = "Comunidad de Madrid"
+  año       = 2026
+}
+
+object "<color:#9c8c10>**fest_2507 : Festivo**</color>" as festivo <<comunicación>> {
+  fecha      = "2026-07-25"
+  nombre     = "Santiago Apóstol"
+  esOpcional = false
+}
+
+' ── Relaciones ───────────────────────────────────────────────────────────────
+
+' Composición
+alcobendas *-- juan        : <color:#2d6a9f>«composición» pertenece a
+alcobendas *-- maria       : <color:#2d6a9f>«composición» pertenece a
+alcobendas *-- laura       : <color:#2d6a9f>«composición» pertenece a
+alcobendas *-- p12         : <color:#2d6a9f>«composición» dispone de
+alcobendas *-- p05         : <color:#2d6a9f>«composición» dispone de
+alcobendas *-- anuncio     : <color:#2d6a9f>«composición» publica
+calendario *-- festivo     : <color:#9c8c10>«composición» agrupa
+
+' Agregación
+maria       o-- reserva    : <color:#2e7d32>«agregación» realiza
+maria       o-- visitante  : <color:#2e7d32>«agregación» gestiona
+maria       o-- ausencia   : <color:#c45e0a>«agregación» solicita
+juan        o-- cesion     : <color:#2e7d32>«agregación» cede
+juan        o-- regla      : <color:#2e7d32>«agregación» configura
+
+' Uso
+juan        ..> ausencia   : <color:#c45e0a>«uso» aprueba (1er nivel)
+laura       ..> ausencia   : <color:#c45e0a>«uso» valida (2º nivel)
+
+' Asociación
+juan        --  p12        : <color:#2e7d32>«asociación»\nplaza asignada
+p12         --  reserva    : <color:#2e7d32>«asociación»\nes objeto de
+p12         --  cesion     : <color:#2e7d32>«asociación»\nliberada
+cesion      --  reserva    : <color:#2e7d32>«asociación»\nreserva de cesión
+p05         --  visitante  : <color:#2e7d32>«asociación»\nes objeto de
+alcobendas  --  calendario : <color:#9c8c10>«asociación» sigue
+
+
+@enduml

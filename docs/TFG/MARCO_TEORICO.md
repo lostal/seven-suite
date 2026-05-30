@@ -313,8 +313,8 @@ extensible a módulos futuros de gestión de recursos humanos.
   end-to-end (Playwright), con la base de datos PostgreSQL desplegada en servidor propio y la
   aplicación en Vercel mediante pipeline CI/CD con GitHub Actions (Capítulo 4).
 - **OS4:** Evaluar la solución mediante métricas de cobertura de tests, rendimiento (Core Web
-  Vitals) y usabilidad (SUS), verificar la trazabilidad entre requisitos y entrega, y proponer un
-  roadmap de evolución futura (Capítulo 5).
+  Vitals), verificar la trazabilidad entre requisitos y entrega, y proponer un roadmap de
+  evolución futura (Capítulo 5).
 
 ## 1.6. Estructura del trabajo
 
@@ -325,12 +325,12 @@ metodologías (como el ciclo de vida en cascada o marcos ágiles puros como Scru
 capacidad para gestionar la incertidumbre de los requisitos mediante iteraciones cortas, su
 énfasis en la documentación formal de las disciplinas de análisis y diseño, y su alineación con la
 estructura de entregables del TFG. La adaptación individual concentra todos los roles en el
-mismo autor, con supervisión iterativa semanal por parte de la tutora académica.
+mismo autor, con supervisión iterativa semanal por parte del director del TFG.
 
 1. **Primera iteración - Requisitos (Capítulo 2):** a partir de sesiones de levantamiento de
    información con personas clave de GRUPOSIETE, se elabora el modelo del dominio, se
    identifican los actores del sistema y se definen los casos de uso del MVP. Se producen prototipos
-   de interfaz de baja fidelidad con plantUML para validar la comprensión de los requisitos.
+   de interfaz de baja fidelidad con PlantUML para validar la comprensión de los requisitos.
 
 2. **Segunda iteración - Análisis y diseño (Capítulo 3):** a partir de los casos de uso
    formalizados se derivan las clases de análisis y diseño, se define la arquitectura del sistema y el
@@ -343,8 +343,8 @@ mismo autor, con supervisión iterativa semanal por parte de la tutora académic
    (Playwright). El despliegue de la aplicación se realiza en Vercel con la base de datos PostgreSQL en servidor propio, mediante CI/CD con GitHub Actions.
 
 4. **Cuarta iteración - Evaluación y conclusiones (Capítulo 5):** se evalúa la solución
-   mediante métricas de cobertura de tests, rendimiento (Core Web Vitals) y usabilidad (SUS), se
-   verifica la trazabilidad entre requisitos y entrega, y se propone un roadmap de evolución que
+   mediante métricas de cobertura de tests, rendimiento (Core Web Vitals), se verifica la
+   trazabilidad entre requisitos y entrega, y se propone un roadmap de evolución que
    contemple módulos adicionales como integración con Personio para nóminas y gestión
    avanzada de documentación laboral.
 

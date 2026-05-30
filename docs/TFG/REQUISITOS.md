@@ -8,8 +8,9 @@
 - [2.1. Sesiones de levantamiento de información](#21-sesiones-de-levantamiento-de-información)
 - [2.2. Modelo del dominio](#22-modelo-del-dominio)
   - [2.2.1. Diagrama de clases del dominio](#221-diagrama-de-clases-del-dominio)
-  - [2.2.2. Diagramas de estados](#222-diagramas-de-estados)
-  - [2.2.3. Glosario](#223-glosario)
+  - [2.2.2. Diagrama de objetos del dominio](#222-diagrama-de-objetos-del-dominio)
+  - [2.2.3. Diagramas de estados](#223-diagramas-de-estados)
+  - [2.2.4. Glosario](#224-glosario)
 - [2.3. Disciplina de requisitos](#23-disciplina-de-requisitos)
   - [2.3.1. Actores del sistema](#231-actores-del-sistema)
   - [2.3.2. Casos de uso](#232-casos-de-uso)
@@ -87,7 +88,26 @@ El área de **comunicación** incluye el `Anuncio` (en composición con `Entidad
 `CalendarioFestivos`, compuesto por `Festivos` individuales mediante composición y asociado a
 cada entidad para el registro correcto de días laborables.
 
-### 2.2.2. Diagramas de estados
+### 2.2.2. Diagrama de objetos del dominio
+
+El diagrama de objetos valida el modelo de clases de la sección anterior mostrando un escenario
+concreto de la sede de Alcobendas con instancias reales del dominio. Cada objeto ejemplifica una
+de las relaciones documentadas en el diagrama de clases (composición, agregación, uso y
+asociación), lo que permite verificar que el modelo puede representar sin inconsistencias las
+situaciones reales descritas en las sesiones de levantamiento de requisitos.
+
+El escenario recoge la interacción típica de un día laborable en la sede: el manager Juan García,
+propietario de la plaza P-12, la cede el 15 de junio mediante una `Cesión`; la empleada María
+López reserva esa misma plaza sobre la cesión; María también gestiona una `ReservaVisitante` para
+un cliente externo y solicita vacaciones de verano que Laura Sánchez (RRHH) debe validar en
+segundo nivel. El `Anuncio` corporativo, el `CalendarioFestivos` y sus `Festivos` asociados, y la
+`ReglaAutoCesion` de los viernes completan la escena. Las catorce instancias cubren la totalidad
+de las relaciones del modelo del dominio.
+
+![Diagrama de objetos del dominio](../../modelosUML/svg/dominioObjetos.svg)
+<sub>[Código fuente](../../modelosUML/puml/dominioObjetos.puml)</sub>
+
+### 2.2.3. Diagramas de estados
 
 Se documentan los ciclos de vida de las tres entidades con comportamiento dinámico no trivial.
 
@@ -113,7 +133,7 @@ o RRHH pueden rechazarla en su respectivo nivel.
 ![Estados de SolicitudAusencia](../../modelosUML/svg/estadosSolicitudAusencia.svg)
 <sub>[Código fuente](../../modelosUML/puml/estadosSolicitudAusencia.puml)</sub>
 
-### 2.2.3. Glosario
+### 2.2.4. Glosario
 
 | Término                | Definición                                                                                                                                                                          |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -50,14 +50,10 @@ SolicitudAusencia capturaron las dos entidades con ciclo de vida no trivial. Los
 casos de uso representativos se detallaron con diagramas de actividad y prototipos de baja
 fidelidad, estableciendo el puente hacia las disciplinas de análisis y diseño.
 
-> **\*Evidencia:** sesiones de levantamiento documentadas (sección 2.1), modelo del dominio
-> con 30+ clases (2.2.1), glosario de 14 términos (2.2.4), 4 actores y 11 CdU priorizados
-> (2.3.2), 4 CdU detallados con prototipos (2.3.3–2.3.4).\*
-
 ---
 
 La disciplina de requisitos se articuló en torno a una videollamada con el director de
-IT de aproximadamente cuatro horas. En esa única sesión )muy extensa y productiva(
+IT de aproximadamente cuatro horas. En esa única sesión (muy extensa y productiva)
 quedó clara la mayoría de las necesidades reales de la empresa. A partir de ahí
 mantuvimos contacto por Microsoft Teams, intercambiando ideas y refinando el alcance hasta
 llegar al planteamiento final que recogen los capítulos 1 y 2.
@@ -91,15 +87,10 @@ La transición al diseño (sección 3.2) se documentó mediante una tabla de tra
 mapea cada clase de análisis a su equivalente de diseño. Las vistas se materializaron como
 Server Components de Next.js (`*Page`), los controladores como Server Actions, los
 repositorios como funciones de consulta Drizzle y el modelo del dominio como el esquema
-Drizzle (967 líneas). El diagrama C4 situó el sistema en su contexto, el diagrama de
+Drizzle (883 líneas). El diagrama C4 situó el sistema en su contexto, el diagrama de
 despliegue ubicó los nodos físicos (Vercel + PostgreSQL autoalojado) y el diagrama de
 paquetes anticipó la estructura de directorios del repositorio, verificada posteriormente
 en la sección 4.3.
-
-> **\*Evidencia:** 25 clases de análisis con 4 patrones de colaboración (3.1), tabla de
-> transición análisis→diseño (3.2), diagrama C4 (3.3.1), diagrama de despliegue (3.3.2),
-> diagrama de paquetes con correspondencia verificada al repositorio (3.3.3 y 4.3),
-> diagramas de secuencia de los 4 CdU representativos (3.3.4).\*
 
 ---
 
@@ -142,16 +133,12 @@ tipos. La autorización se implementó mediante guardas explícitas (`requireAut
 `requireAdmin`, `requireManagerOrAbove`) en la capa de aplicación, sin delegar en el
 sistema de base de datos.
 
-La validación se ejecuta en dos niveles: 45 archivos de test con Vitest cubren la lógica
+La validación se ejecuta en dos niveles: 42 archivos de test con Vitest cubren la lógica
 de Server Actions, queries Zod y utilidades, mientras que las pruebas end-to-end con
 Playwright verifican los flujos completos de los casos de uso representativos. El pipeline
-CI/CD mediante GitHub Actions ejecuta `pnpm check` )typecheck, lint, format y tests( en
+CI/CD mediante GitHub Actions ejecuta `pnpm check` (typecheck, lint, format y tests) en
 cada push, con despliegue automático en Vercel al superar todas las comprobaciones
 (sección 4.4).
-
-> **\*Evidencia:** 10 módulos funcionales mapeados al diagrama de contexto (4.1), 4 CdU
-> con capturas de interfaz real (4.2.1–4.2.4), tabla de correspondencia arquitectónica
-> (4.3), 45 archivos de test, pipeline CI/CD documentado (4.4).\*
 
 ---
 
@@ -169,22 +156,22 @@ que aportaba.
 
 Los tests han sido una pieza clave del desarrollo. Aquí es donde el uso de inteligencia
 artificial como apoyo a la programación ha marcado una diferencia real: los 42 archivos
-de test y 832 pruebas en total me han permitido capturar cada mínimo fallo a la primera.
+de test y 831 pruebas en total me han permitido capturar cada mínimo fallo a la primera.
 A esto se suma el pipeline de CI/CD con GitHub Actions, que ejecuta todos los tests en
 cada commit. Saber que ningún cambio llega a producción sin pasar por ese filtro da una
-tranquilidad que no habría tenido trabajando sin integración continua.\_
+tranquilidad que no habría tenido trabajando sin integración continua.
 
 ---
 
 ### 5.1.4. OS4 - Evaluación de la solución
 
 > **OS4:** Evaluar la solución mediante métricas de cobertura de tests, rendimiento (Core
-> Web Vitals) y usabilidad (SUS), verificar la trazabilidad entre requisitos y entrega, y
-> proponer un roadmap de evolución futura.
+> Web Vitals), verificar la trazabilidad entre requisitos y entrega, y proponer un roadmap
+> de evolución futura.
 
 #### Cobertura de tests
 
-La suite de tests (42 archivos y 832 pruebas, todas pasadas) arroja una cobertura global
+La suite de tests (42 archivos y 831 pruebas, todas pasadas) arroja una cobertura global
 del **85,3%** de sentencias, **74,3%** de ramas, **88,8%** de funciones y **85,6%** de
 líneas. Las áreas más críticas del sistema presentan cifras superiores a la media: las
 Server Actions del módulo de parking alcanzan un 84% de statements, el directorio un 86%
@@ -214,19 +201,10 @@ puntuaciones:
 <sub>Auditoría Lighthouse sobre la vista de calendario de parking.</sub>
 
 Las puntuaciones máximas en rendimiento, buenas prácticas y SEO reflejan que la aplicación
-se beneficia del renderizado en servidor de Next.js )que minimiza el JavaScript enviado
-al cliente( y de una estructura HTML semántica. Los 4 puntos pendientes en accesibilidad
+se beneficia del renderizado en servidor de Next.js (que minimiza el JavaScript enviado
+al cliente) y de una estructura HTML semántica. Los 4 puntos pendientes en accesibilidad
 corresponden a contrastes de color en elementos secundarios, subsanables sin cambios
 estructurales.
-
-#### Usabilidad - SUS (System Usability Scale)
-
-El cuestionario SUS no se ha administrado a usuarios reales de GRUPOSIETE antes del
-cierre de este documento. La aplicación no ha entrado aún en fase de uso activo porque
-se ha preferido pulirla al máximo antes de exponerla a los empleados. Se contempla
-administrar el cuestionario a una muestra de al menos 10 usuarios de perfiles variados
-(empleados, managers y administradores) durante el primer mes tras el despliegue, como
-parte de la evaluación continua del producto.
 
 #### Trazabilidad requisitos → entrega
 
@@ -241,10 +219,6 @@ Cada caso de uso priorizado en el capítulo 2 tiene su clase de análisis en el 
 su controlador en el capítulo 4 y su test en la suite de validación. La tabla de
 correspondencia arquitectónica de la sección 4.3 cierra explícitamente el ciclo para los
 cuatro casos de uso representativos.
-
-> **\*Evidencia:** tabla de correspondencia arquitectónica (4.3), tabla de trazabilidad
-> análisis→diseño (3.2), priorización MoSCoW con cobertura de tests por CdU (2.3.2 y
-> 4.4).\*
 
 ---
 
@@ -272,9 +246,9 @@ desarrollo, sus implicaciones y las alternativas que se descartaron.
 ### Arquitectura: monolito modular
 
 La decisión de adoptar un monolito modular (frente a microservicios o un monolito
-tradicional) se justificó en el marco teórico (sección 1.2.5) por el tamaño del equipo
+tradicional) se justificó en el marco teórico (sección 1.3.5) por el tamaño del equipo
 (un desarrollador), la necesidad de un despliegue simple y la capacidad de extender el
-sistema mediante módulos activables desde administración.
+sistema mediante módulos activables desde administración (Fowler, 2015; Newman, 2019).
 
 Sin duda, es la decisión de diseño que mejor ha envejecido del proyecto. Es como los
 cimientos de una casa: los construyes teniendo en cuenta situaciones que aún no han
@@ -329,9 +303,9 @@ Tampoco se llegaron a implementar las automatizaciones con Microsoft Graph API m
 de la autenticación. La integración con Entra ID funciona, pero las notificaciones por
 Teams o la consulta del estado fuera de oficina quedan como trabajo futuro.
 
-Por último, la evaluación de usabilidad mediante el cuestionario SUS no se ha podido
-realizar con usuarios reales de todas las sedes antes del cierre de este documento,
-aunque se contempla como paso inmediatamente posterior al despliegue.
+La aplicación no ha entrado aún en fase de uso activo en todas las sedes porque se ha
+preferido pulirla al máximo antes de exponerla a los empleados, algo que se contempla
+como paso inmediatamente posterior al despliegue.
 
 ---
 
