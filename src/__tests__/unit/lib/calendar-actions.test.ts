@@ -185,7 +185,7 @@ describe("buildCalendarAction — cession mode (user with assigned spot)", () =>
     resetDbMocks();
     vi.clearAllMocks();
     setupAuthUser();
-    setupConfig();
+    setupConfig({ cession_min_advance_hours: 0 });
   });
 
   it("returns cession data with 30 days for June 2026", async () => {
