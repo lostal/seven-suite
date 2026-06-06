@@ -159,13 +159,13 @@ sus documentos; quedando las demás secciones totalmente vacías o sin actualiza
 una experiencia de usuario poco intuitiva para perfiles no administrativos, secciones confusas y
 no tener ningún mecanismo para la gestión de espacios físicos (Wolters Kluwer, 2024).
 
-| Solución    | Precio/mes   | M365 Graph/Teams | Multi-sede | Nóminas API    | Custom/Modular |
-| ----------- | ------------ | ---------------- | ---------- | -------------- | -------------- |
-| Personio    | Consulta\*   | Teams/Slack      | Sí         | Sí (a3innuva)  | Alta           |
-| Factorial   | 5,50 €/usu   | Outlook          | Sí         | Automatización | Alta           |
-| a3innuva    | Consulta\*   | No               | Parcial    | Sí             | Baja           |
-| SAP/Workday | Muy alto     | Parcial          | Sí         | No             | Media          |
-| GRUPOSIETE  | Sin licencia | Graph+Bot        | Sí         | Sí (futuro)    | Total          |
+| Solución    | Precio/mes   | M365 Graph/Teams   | Multi-sede | Nóminas API    | Custom/Modular |
+| ----------- | ------------ | ------------------ | ---------- | -------------- | -------------- |
+| Personio    | Consulta\*   | Teams/Slack        | Sí         | Sí (a3innuva)  | Alta           |
+| Factorial   | 5,50 €/usu   | Outlook            | Sí         | Automatización | Alta           |
+| a3innuva    | Consulta\*   | No                 | Parcial    | Sí             | Baja           |
+| SAP/Workday | Muy alto     | Parcial            | Sí         | No             | Media          |
+| GRUPOSIETE  | Sin licencia | SSO + Graph futuro | Sí         | Sí (futuro)    | Total          |
 
 _Tabla 1. Comparativa de soluciones ESS/RRHH. \* Precio no público, requiere contacto comercial. Fuente: elaboración propia con datos de mercado consultados en marzo de 2026._
 
@@ -191,7 +191,7 @@ sin posibilidad de extensión a otros módulos ESS (KALENA, 2026).
 | Deskbird   | 2,50 €/usu/mes | Teams  | No      | Sí      | Sí         |
 | Parkalot   | 49 $/50 usu    | Básico | Sí      | No      | Sí         |
 | KALENA     | 60 €/mes       | No     | Sí      | Sí      | Sí         |
-| GRUPOSIETE | Sin licencia   | Graph  | Sí      | Sí      | Sí         |
+| GRUPOSIETE | Sin licencia   | SSO    | Sí      | Sí      | Sí         |
 
 _Tabla 2. Comparativa de soluciones de gestión de espacios. \* Precio no público, requiere contacto comercial. Fuente: Precios consultados en webs oficiales en marzo de 2026._
 

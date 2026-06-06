@@ -19,90 +19,40 @@
   - [2.3.5. Diagrama de contexto](#235-diagrama-de-contexto)
 - [2.4. Requisitos no funcionales](#24-requisitos-no-funcionales)
 
-El objetivo de esta iteración es delimitar el alcance del sistema mediante la construcción del
-modelo del dominio y la especificación de los casos de uso del MVP. El resultado es el acuerdo
-formal entre cliente y desarrollador sobre lo que el sistema debe hacer, expresado en artefactos
-UML trazables al código y a los entregables posteriores.
+El objetivo de esta iteración es delimitar el alcance del sistema mediante la construcción del modelo del dominio y la especificación de los casos de uso del MVP. El resultado es el acuerdo formal entre cliente y desarrollador sobre lo que el sistema debe hacer, expresado en artefactos UML trazables al código y a los entregables posteriores.
 
 ## 2.1. Sesiones de levantamiento de información
 
-El levantamiento de requisitos se realizó mediante videollamadas con el perfil clave de
-GRUPOSIETE: el director de IT de la empresa que además trabaja en la sede de Alcobendas.
+El levantamiento de requisitos se realizó mediante videollamadas con el perfil clave de GRUPOSIETE: el director de IT de la empresa que además trabaja en la sede de Alcobendas.
 
-Las sesiones pusieron de manifiesto tres patrones de uso recurrentes. El primero es la
-coordinación informal de plazas de parking mediante WhatsApp: los directivos comunican su
-ausencia al grupo general y cualquier empleado responde en hilo libre, sin registro, sin confirmación
-y sin visibilidad del estado real de ocupación. El segundo es la gestión de puestos de oficina: dado
-que la sede tiene 240 m² y no todos los empleados acuden a diario, existe un problema crónico de
-infrautilización algunos días. El tercero es la gestión de ausencias: las solicitudes de vacaciones se
-tramitan directamente a través de un Excel (los responsables se encargan de pasar a RRHH las
-vacaciones de los empleados de su sede).
+Las sesiones pusieron de manifiesto tres patrones de uso recurrentes. El primero es la coordinación informal de plazas de parking mediante WhatsApp: los directivos comunican su ausencia al grupo general y cualquier empleado responde en hilo libre, sin registro, sin confirmación y sin visibilidad del estado real de ocupación. El segundo es la gestión de puestos de oficina: dado que la sede tiene 240 m² y no todos los empleados acuden a diario, existe un problema crónico de infrautilización algunos días. El tercero es la gestión de ausencias: las solicitudes de vacaciones se tramitan directamente a través de un Excel (los responsables se encargan de pasar a RRHH las vacaciones de los empleados de su sede).
 
-De las sesiones emergieron tres decisiones de diseño que condicionan el resto del análisis.
-Primera: la cesión de plazas de parking debe ser una operación intencional del propietario, no una
-liberación automática, para evitar conflictos de acceso. Segunda: el sistema debe integrarse con
-Microsoft 365 para la detección automática del estado fuera de oficina, ya que los directivos
-utilizan Outlook de forma habitual. Tercera: el flujo de aprobación de ausencias debe contemplar
-dos niveles (manager y RRHH) para respetar la estructura organizativa actual de la empresa.
+De las sesiones emergieron tres decisiones de diseño que condicionan el resto del análisis. Primera: la cesión de plazas de parking debe ser una operación intencional del propietario, no una liberación automática, para evitar conflictos de acceso. Segunda: el sistema debe integrarse con Microsoft 365 y preparar la detección del estado fuera de oficina, ya que los directivos utilizan Outlook de forma habitual. Tercera: el flujo de aprobación de ausencias debe contemplar dos niveles (manager y RRHH) para respetar la estructura organizativa actual de la empresa.
 
 ## 2.2. Modelo del dominio
 
-El modelo del dominio construye una abstracción de la realidad de GRUPOSIETE independiente
-de cualquier decisión de implementación. Sus artefactos (diagrama de clases, diagrama de
-estados y glosario) recogen el vocabulario compartido entre cliente y desarrollador a lo largo
-de todo el proyecto. Las relaciones entre clases emplean cuatro tipos semánticos: composición
-(la parte no existe sin el todo), agregación (el todo contiene las partes pero estas tienen
-identidad propia), uso (dependencia transitoria sin propiedad) y asociación (relación entre
-pares independientes).
+El modelo del dominio construye una abstracción de la realidad de GRUPOSIETE independiente de cualquier decisión de implementación. Sus artefactos (diagrama de clases, diagrama de objetos, diagrama de estados y glosario) recogen el vocabulario compartido entre cliente y desarrollador a lo largo de todo el proyecto. Las relaciones entre clases emplean cuatro tipos semánticos: composición (la parte no existe sin el todo), agregación (el todo contiene las partes pero estas tienen identidad propia), uso (dependencia transitoria sin propiedad) y asociación (relación entre pares independientes).
 
 ### 2.2.1. Diagrama de clases del dominio
 
-El diagrama organiza las entidades en cuatro áreas conceptuales: organización, espacios, recursos
-humanos y comunicación.
+El diagrama organiza las entidades en cuatro áreas conceptuales: organización, espacios, recursos humanos y comunicación.
 
 ![Diagrama de clases del dominio](../../modelosUML/svg/dominioClases.svg)
 <sub>[Código fuente](../../modelosUML/puml/dominioClases.puml)</sub>
 
-El área de **organización** refleja la jerarquía de roles mediante herencia: `Empleado` es el rol
-base; `Manager` lo extiende añadiendo la capacidad de tener una plaza asignada y de ceder; `RRHH`
-extiende a `Manager` y añade la validación de ausencias en segundo nivel; `Administrador` tiene
-acceso pleno a la configuración del sistema. La `Entidad` (cada sede o empresa del grupo)
-mantiene una relación de composición con `Empleado` y con `Plaza`, ya que tanto los empleados
-como los espacios físicos pertenecen a una entidad concreta. La plaza asignada se modela como
-asociación entre `Manager` y `Plaza`.
+El área de **organización** refleja la jerarquía de roles mediante herencia: `Empleado` es el rol base; `Manager` lo extiende añadiendo la capacidad de tener una plaza asignada y de ceder; `RRHH` extiende a `Manager` y añade la validación de ausencias en segundo nivel; `Administrador` tiene acceso pleno a la configuración del sistema. La `Entidad` (cada sede o empresa del grupo) mantiene una relación de composición con `Empleado` y con `Plaza`, ya que tanto los empleados como los espacios físicos pertenecen a una entidad concreta. La plaza asignada se modela como asociación entre `Manager` y `Plaza`.
 
-El área de **espacios** gira en torno a la entidad `Plaza`, que unifica conceptualmente las plazas de
-aparcamiento y los puestos de oficina mediante el atributo `recurso`. La `Reserva` se vincula con
-`Empleado` y con `Plaza` mediante agregación. La `Cesión` es agregada por `Manager` y está
-asociada a la `Plaza` liberada; cuando queda en estado disponible, cualquier empleado puede
-generar sobre ella una `Reserva`, estableciendo así la asociación `reserva de cesión`. La
-`ReglaAutoCesión` es agregada por `Manager` y automatiza el proceso cuando el propietario está
-fuera de la oficina o en días concretos de la semana. La `ReservaVisitante`, agregada por
-`Empleado` y asociada a `Plaza`, cubre el caso de uso de parking para personas externas.
+El área de **espacios** gira en torno a la entidad `Plaza`, que unifica conceptualmente las plazas de aparcamiento y los puestos de oficina mediante el atributo `recurso`. La `Reserva` se vincula con `Empleado` y con `Plaza` mediante agregación. La `Cesión` es agregada por `Manager` y está asociada a la `Plaza` liberada; cuando queda en estado disponible, cualquier empleado puede generar sobre ella una `Reserva`, estableciendo así la asociación `reserva de cesión`. La `ReglaAutoCesión` es agregada por `Manager` y automatiza el proceso cuando el propietario está fuera de la oficina o en días concretos de la semana. La `ReservaVisitante`, agregada por `Empleado` y asociada a `Plaza`, cubre el caso de uso de parking para personas externas.
 
-El área de **RRHH** contiene la `SolicitudAusencia`. El empleado la agrega al solicitarla,
-mientras que la aprobación y la validación se modelan como uso por parte de `Manager` y `RRHH`
-respectivamente.
+El área de **RRHH** contiene la `SolicitudAusencia`. El empleado la agrega al solicitarla, mientras que la aprobación y la validación se modelan como uso por parte de `Manager` y `RRHH` respectivamente.
 
-El área de **comunicación** incluye el `Anuncio` (en composición con `Entidad`) y el
-`CalendarioFestivos`, compuesto por `Festivos` individuales mediante composición y asociado a
-cada entidad para el registro correcto de días laborables.
+El área de **comunicación** incluye el `Anuncio` (en composición con `Entidad`) y el `CalendarioFestivos`, compuesto por `Festivos` individuales mediante composición y asociado a cada entidad para el registro correcto de días laborables.
 
 ### 2.2.2. Diagrama de objetos del dominio
 
-El diagrama de objetos valida el modelo de clases de la sección anterior mostrando un escenario
-concreto de la sede de Alcobendas con instancias reales del dominio. Cada objeto ejemplifica una
-de las relaciones documentadas en el diagrama de clases (composición, agregación, uso y
-asociación), lo que permite verificar que el modelo puede representar sin inconsistencias las
-situaciones reales descritas en las sesiones de levantamiento de requisitos.
+El diagrama de objetos valida el modelo de clases de la sección anterior mostrando un escenario concreto de la sede de Alcobendas con instancias reales del dominio. Cada objeto ejemplifica una de las relaciones documentadas en el diagrama de clases (composición, agregación, uso y asociación), lo que permite verificar que el modelo puede representar sin inconsistencias las situaciones reales descritas en las sesiones de levantamiento de requisitos.
 
-El escenario recoge la interacción típica de un día laborable en la sede: el manager Juan García,
-propietario de la plaza P-12, la cede el 15 de junio mediante una `Cesión`; la empleada María
-López reserva esa misma plaza sobre la cesión; María también gestiona una `ReservaVisitante` para
-un cliente externo y solicita vacaciones de verano que Laura Sánchez (RRHH) debe validar en
-segundo nivel. El `Anuncio` corporativo, el `CalendarioFestivos` y sus `Festivos` asociados, y la
-`ReglaAutoCesion` de los viernes completan la escena. Las catorce instancias cubren la totalidad
-de las relaciones del modelo del dominio.
+El escenario recoge la interacción típica de un día laborable en la sede: el manager Juan García, propietario de la plaza P-12, la cede el 15 de junio mediante una `Cesión`; la empleada María López reserva esa misma plaza sobre la cesión; María también gestiona una `ReservaVisitante` para un cliente externo y solicita vacaciones de verano que Laura Sánchez (RRHH) debe validar en segundo nivel. El `Anuncio` corporativo, el `CalendarioFestivos` y sus `Festivos` asociados, y la `ReglaAutoCesion` de los viernes completan la escena. Las catorce instancias cubren la totalidad de las relaciones del modelo del dominio.
 
 ![Diagrama de objetos del dominio](../../modelosUML/svg/dominioObjetos.svg)
 <sub>[Código fuente](../../modelosUML/puml/dominioObjetos.puml)</sub>
@@ -111,24 +61,14 @@ de las relaciones del modelo del dominio.
 
 Se documentan los ciclos de vida de las tres entidades con comportamiento dinámico no trivial.
 
-**Reserva**. Su ciclo de vida es simple: se crea en estado confirmada y solo puede transitar
-a cancelada. La restricción de unicidad (una plaza, un día, una reserva confirmada) se
-garantiza a nivel de base de datos mediante índices parciales. Al tratarse de una entidad
-con dos estados y una única transición, su comportamiento se describe aquí en el glosario
-en lugar de dedicarle un diagrama de estados.
+**Reserva**. Su ciclo de vida es simple: se crea en estado confirmada y solo puede transitar a cancelada. La restricción de unicidad (una plaza, un día, una reserva confirmada) se garantiza a nivel de base de datos mediante índices parciales. Al tratarse de una entidad con dos estados y una única transición, su comportamiento se describe aquí en el glosario en lugar de dedicarle un diagrama de estados.
 
-**Cesión**. Nace en estado disponible cuando el propietario la cede. Transita a reservada en
-cuanto un empleado genera una reserva sobre ella, o a cancelada si el propietario la retira antes
-de que sea reservada. Una cesión reservada también puede cancelarse, lo que libera la reserva
-asociada.
+**Cesión**. Nace en estado disponible cuando el propietario la cede. Transita a reservada en cuanto un empleado genera una reserva sobre ella, o a cancelada si el propietario la retira antes de que sea reservada. Una cesión reservada también puede cancelarse, lo que libera la reserva asociada.
 
 ![Estados de Cesión](../../modelosUML/svg/estadosCesion.svg)
 <sub>[Código fuente](../../modelosUML/puml/estadosCesion.puml)</sub>
 
-**SolicitudAusencia**. Es el ciclo más complejo del sistema. Una solicitud nace como pendiente y
-requiere aprobación secuencial: primero el manager directo del empleado y después el equipo de
-RRHH. En cualquier punto anterior a la aprobación final el empleado puede cancelarla; el manager
-o RRHH pueden rechazarla en su respectivo nivel.
+**SolicitudAusencia**. Es el ciclo más complejo del sistema. Una solicitud nace como pendiente y requiere aprobación secuencial: primero el manager directo del empleado y después el equipo de RRHH. En cualquier punto anterior a la aprobación final el empleado puede cancelarla; el manager o RRHH pueden rechazarla en su respectivo nivel.
 
 ![Estados de SolicitudAusencia](../../modelosUML/svg/estadosSolicitudAusencia.svg)
 <sub>[Código fuente](../../modelosUML/puml/estadosSolicitudAusencia.puml)</sub>
@@ -160,9 +100,7 @@ o RRHH pueden rechazarla en su respectivo nivel.
 
 ### 2.3.1. Actores del sistema
 
-La jerarquía de actores sigue una cadena de herencia en la que cada nivel añade
-capacidades al anterior. Los diagramas a continuación presentan dicha herencia junto
-con los casos de uso que inicia cada actor, distribuidos en tres vistas temáticas.
+La jerarquía de actores sigue una cadena de herencia en la que cada nivel añade capacidades al anterior. Los diagramas a continuación presentan dicha herencia junto con los casos de uso que inicia cada actor, distribuidos en tres vistas temáticas.
 
 ![Actores y casos de uso - espacios](../../modelosUML/svg/casosUso.svg)
 <sub>[Código fuente](../../modelosUML/puml/casosUso.puml)</sub>
@@ -181,32 +119,17 @@ con los casos de uso que inicia cada actor, distribuidos en tres vistas temátic
 | **Administrador** | Primario          | Extiende a RRHH. Gestiona entidades, plazas, usuarios y la configuración global del sistema.                                  |
 | **Visitante**     | Secundario pasivo | Persona externa sin acceso al portal. Recibe un correo de confirmación cuando un empleado registra una visita en su nombre.   |
 
-El sistema interactúa con dos servicios externos que no son actores en el sentido de
-iniciar casos de uso, sino colaboradores de la capa de aplicación: **Microsoft Entra ID**
-como proveedor de identidad (OAuth 2.0/OIDC) y **Microsoft Graph API** para la consulta
-del estado fuera de oficina y el envío de notificaciones por Teams.
+El sistema interactúa con dos servicios externos que no son actores en el sentido de iniciar casos de uso, sino colaboradores de la capa de aplicación: **Microsoft Entra ID** como proveedor de identidad (OAuth 2.0/OIDC) y **Microsoft Graph API** como integración prevista para estado fuera de oficina y notificaciones por Teams.
 
 ### 2.3.2. Casos de uso
 
-Los tres diagramas de la sección anterior presentan la totalidad de los casos de uso del sistema,
-agrupados por dominio (espacios, personas y administración) y vinculados a los actores que los
-inician mediante la herencia visible en cada vista.
+Los tres diagramas de la sección anterior presentan la totalidad de los casos de uso del sistema, agrupados por dominio (espacios, personas y administración) y vinculados a los actores que los inician mediante la herencia visible en cada vista.
 
-El desarrollo del MVP se organizó en incrementos sucesivos priorizando los casos de uso
-mediante MoSCoW (Must, Should, Could, Won't). El primer incremento abordó la autenticación
-mediante Entra ID y la estructura base del portal (`cerrarSesion()`). El segundo implementó el
-módulo de parking con reservas, cesiones y gestión de visitantes; el tercero añadió el módulo
-de oficinas con reserva de puestos y franjas horarias. El cuarto incremento incorporó el módulo
-de vacaciones con el flujo completo de aprobación en dos niveles, seguida del tablón de
-anuncios y el directorio de empleados. El quinto incremento cubrió el panel de administración
-(gestión de plazas, usuarios, entidades y configuración del sistema) junto con el módulo de
-ajustes. El último incremento integró el panel de analíticas para administradores.
+El desarrollo del MVP se organizó en incrementos sucesivos priorizando los casos de uso mediante MoSCoW (Must, Should, Could, Won't). El primer incremento abordó la autenticación mediante Entra ID y la estructura base del portal (`cerrarSesion()`). El segundo implementó el módulo de parking con reservas, cesiones y gestión de visitantes; el tercero añadió el módulo de oficinas con reserva de puestos y franjas horarias. El cuarto incremento incorporó el módulo de vacaciones con el flujo completo de aprobación en dos niveles, seguida del tablón de anuncios y el directorio de empleados. El quinto incremento cubrió el panel de administración (gestión de plazas, usuarios, entidades y configuración del sistema) junto con el módulo de ajustes. El último incremento integró el panel de analíticas para administradores.
 
 ### 2.3.3. Detalle de casos de uso representativos
 
-Se detallan a continuación cuatro casos de uso que cubren los flujos más representativos del
-sistema: el flujo estándar de reserva, la lógica específica de cesión, la gestión de solicitudes
-de ausencia por parte del manager y la gestión de visitantes con notificación externa.
+Se detallan a continuación cuatro casos de uso que cubren los flujos más representativos del sistema: el flujo estándar de reserva, la lógica específica de cesión, la gestión de solicitudes de ausencia por parte del manager y la gestión de visitantes con notificación externa.
 
 ![Detalle reservarPlaza()](../../modelosUML/svg/cuReservarPlaza.svg)
 <sub>[Código fuente](../../modelosUML/puml/cuReservarPlaza.puml)</sub>
@@ -222,54 +145,38 @@ de ausencia por parte del manager y la gestión de visitantes con notificación 
 
 ### 2.3.4. Prototipos de interfaz
 
-Los prototipos de baja fidelidad validan la correspondencia entre los casos de uso detallados y la
-interfaz del sistema. Se presentan como wireframes funcionales centrados en la estructura de la
-pantalla y el flujo de interacción, no en el diseño visual final.
+Los prototipos de baja fidelidad validan la correspondencia entre los casos de uso detallados y la interfaz del sistema. Se presentan como wireframes funcionales centrados en la estructura de la pantalla y el flujo de interacción, no en el diseño visual final.
 
-**Reservar plaza**: Vista de dos paneles: calendario mensual con indicación de disponibilidad
-por día en la columna izquierda y lista de plazas disponibles para la fecha seleccionada en la
-derecha, con acción de confirmación.
+**Reservar plaza**: Vista de dos paneles: calendario mensual con indicación de disponibilidad por día en la columna izquierda y lista de plazas disponibles para la fecha seleccionada en la derecha, con acción de confirmación.
 
 ![Prototipo reservarPlaza()](../../modelosUML/svg/protoReservarPlaza.svg)
 <sub>[Código fuente](../../modelosUML/puml/protoReservarPlaza.puml)</sub>
 
-**Ceder plaza**: Vista centrada en la plaza asignada del manager, con selector de fecha y acción
-de cesión directa.
+**Ceder plaza**: Vista centrada en la plaza asignada del manager, con selector de fecha y acción de cesión directa.
 
 ![Prototipo cederPlaza()](../../modelosUML/svg/protoCederPlaza.svg)
 <sub>[Código fuente](../../modelosUML/puml/protoCederPlaza.puml)</sub>
 
-**Aprobar solicitud de ausencia**: Vista de dos zonas: tabla de solicitudes pendientes del
-equipo en la parte superior y panel de detalle con decisión de aprobación o rechazo con nota en la
-parte inferior.
+**Aprobar solicitud de ausencia**: Vista de dos zonas: tabla de solicitudes pendientes del equipo en la parte superior y panel de detalle con decisión de aprobación o rechazo con nota en la parte inferior.
 
 ![Prototipo gestionarSolicitudAusencia()](../../modelosUML/svg/protoAprobarSolicitudAusencia.svg)
 <sub>[Código fuente](../../modelosUML/puml/protoAprobarSolicitudAusencia.puml)</sub>
 
-**Registrar visitante**: Formulario estructurado en dos bloques: datos del visitante y detalles
-de la visita (fecha y selección de plaza), con acción de registro y envío automático de confirmación.
+**Registrar visitante**: Formulario estructurado en dos bloques: datos del visitante y detalles de la visita (fecha y selección de plaza), con acción de registro y envío automático de confirmación.
 
 ![Prototipo registrarVisitante()](../../modelosUML/svg/protoRegistrarVisitante.svg)
 <sub>[Código fuente](../../modelosUML/puml/protoRegistrarVisitante.puml)</sub>
 
 ### 2.3.5. Diagrama de contexto
 
-El diagrama de contexto expresa el sistema como una máquina de estados en la que cada estado
-representa una vista del portal y cada transición corresponde a un caso de uso que lleva al
-usuario de una vista a otra. `SESION_CERRADA` es el estado de entrada; `SISTEMA_DISPONIBLE`
-actúa como hub central desde el que se accede a todos los módulos. Los estados siguen el
-patrón `X_ABIERTO` para vistas de listado y edición, con transiciones autorreflexivas para
-operaciones que no cambian de contexto. El retorno desde cualquier estado al hub central se
-unifica mediante `completarGestion()`. Los servicios externos (Entra ID y Microsoft Graph)
-no aparecen como estados porque colaboran desde la capa de aplicación.
+El diagrama de contexto expresa el sistema como una máquina de estados en la que cada estado representa una vista del portal y cada transición corresponde a un caso de uso que lleva al usuario de una vista a otra. `SESION_CERRADA` es el estado de entrada; `SISTEMA_DISPONIBLE` actúa como hub central desde el que se accede a todos los módulos. Los estados siguen el patrón `X_ABIERTO` para vistas de listado y edición, con transiciones autorreflexivas para operaciones que no cambian de contexto. El retorno desde cualquier estado al hub central se unifica mediante `completarGestion()`. Los servicios externos (Entra ID y Microsoft Graph) no aparecen como estados porque colaboran desde la capa de aplicación.
 
 ![Diagrama de contexto](../../modelosUML/svg/contexto.svg)
 <sub>[Código fuente](../../modelosUML/puml/contexto.puml)</sub>
 
 ## 2.4. Requisitos no funcionales
 
-Los requisitos no funcionales especifican propiedades del sistema que trascienden la
-funcionalidad individual de cada caso de uso.
+Los requisitos no funcionales especifican propiedades del sistema que trascienden la funcionalidad individual de cada caso de uso.
 
 | ID     | Categoría            | Descripción                                                                                                                                               |
 | ------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
