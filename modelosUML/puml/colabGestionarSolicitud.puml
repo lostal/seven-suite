@@ -1,4 +1,7 @@
 @startuml colabGestionarSolicitud
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
 skinparam linetype polyline
 
 rectangle #CDEBA5 ":BANDEJA_SOLICITUDES_ABIERTA" as Bandeja

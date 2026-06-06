@@ -62,7 +62,7 @@ La confirmación de reserva ejecuta la Server Action `createReservation` que ver
 
 ### 4.2.2. cederPlaza()
 
-`cederPlaza()` distingue al actor `Manager` del `Empleado`: solo el propietario de una plaza asignada puede cederla. La implementación respeta la primera decisión de diseño del capítulo 2: la cesión es intencional (nunca automática) y requiere la acción explícita del manager. La arquitectura deja preparada la consulta del estado fuera de oficina para sugerir cesiones en futuras iteraciones.
+`cederPlaza()` permite a cualquier empleado con plaza asignada cederla temporalmente a otros compañeros. La implementación respeta la primera decisión de diseño del capítulo 2: la cesión es intencional (nunca automática) y requiere la acción explícita del propietario. La arquitectura deja preparada la consulta del estado fuera de oficina para sugerir cesiones en futuras iteraciones.
 
 | Contexto                                                              | Solución                                         |
 | --------------------------------------------------------------------- | ------------------------------------------------ |
@@ -71,7 +71,7 @@ La confirmación de reserva ejecuta la Server Action `createReservation` que ver
 
 ### 4.2.3. gestionarSolicitudAusencia()
 
-Este caso de uso materializa el flujo de aprobación en dos niveles (la tercera decisión de diseño) mediante una única Server Action `approveLeaveRequest` que distingue el nivel de autorización por el rol del actor. La interfaz presenta dos zonas (lista de solicitudes pendientes y panel de detalle) que el prototipo de baja fidelidad del capítulo 2 ya anticipaba. La lógica de notificación delega en `NotificacionService`, que envía confirmaciones por correo electrónico a través de Resend.
+Este caso de uso materializa el flujo de aprobación en un único paso (la tercera decisión de diseño) mediante la Server Action `approveLeaveRequest`, accesible para RRHH, manager de sede y administrador. La interfaz presenta dos zonas (lista de solicitudes pendientes y panel de detalle) que el prototipo de baja fidelidad del capítulo 2 ya anticipaba. La lógica de notificación delega en `NotificacionService`, que envía confirmaciones por correo electrónico a través de Resend.
 
 | Contexto                                                                              | Solución                                                  |
 | ------------------------------------------------------------------------------------- | --------------------------------------------------------- |

@@ -1,4 +1,6 @@
 @startuml seqReservarPlaza
+
+skinparam backgroundColor #FFFFFF
 skinparam linetype polyline
 skinparam defaultFontName Arial
 skinparam defaultFontSize 10

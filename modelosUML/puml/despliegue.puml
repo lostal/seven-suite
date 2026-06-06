@@ -1,4 +1,6 @@
 @startuml despliegue
+
+skinparam backgroundColor #FFFFFF
 skinparam defaultFontName Arial
 skinparam defaultFontSize 10
 skinparam nodeBorderThickness 1.5

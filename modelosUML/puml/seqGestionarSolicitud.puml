@@ -1,4 +1,6 @@
 @startuml seqGestionarSolicitud
+
+skinparam backgroundColor #FFFFFF
 skinparam linetype polyline
 skinparam defaultFontName Arial
 skinparam defaultFontSize 10
@@ -6,24 +8,24 @@ skinparam sequenceArrowThickness 1.5
 skinparam participantBorderThickness 1.5
 skinparam shadowing false
 
-actor Manager as M
+actor RRHH as R
 participant "BandejaSolicitudes\nPage" as Page
 participant "approveLeaveRequest\n(Server Action)" as Action
 database "PostgreSQL" as DB
 
-M -> Page: abre bandeja
+R -> Page: abre bandeja
 
-Page -> Page: carga solicitudes pendientes\n(filtro: manager_id)
+Page -> Page: carga solicitudes pendientes\n(filtro: entity_id)
 
-Page --> M: solicitudes del equipo
+Page --> R: solicitudes de la entidad
 
-M -> Page: selecciona solicitud\n+ aprueba con nota
+R -> Page: selecciona solicitud\n+ aprueba con nota
 
-Page -> Action: approveLeaveRequest({ id, level })
+Page -> Action: approveLeaveRequest({ id, notes })
 
-Action -> Action: requireManagerOrAbove()\nausenciaSchema.parse(input)
+Action -> Action: requireHROrAbove()\nausenciaSchema.parse(input)
 
-Action -> DB: transita a aprobado_manager
+Action -> DB: transita a approved
 
 Action --> Page: ActionResult<LeaveRequest>
 

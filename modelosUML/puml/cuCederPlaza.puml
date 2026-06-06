@@ -1,5 +1,7 @@
 @startuml cuCederPlaza
 
+skinparam backgroundColor #FFFFFF
+
 skinparam linetype polyline
 skinparam defaultFontName Arial
 skinparam defaultFontSize 10
@@ -11,7 +13,7 @@ state cederPlaza as "cederPlaza()" {
 
   [*] -[#green]-> SolicitandoCesion
   note on link
-    <b>Manager</b> solicita ceder plaza asignada
+    <b>Empleado</b> solicita ceder plaza asignada
   end note
 
   SolicitandoCesion -[#green]-> ProporcionandoFecha
@@ -34,7 +36,7 @@ state cederPlaza as "cederPlaza()" {
 
   CesionRegistrada -[#green]-> [*]
   note on link
-    <b>Manager</b> solicita confirmar cesión
+    <b>Empleado</b> solicita confirmar cesión
     <b>Sistema</b> crea cesión y transfiere a calendario
   end note
 }

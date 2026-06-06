@@ -1,5 +1,7 @@
 @startuml contextoSolicitud
 
+skinparam backgroundColor #FFFFFF
+
 left to right direction
 skinparam linetype polyline
 skinparam defaultFontName Arial
@@ -62,7 +64,6 @@ EditPuesto    -[#BBBBBB]-> CalOficinas   : abrirCalendarioOficinas()
 
 Bandeja      -[#BBBBBB]-> EditSolicitud  : solicitarAusencia()
 Bandeja      -[#DAA520,thickness=3]-> EditSolicitud  : gestionarSolicitudAusencia()
-Bandeja      -[#BBBBBB]-> EditSolicitud  : gestionarValidacionAusencia()
 Bandeja      -[#DAA520,thickness=2]-> Bandeja        : cancelarSolicitudAusencia()
 
 EditSolicitud -[#DAA520,thickness=3]-> Bandeja       : abrirBandejaSolicitudes()

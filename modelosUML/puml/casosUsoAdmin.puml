@@ -1,13 +1,15 @@
 @startuml casosUsoAdmin
 
+skinparam backgroundColor #FFFFFF
+
 left to right direction
 skinparam defaultFontName Arial
 skinparam defaultFontSize 10
 
-actor "RRHH"          as rrhh
+actor "Manager"       as manager
 actor "Administrador" as admin
 
-rrhh <|-- admin
+manager <|-- admin
 
 package "Administración" {
   usecase "abrirAdministracion()" as UC_AAD
@@ -23,10 +25,11 @@ package "Panel" {
   usecase "consultarAnalytics()"   as UC_CA
 }
 
-admin --> UC_AAD
+manager --> UC_AAD
+manager --> UC_GP
+manager --> UC_GU
+
 admin --> UC_GE
-admin --> UC_GP
-admin --> UC_GU
 admin --> UC_CMO
 admin --> UC_CS
 admin --> UC_APA

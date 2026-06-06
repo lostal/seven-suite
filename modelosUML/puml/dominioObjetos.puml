@@ -2,7 +2,7 @@
 
 hide circle
 
-skinparam backgroundColor transparent
+skinparam backgroundColor #FFFFFF
 skinparam defaultFontName Arial
 skinparam defaultFontSize 11
 skinparam objectBorderThickness 1.5
@@ -97,7 +97,7 @@ object "<color:#c45e0a>**sol_20260620 : SolicitudAusencia**</color>" as ausencia
   fechaInicio    = "2026-06-20"
   fechaFin       = "2026-07-04"
   diasLaborables = 10
-  estado         = "aprobado_manager"
+  estado         = "aprobada"
 }
 
 ' ── Comunicación ─────────────────────────────────────────────────────────────
@@ -140,8 +140,7 @@ juan        o-- cesion     : <color:#2e7d32>«agregación» cede
 juan        o-- regla      : <color:#2e7d32>«agregación» configura
 
 ' Uso
-juan        ..> ausencia   : <color:#c45e0a>«uso» aprueba (1er nivel)
-laura       ..> ausencia   : <color:#c45e0a>«uso» valida (2º nivel)
+laura       ..> ausencia   : <color:#c45e0a>«uso» aprueba/rechaza
 
 ' Asociación
 juan        --  p12        : <color:#2e7d32>«asociación»\nplaza asignada

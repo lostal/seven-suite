@@ -1,4 +1,7 @@
 @startuml colabRegistrarVisitante
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
 skinparam linetype polyline
 
 rectangle #CDEBA5 ":CALENDARIO_PARKING_ABIERTO" as Calendario

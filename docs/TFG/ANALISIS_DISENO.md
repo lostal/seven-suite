@@ -49,23 +49,23 @@ Las clases `Plaza` y `Reserva` son entidades puras del modelo del dominio que lo
 
 ### 3.1.3. Colaboración: cederPlaza()
 
-La cesión es el caso de uso que distingue a un `Manager` de un `Empleado`. Solo el propietario de una plaza asignada puede cederla. La colaboración introduce un participante externo (Microsoft Graph) que no es un actor en el sentido RUP pero se prevé como apoyo para consultar el estado fuera de oficina del manager. Esta integración responde a la segunda decisión de diseño del capítulo 2: los directivos utilizan Outlook de forma habitual y el sistema debe aprovechar esa información para sugerir cesiones.
+La cesión permite al propietario de una plaza asignada liberarla para que otros empleados puedan reservarla. Solo el propietario de una plaza asignada puede cederla. La colaboración introduce un participante externo (Microsoft Graph) que no es un actor en el sentido RUP pero se prevé como apoyo para consultar el estado fuera de oficina del propietario. Esta integración responde a la segunda decisión de diseño del capítulo 2: los directivos utilizan Outlook de forma habitual y el sistema debe aprovechar esa información para sugerir cesiones.
 
 ![Colaboración: cederPlaza()](../../modelosUML/svg/colabCederPlaza.svg)
 <sub>[Código fuente](../../modelosUML/puml/colabCederPlaza.puml)</sub>
 
-`CesionView` recibe `cederPlaza()` desde el calendario de parking. El controlador primero recupera la plaza asignada del manager mediante `PlazaRepository` y después registra la cesión en `CesionRepository`. Microsoft Graph colabora en un segundo plano: el controlador puede consultar el estado fuera de oficina para sugerir la cesión, pero la decisión final siempre es del manager. La cesión intencional (nunca automática) fue la primera decisión de diseño del capítulo anterior y aquí se materializa como responsabilidad exclusiva de la vista, que solo ejecuta si el actor la solicita explícitamente.
+`CesionView` recibe `cederPlaza()` desde el calendario de parking. El controlador primero recupera la plaza asignada del empleado mediante `PlazaRepository` y después registra la cesión en `CesionRepository`. Microsoft Graph colabora en un segundo plano: el controlador puede consultar el estado fuera de oficina para sugerir la cesión, pero la decisión final siempre es del empleado. La cesión intencional (nunca automática) fue la primera decisión de diseño del capítulo anterior y aquí se materializa como responsabilidad exclusiva de la vista, que solo ejecuta si el actor la solicita explícitamente.
 
 ### 3.1.4. Colaboración: gestionarSolicitudAusencia()
 
-Este caso de uso materializa el flujo de aprobación en dos niveles (manager y RRHH) que constituye la tercera decisión de diseño del capítulo 2. La colaboración introduce un quinto participante: `NotificacionService`, responsable de informar al empleado y al siguiente nivel de aprobación cuando una solicitud cambia de estado.
+Este caso de uso materializa el flujo de aprobación en un único paso que constituye la tercera decisión de diseño del capítulo 2. La colaboración introduce un quinto participante: `NotificacionService`, responsable de informar al empleado del resultado de la decisión cuando una solicitud cambia de estado.
 
 ![Colaboración: gestionarSolicitudAusencia()](../../modelosUML/svg/colabGestionarSolicitud.svg)
 <sub>[Código fuente](../../modelosUML/puml/colabGestionarSolicitud.puml)</sub>
 
 `BandejaSolicitudesView` presenta dos zonas (lista de solicitudes pendientes y panel de detalle) que el prototipo del capítulo 2 ya anticipaba. `AusenciaController` coordina la carga inicial consultando `SolicitudRepository` por las pendientes del actor y `EmpleadoRepository` por los datos del solicitante. La resolución (aprobar o rechazar) actualiza el estado de la solicitud y dispara la notificación correspondiente.
 
-La lógica de dos niveles no requiere dos controladores distintos: el mismo `AusenciaController` valida si el actor tiene potestad para resolver en el nivel correspondiente. Manager aprueba en primer nivel; RRHH valida en segundo. Esta decisión evita duplicar la lógica de carga y notificación y es coherente con el principio de composición sobre herencia.
+El `AusenciaController` valida que el actor (RRHH, manager de sede o administrador) tiene potestad para resolver la solicitud. Un solo endpoint aprueba o rechaza en un único paso, evitando duplicar la lógica de carga y notificación.
 
 ### 3.1.5. Colaboración: registrarVisitante()
 
@@ -146,7 +146,7 @@ La página (un Server Component) resuelve la consulta de disponibilidad en el se
 
 ### 3.3.5. Secuencia: gestionarSolicitudAusencia()
 
-El flujo de aprobación de ausencias es el más complejo del sistema. La secuencia muestra la interacción en el primer nivel (la aprobación por el manager). El segundo nivel (la validación por RRHH) sigue exactamente el mismo patrón: la misma Server Action `approveLeaveRequest`, invocada por un usuario con rol de RRHH, transita el estado de `aprobado_manager` a `aprobado`. Esta duplicación deliberada (un solo endpoint, dos niveles de autorización) evita tener dos acciones distintas para la misma operación conceptual y responde a la tercera decisión de diseño del capítulo 2.
+El flujo de aprobación de ausencias es uno de los más importantes del sistema. La secuencia muestra la interacción: RRHH (o, por herencia, el manager de sede o el administrador) abre la bandeja de solicitudes pendientes, selecciona una y la aprueba. La Server Action `approveLeaveRequest` valida el rol del actor, verifica que la solicitud esté pendiente, y transita el estado a aprobado en un único paso, respondiendo a la tercera decisión de diseño del capítulo 2.
 
 ![Secuencia: gestionarSolicitudAusencia()](../../modelosUML/svg/seqGestionarSolicitud.svg)
 <sub>[Código fuente](../../modelosUML/puml/seqGestionarSolicitud.puml)</sub>

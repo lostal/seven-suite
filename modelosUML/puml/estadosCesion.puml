@@ -1,5 +1,7 @@
 @startuml estadosCesion
 
+skinparam backgroundColor #FFFFFF
+
 hide empty description
 
 skinparam defaultFontName Arial

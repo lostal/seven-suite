@@ -1,5 +1,7 @@
 @startuml disenoClases
 
+skinparam backgroundColor #FFFFFF
+
 title Diagrama de Clases de Diseño
 
 skinparam defaultFontName Arial

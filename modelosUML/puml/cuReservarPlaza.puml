@@ -1,5 +1,7 @@
 @startuml cuReservarPlaza
 
+skinparam backgroundColor #FFFFFF
+
 skinparam linetype polyline
 skinparam defaultFontName Arial
 skinparam defaultFontSize 10

@@ -1,5 +1,7 @@
 @startuml cuGestionarSolicitudAusencia
 
+skinparam backgroundColor #FFFFFF
+
 skinparam linetype polyline
 skinparam defaultFontName Arial
 skinparam defaultFontSize 10
@@ -10,7 +12,7 @@ state gestionarSolicitudAusencia as "gestionarSolicitudAusencia()" {
 
   [*] -[#green]-> RevisandoSolicitudes
   note on link
-    <b>Manager</b> solicita gestionar solicitudes de su equipo
+    <b>RRHH</b> solicita gestionar solicitudes de su entidad
   end note
 
   RevisandoSolicitudes -[#green]-> Decidiendo
@@ -30,7 +32,7 @@ state gestionarSolicitudAusencia as "gestionarSolicitudAusencia()" {
     • Campo de nota opcional
     • Permite solicitar confirmar decisión
     • Permite solicitar cancelar
-    <b>Manager</b> solicita aprobar o rechazar con nota opcional
+    <b>RRHH</b> solicita aprobar o rechazar con nota opcional
   end note
 }
 

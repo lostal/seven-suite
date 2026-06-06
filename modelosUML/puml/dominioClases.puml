@@ -1,5 +1,7 @@
 @startuml dominioClases
 
+skinparam backgroundColor #FFFFFF
+
 hide circle
 hide empty members
 
@@ -112,9 +114,9 @@ class "**Festivo**" as Festivo <<comunicación>> {
 
 ' ── Herencia ─────────────────────────────────────────────────────────────────
 
-Empleado    <|-- Manager
-Manager     <|-- RRHH
-RRHH        <|-- Administrador
+Empleado    <|-- RRHH
+RRHH        <|-- Manager
+Manager     <|-- Administrador
 
 ' ── Composición (parte no existe sin el todo) ────────────────────────────────
 
@@ -128,17 +130,16 @@ CalendarioFestivos    "1" *-- "N"   Festivo            : agrupa >
 Empleado              "1" o-- "N"   Reserva            : realiza >
 Empleado              "1" o-- "N"   ReservaVisitante   : gestiona >
 Empleado              "1" o-- "N"   SolicitudAusencia  : solicita >
-Manager               "1" o-- "N"   Cesion             : cede >
-Manager               "1" o-- "N"   ReglaAutoCesion    : configura >
+Empleado              "1" o-- "N"   Cesion             : cede >
+Empleado              "1" o-- "N"   ReglaAutoCesion    : configura >
 
 ' ── Uso (dependencia transitoria, sin propiedad) ─────────────────────────────
 
-Manager               "1" ..> "N"   SolicitudAusencia  : aprueba >
-RRHH                  "1" ..> "N"   SolicitudAusencia  : valida >
+RRHH                  "1" ..> "N"   SolicitudAusencia  : aprueba/rechaza >
 
 ' ── Asociación (relación entre pares independientes) ─────────────────────────
 
-Manager               "0..1" -- "0..1" Plaza           : < plaza asignada
+Empleado               "0..1" -- "0..1" Plaza           : < plaza asignada
 Plaza                 "1"    -- "N"    Reserva         : < es objeto de
 Plaza                 "1"    -- "N"    Cesion          : < liberada
 Cesion                "1"    -- "0..1" Reserva         : < reserva de cesión

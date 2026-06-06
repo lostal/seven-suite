@@ -262,7 +262,7 @@ Esta fragmentación tiene consecuencias prácticas directas. Adoptar Factorial o
 resolvería las carencias de a3innuva en autoservicio de RRHH, pero no eliminaría la
 coordinación informal de espacios por WhatsApp. Complementarlo con Deskbird cubriría los
 puestos de oficina, pero no el parking. Añadir Parkalot cubriría el parking, pero no la gestión de
-visitantes con la lógica de cesión de plazas de directivos. El resultado sería un ecosistema de tres
+visitantes con la lógica de cesión de plazas asignadas. El resultado sería un ecosistema de tres
 o cuatro herramientas desconectadas, con diferentes interfaces, diferentes contratos y ninguna
 visión unificada del empleado: exactamente el problema que se intenta resolver.
 

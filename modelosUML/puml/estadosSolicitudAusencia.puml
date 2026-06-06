@@ -1,5 +1,7 @@
 @startuml estadosSolicitudAusencia
 
+skinparam backgroundColor #FFFFFF
+
 hide empty description
 
 skinparam defaultFontName Arial
@@ -18,23 +20,18 @@ skinparam state {
 
 title Estados de <b>SolicitudAusencia</b>
 
-state "Aprobada\n(Manager)" as AprobadaManager <<aprobado>>
-state "Aprobada\n(RRHH)"    as AprobadaRRHH   <<aprobado>>
-state "Rechazada"           as Rechazada      <<terminal>>
-state "Cancelada"           as Cancelada      <<terminal>>
+state "Aprobada"    as Aprobada   <<aprobado>>
+state "Rechazada"   as Rechazada  <<terminal>>
+state "Cancelada"   as Cancelada  <<terminal>>
 
 [*] --> Pendiente : solicitar ausencia\n(empleado)
 
-Pendiente       --> AprobadaManager : Manager aprueba
-Pendiente       --> Rechazada       : Manager rechaza
-Pendiente       --> Cancelada       : Empleado cancela
+Pendiente --> Aprobada  : RRHH / Manager / Admin\naprueba
+Pendiente --> Rechazada : RRHH / Manager / Admin\nrechaza
+Pendiente --> Cancelada : Empleado cancela
 
-AprobadaManager --> AprobadaRRHH   : RRHH valida
-AprobadaManager --> Rechazada      : RRHH rechaza
-AprobadaManager --> Cancelada      : Empleado cancela
-
-AprobadaRRHH    --> [*]
-Rechazada       --> [*]
-Cancelada       --> [*]
+Aprobada  --> [*]
+Rechazada --> [*]
+Cancelada --> [*]
 
 @enduml

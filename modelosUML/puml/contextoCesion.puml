@@ -1,5 +1,7 @@
 @startuml contextoCesion
 
+skinparam backgroundColor #FFFFFF
+
 left to right direction
 skinparam linetype polyline
 skinparam defaultFontName Arial
