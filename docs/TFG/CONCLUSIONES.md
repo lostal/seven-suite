@@ -39,7 +39,7 @@ La decisión de ampliar el alcance durante esta fase resultó plenamente acertad
 
 La disciplina de análisis (sección 3.1) derivó sistemáticamente las clases de análisis desde los casos de uso del capítulo 2 y el modelo del dominio. Las veinticinco clases resultantes se organizaron en cuatro capas (vista, controlador, repositorio, dominio) con cuatro patrones de colaboración documentados mediante diagramas: Apertura para la carga inicial de disponibilidad, El delgado para acciones de escritura simple, El gordo para flujos que coordinan múltiples repositorios y Eliminación segura para operaciones de cancelación con verificación de estado previo.
 
-La transición al diseño (sección 3.2) se documentó mediante una tabla de trazabilidad que mapea cada clase de análisis a su equivalente de diseño. Las vistas se materializaron como Server Components de Next.js, los controladores como Server Actions, los repositorios como funciones de consulta Drizzle y el modelo del dominio como el esquema Drizzle (883 líneas). El diagrama C4 situó el sistema en su contexto, el diagrama de despliegue ubicó los nodos físicos (Vercel + PostgreSQL autoalojado) y el diagrama de paquetes anticipó la estructura de directorios del repositorio, verificada posteriormente en la sección 4.3.
+La transición al diseño (sección 3.2) se documentó mediante una tabla de trazabilidad que mapea cada clase de análisis a su equivalente de diseño. Las vistas se materializaron como Server Components de Next.js, los controladores como Server Actions, los repositorios como funciones de consulta Drizzle y el modelo del dominio como el esquema Drizzle (883 líneas). El diagrama C4 situó el sistema en su contexto, el diagrama de despliegue ubicó los nodos físicos (servidor propio con Docker + PostgreSQL autoalojado) y el diagrama de paquetes anticipó la estructura de directorios del repositorio, verificada posteriormente en la sección 4.3.
 
 El diseño aguantó bastante bien el salto a la implementación. Los diagramas y las decisiones tomadas durante el análisis no generaron sorpresas graves al llegar al código, lo que confirma que la fase de análisis y diseño no fue un trámite vacío sino una base sólida sobre la que construir.
 
@@ -47,13 +47,13 @@ Una decisión que merece mención aparte es la migración de Supabase a PostgreS
 
 ### 5.1.3. OS3 - Implementación y validación
 
-**OS3:** Implementar y validar el MVP funcional con pruebas unitarias (Vitest) y pruebas end-to-end (Playwright), con la base de datos PostgreSQL desplegada en servidor propio y la aplicación en Vercel mediante pipeline CI/CD con GitHub Actions.
+**OS3:** Implementar y validar el MVP funcional con pruebas unitarias (Vitest) y pruebas end-to-end (Playwright), con la base de datos PostgreSQL desplegada en servidor propio y la aplicación en servidor propio mediante Docker y pipeline CI/CD con GitHub Actions.
 
 El MVP implementa diez módulos funcionales accesibles desde el dashboard (administración, ajustes, directorio, mis-reservas, oficinas, panel de analíticas, parking, tablón, vacaciones, visitantes), cada uno correspondiente a un estado del diagrama de contexto (sección 4.1). Los cuatro casos de uso representativos (reservarPlaza(), cederPlaza(), gestionarSolicitudAusencia() y registrarVisitante()) se mostraron con su interfaz real en la sección 4.2, evidenciando la correspondencia entre el diseño y el código.
 
 La lógica compartida entre parking y oficinas se parametrizó mediante factories (buildCalendarAction, buildCessionActions), evitando la duplicación y respetando el principio de composición sobre herencia. Las Server Actions materializaron directamente los controladores del diseño, eliminando la capa de serialización REST y la duplicación de tipos. La autorización se implementó mediante guardas explícitas (requireAuth, requireAdmin, requireManagerOrAbove) en la capa de aplicación, sin delegar en el sistema de base de datos.
 
-La validación se ejecuta en dos niveles: 45 archivos de test con Vitest cubren la lógica de Server Actions, queries Zod y utilidades, mientras que las pruebas end-to-end con Playwright verifican los flujos completos de los casos de uso representativos. El pipeline CI/CD mediante GitHub Actions ejecuta pnpm check (typecheck, lint, format y tests) en cada push, con despliegue automático en Vercel al superar todas las comprobaciones (sección 4.4).
+La validación se ejecuta en dos niveles: 45 archivos de test con Vitest cubren la lógica de Server Actions, queries Zod y utilidades, mientras que las pruebas end-to-end con Playwright verifican los flujos completos de los casos de uso representativos. El pipeline CI/CD mediante GitHub Actions ejecuta pnpm check (typecheck, lint, format y tests) en cada push, con despliegue automático al superar todas las comprobaciones (sección 4.4).
 
 El resultado final me parece muy completo, al nivel de una aplicación comercial. Los diez módulos previstos en el alcance están implementados y funcionales, y la interfaz transmite una sensación de producto terminado, no de prototipo académico.
 
@@ -84,7 +84,7 @@ La auditoría con Lighthouse sobre la página principal del dashboard arroja las
 
 ![Resultados de Lighthouse](images/lighthouse.png)
 
-Las puntuaciones máximas en rendimiento, buenas prácticas y SEO reflejan que la aplicación se beneficia del renderizado en servidor de Next.js (que minimiza el JavaScript enviado al cliente) y de una estructura HTML semántica. Los 4 puntos pendientes en accesibilidad corresponden a contrastes de color en elementos secundarios, subsanables sin cambios estructurales.
+Las puntuaciones máximas en rendimiento, buenas prácticas y SEO reflejan que la aplicación se beneficia del renderizado en servidor de Next.js (que minimiza el JavaScript enviado al cliente) y de una estructura HTML semántica. Los 4 puntos pendientes en accesibilidad corresponden a contrastes de color en elementos secundarios, subsanables con cambios mínimos.
 
 #### Trazabilidad requisitos → entrega
 

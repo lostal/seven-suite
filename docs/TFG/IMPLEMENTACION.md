@@ -123,10 +123,10 @@ La disciplina de pruebas del ciclo RUP se materializa en dos niveles. Las prueba
 | Unitarias  | Vitest      | `src/lib/actions/`, `src/lib/queries/` |
 | End-to-end | Playwright  | Flujos de los 4 CdU representativos    |
 
-El pipeline CI/CD mediante GitHub Actions ejecuta `pnpm check` (typecheck, lint, format y tests) en cada push a la rama principal. El despliegue en Vercel se activa automáticamente al superar todas las comprobaciones, garantizando que solo el código validado llega a producción.
+El pipeline CI/CD mediante GitHub Actions ejecuta `pnpm check` (typecheck, lint, format y tests) en cada push a la rama principal. El despliegue se activa automáticamente al superar todas las comprobaciones, garantizando que solo el código validado llega a producción.
 
 | Pipeline                         | Verificación                                |
 | -------------------------------- | ------------------------------------------- |
-| ![CI/CD](images/ci-pipeline.png) | `pnpm check` → `pnpm build` → Vercel deploy |
+| ![CI/CD](images/ci-pipeline.png) | `pnpm check` → `pnpm build` → Docker deploy |
 
 La cobertura de tests, el pipeline de integración continua y el despliegue automatizado conforman la evidencia de que el MVP responde a los requisitos del capítulo 2 y sigue fielmente el diseño del capítulo 3, cerrando así el ciclo de trazabilidad que el capítulo 5 verificará formalmente.

@@ -6,11 +6,14 @@ skinparam arrowColor #444444
 
 top to bottom direction
 
-node "Vercel (Edge)" {
-  node "Next.js App Router" {
-    component "Server Components" as SC
-    component "Server Actions" as SA
-    component "Middleware\n(Auth.js)" as MW
+node "Servidor propio (Linux)" {
+  node "Docker Compose" {
+    node "Next.js App Router" {
+      component "Server Components" as SC
+      component "Server Actions" as SA
+      component "Middleware\n(Auth.js)" as MW
+    }
+    database "PostgreSQL 16\n(puerto 5432)" as PG
   }
 }
 
@@ -18,12 +21,6 @@ node "Internet" {
   cloud "Microsoft Entra ID\n(OAuth 2.0 / OIDC)" as Entra
   cloud "Microsoft Graph API\n(Teams, fuera oficina)" as Graph
   cloud "Resend\n(email SMTP)" as Resend
-}
-
-node "Servidor propio (Linux)" {
-  node "Docker Compose" {
-    database "PostgreSQL 16\n(puerto 5432)" as PG
-  }
 }
 
 node "Cliente" {

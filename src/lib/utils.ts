@@ -9,7 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Convierte un Date a "yyyy-MM-dd" usando los componentes de hora LOCAL del
- * entorno donde se ejecuta (servidor en UTC en Vercel). No usar en código
+ * entorno donde se ejecuta (servidor en UTC). No usar en código
  * cliente si el usuario puede estar en una zona distinta a UTC; en ese caso
  * usar `toClientDateStr`.
  */

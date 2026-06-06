@@ -196,7 +196,7 @@ sin posibilidad de extensión a otros módulos ESS (KALENA, 2026).
 _Tabla 2. Comparativa de soluciones de gestión de espacios. \* Precio no público, requiere contacto comercial. Fuente: Precios consultados en webs oficiales en marzo de 2026._
 
 **Análisis:** ninguna solución del mercado combina en un único producto la gestión de
-parking y oficinas con integración nativa en Microsoft 365 Graph y capacidad de extensión hacia
+parking y oficinas con SSO Microsoft 365 y capacidad de extensión hacia
 un portal del empleado completo. Las herramientas más cercanas al caso de uso (Skedda,
 KALENA) funcionan de forma aislada y requieren herramientas adicionales para cubrir el resto
 de necesidades de GRUPOSIETE.
@@ -224,10 +224,10 @@ Martin Fowler es claro: «casi todas las historias de éxito con microservicios 
 monolito que se volvió demasiado grande; casi todos los sistemas construidos desde cero como
 microservicios han acabado en problemas serios» (Fowler, 2015).
 
-El patrón de arquitectura plug-in extiende el monolito modular definiendo un sistema
+El patrón de arquitectura plugin extiende el monolito modular definiendo un sistema
 core con puntos de extensión donde los módulos se conectan de forma independiente (Newman,
 2019). Este patrón se mapea directamente al portal del TFG: el core es el shell de la aplicación
-(autenticación, navegación, configuración del sistema) y los módulos plug-in son las
+(autenticación, navegación, configuración del sistema) y los módulos plugin son las
 funcionalidades activables o desactivables desde el panel de administración sin modificar código
 base.
 
@@ -276,17 +276,17 @@ utiliza el ecosistema de Microsoft como columna vertebral de su actividad diaria
 herramienta que no esté integrada con este ecosistema generará en los empleados una negativa a
 la hora de adoptarlo en su flujo de trabajo normal por lo que terminarían ignorándolo (como
 ocurre ahora). La integración con Microsoft Entra ID como proveedor de identidad único, con Microsoft
-Graph API para sincronización de calendarios y con Teams para notificaciones, es por tanto una
+la preparación para Graph API y Teams, es por tanto una
 condición necesaria y no una ventaja diferencial.
 
 Por todo lo anterior, el desarrollo a medida de un portal del empleado modular,
 construido sobre Next.js, TypeScript y PostgreSQL autoalojado, integrado nativamente en
 Microsoft 365, se presenta como la única alternativa que responde simultáneamente a la totalidad de los requisitos
-de GRUPOSIETE: cobertura funcional completa para el MVP, integración real con M365,
+de GRUPOSIETE: cobertura funcional completa para el MVP, SSO real con M365,
 arquitectura extensible a módulos futuros y coste operativo cero en licencias.
 
 **Hipótesis**: la implementación de un portal del empleado modular basado en Next.js,
-PostgreSQL y Microsoft 365 Graph resolverá la fragmentación entre sedes de GRUPOSIETE,
+PostgreSQL y Microsoft Entra ID resolverá la fragmentación entre sedes de GRUPOSIETE,
 optimizando el uso de espacios corporativos sin inversiones adicionales en licencias de software
 o cambios de sede, y proporcionando diversos módulos de panel del empleado y una base
 arquitectónica extensible a módulos futuros más complejos de gestión avanzada de RRHH y
@@ -311,7 +311,7 @@ extensible a módulos futuros de gestión de recursos humanos.
   lógico y físico de datos en PostgreSQL, y los diagramas de despliegue y paquetes (Capítulo 3).
 - **OS3:** Implementar y validar el MVP funcional con pruebas unitarias (Vitest) y pruebas
   end-to-end (Playwright), con la base de datos PostgreSQL desplegada en servidor propio y la
-  aplicación en Vercel mediante pipeline CI/CD con GitHub Actions (Capítulo 4).
+  aplicación en servidor propio mediante Docker y pipeline CI/CD con GitHub Actions (Capítulo 4).
 - **OS4:** Evaluar la solución mediante métricas de cobertura de tests, rendimiento (Core Web
   Vitals), verificar la trazabilidad entre requisitos y entrega, y proponer un roadmap de
   evolución futura (Capítulo 5).
@@ -325,7 +325,7 @@ metodologías (como el ciclo de vida en cascada o marcos ágiles puros como Scru
 capacidad para gestionar la incertidumbre de los requisitos mediante iteraciones cortas, su
 énfasis en la documentación formal de las disciplinas de análisis y diseño, y su alineación con la
 estructura de entregables del TFG. La adaptación individual concentra todos los roles en el
-mismo autor, con supervisión iterativa semanal por parte del director del TFG.
+mismo autor, con supervisión iterativa semanal por parte del tutor académico.
 
 1. **Primera iteración - Requisitos (Capítulo 2):** a partir de sesiones de levantamiento de
    información con personas clave de GRUPOSIETE, se elabora el modelo del dominio, se
@@ -340,7 +340,7 @@ mismo autor, con supervisión iterativa semanal por parte del director del TFG.
 3. **Tercera iteración - Implementación (Capítulo 4):** el MVP se construye de forma
    incremental comenzando por la capa de autenticación SSO con Microsoft Entra ID, seguida de
    los módulos de reservas y el panel de administración, con pruebas unitarias (Vitest) y end-to-end
-   (Playwright). El despliegue de la aplicación se realiza en Vercel con la base de datos PostgreSQL en servidor propio, mediante CI/CD con GitHub Actions.
+   (Playwright). El despliegue de la aplicación se realiza en servidor propio mediante Docker con la base de datos PostgreSQL, mediante CI/CD con GitHub Actions.
 
 4. **Cuarta iteración - Evaluación y conclusiones (Capítulo 5):** se evalúa la solución
    mediante métricas de cobertura de tests, rendimiento (Core Web Vitals), se verifica la

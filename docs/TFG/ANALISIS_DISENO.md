@@ -153,9 +153,9 @@ El flujo de aprobación de ausencias es el más complejo del sistema. La secuenc
 
 ### 3.3.6. Diagrama de despliegue
 
-El diagrama de despliegue muestra los nodos físicos del sistema y cómo se conectan. La aplicación Next.js se ejecuta en la infraestructura Edge de Vercel, lo que garantiza baja latencia para los usuarios distribuidos por toda España. PostgreSQL 16 se ejecuta en un servidor Linux propio bajo Docker Compose, accesible únicamente desde las Server Actions mediante conexión TCP directa.
+El diagrama de despliegue muestra los nodos físicos del sistema y cómo se conectan. La aplicación Next.js se ejecuta en un servidor propio mediante Docker Compose. PostgreSQL 16 se ejecuta en un servidor Linux propio bajo Docker Compose, accesible únicamente desde las Server Actions mediante conexión TCP directa.
 
 ![Diagrama de despliegue](../../modelosUML/svg/despliegue.svg)
 <sub>[Código fuente](../../modelosUML/puml/despliegue.puml)</sub>
 
-La separación entre el servidor de aplicaciones y el de bases de datos (servidor propio) responde al RNF-02: si Vercel experimenta una degradación, la base de datos permanece intacta y accesible para otros consumidores. La ausencia de proveedores cloud para la persistencia (no hay RDS, no hay Supabase) materializa el RNF-07: el sistema puede migrarse a otra infraestructura sin reescribir consultas ni cambiar dependencias.
+La separación entre el servidor de aplicaciones y el de bases de datos (servidor propio) responde al RNF-02: si el servidor de aplicaciones experimenta una degradación, la base de datos permanece intacta y accesible para otros consumidores. La ausencia de proveedores cloud para la persistencia (no hay RDS, no hay Supabase) materializa el RNF-07: el sistema puede migrarse a otra infraestructura sin reescribir consultas ni cambiar dependencias.
