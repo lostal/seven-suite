@@ -17,7 +17,6 @@ vi.mock("@/lib/queries/active-entity", () => ({
   getEffectiveEntityId: vi.fn().mockResolvedValue("entity-A"),
 }));
 vi.mock("@/lib/queries/holidays", () => ({
-  getHolidayDatesSet: vi.fn().mockResolvedValue(new Set<string>()),
   getHolidayDatesSetForYears: vi.fn().mockResolvedValue(new Set<string>()),
 }));
 vi.mock("@/lib/queries/leave-requests", () => ({
@@ -28,7 +27,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { getCurrentUser, type AuthUser } from "@/lib/auth/helpers";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
-import { getHolidayDatesSet } from "@/lib/queries/holidays";
+import { getHolidayDatesSetForYears } from "@/lib/queries/holidays";
 import {
   getUserLeaveRequests,
   getLeaveRequestsByEntity,
@@ -187,7 +186,7 @@ describe("createLeaveRequest", () => {
     vi.clearAllMocks();
     setEmployee();
     vi.mocked(getEffectiveEntityId).mockResolvedValue("entity-A");
-    vi.mocked(getHolidayDatesSet).mockResolvedValue(new Set());
+    vi.mocked(getHolidayDatesSetForYears).mockResolvedValue(new Set());
   });
 
   it("creates request as pending for vacation type", async () => {
@@ -243,7 +242,7 @@ describe("createLeaveRequest", () => {
 
   it("rejects range with zero working days", async () => {
     // Simulate a weekend-only range (Sat-Sun)
-    vi.mocked(getHolidayDatesSet).mockResolvedValue(new Set<string>());
+    vi.mocked(getHolidayDatesSetForYears).mockResolvedValue(new Set<string>());
 
     const result = await createLeaveRequest({
       leave_type: "vacation",
@@ -281,7 +280,7 @@ describe("updateLeaveRequest", () => {
     vi.clearAllMocks();
     setEmployee();
     vi.mocked(getEffectiveEntityId).mockResolvedValue("entity-A");
-    vi.mocked(getHolidayDatesSet).mockResolvedValue(new Set());
+    vi.mocked(getHolidayDatesSetForYears).mockResolvedValue(new Set());
   });
 
   it("updates a rejected request back to pending", async () => {

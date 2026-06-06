@@ -2,26 +2,19 @@
  * E2E: Flujo de Vacaciones
  *
  * Verifica el workflow: crear solicitud → ver estado.
- * Si no hay sesión, verifica redirect a login.
+ * Requiere sesión autenticada (gestionada por auth.setup.ts vía dev-login).
  */
-
 import { test, expect } from "@playwright/test";
 
 test.describe("Leave request workflow", () => {
   test("creates a vacation request as employee", async ({ page }) => {
     await page.goto("/vacaciones/mis-solicitudes");
 
-    if (page.url().includes("/login")) {
-      expect(page.getByRole("button", { name: /microsoft/i })).toBeVisible();
-      return;
-    }
-
     const createBtn = page.getByRole("button", { name: /nueva|solicitar/i });
     if (await createBtn.isVisible({ timeout: 3000 })) {
       await createBtn.click();
     } else {
       await page.goto("/vacaciones");
-      if (page.url().includes("/login")) return;
       const newBtn = page
         .getByRole("button", { name: /nueva|solicitar/i })
         .first();
@@ -44,11 +37,6 @@ test.describe("Leave request workflow", () => {
 
   test("views leave request status", async ({ page }) => {
     await page.goto("/vacaciones/mis-solicitudes");
-
-    if (page.url().includes("/login")) {
-      expect(page.getByRole("button", { name: /microsoft/i })).toBeVisible();
-      return;
-    }
 
     await expect(
       page.getByRole("heading").filter({ hasText: /solicitudes|vacaciones/i })

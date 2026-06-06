@@ -166,35 +166,39 @@ export function buildCessionActions(cfg: CessionConfig) {
         );
       }
 
-      // Cancelar la reserva activa del empleado PRIMERO: si falla, la cesión
-      // permanece intacta y no hay estado inconsistente.
+      // Cancelar la reserva activa y la cesión en una sola transacción:
+      // si cualquiera de las dos operaciones falla, se hace rollback de ambas.
       if (activeReservation) {
         try {
-          await db
-            .update(reservations)
-            .set({ status: "cancelled" })
-            .where(eq(reservations.id, activeReservation.id));
+          await db.transaction(async (tx) => {
+            await tx
+              .update(reservations)
+              .set({ status: "cancelled" })
+              .where(eq(reservations.id, activeReservation.id));
+            await tx
+              .update(cessions)
+              .set({ status: "cancelled" })
+              .where(eq(cessions.id, parsedInput.id));
+          });
         } catch (err) {
           const msg = err instanceof Error ? err.message : "";
-          throw new Error(
-            `No se pudo anular la reserva del empleado: ${msg}. La cesión no ha sido modificada.`
-          );
+          throw new Error(`No se pudo cancelar la cesión: ${msg}`);
         }
-      }
-
-      try {
-        await db
-          .update(cessions)
-          .set({ status: "cancelled" })
-          .where(eq(cessions.id, parsedInput.id));
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "";
-        console.error(`${cfg.logPrefix} cancelCession DB error:`, {
-          userId: user.id,
-          cessionId: parsedInput.id,
-          error: msg,
-        });
-        throw new Error(`Error al cancelar cesión: ${msg}`);
+      } else {
+        try {
+          await db
+            .update(cessions)
+            .set({ status: "cancelled" })
+            .where(eq(cessions.id, parsedInput.id));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "";
+          console.error(`${cfg.logPrefix} cancelCession DB error:`, {
+            userId: user.id,
+            cessionId: parsedInput.id,
+            error: msg,
+          });
+          throw new Error(`Error al cancelar cesión: ${msg}`);
+        }
       }
 
       revalidatePath(cfg.basePath);

@@ -91,9 +91,6 @@ export const AUTONOMOUS_COMMUNITIES = [
   { code: "ES-VC", name: "Comunitat Valenciana" },
 ] as const;
 
-export type AutonomousCommunityCode =
-  (typeof AUTONOMOUS_COMMUNITIES)[number]["code"];
-
 export function getSpotTypeLabel(
   type: "standard" | "visitor",
   resourceType: "parking" | "office"

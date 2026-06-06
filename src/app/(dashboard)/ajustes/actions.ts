@@ -40,6 +40,7 @@ import {
   updateThemeSchema,
   type UpdateResourceConfigInput,
 } from "@/lib/validations";
+import { ALL_RESOURCE_CONFIG_KEYS } from "@/lib/config-types";
 import { syncAllHolidays } from "@/lib/holidays-sync";
 
 // ─── Helper interno ───────────────────────────────────────────
@@ -216,10 +217,7 @@ export const restoreParkingDefaults = actionClient
       throw new Error("No hay una sede activa seleccionada");
     }
 
-    const keys = resourceConfigToEntries(
-      "parking",
-      {} as UpdateResourceConfigInput
-    ).map((e) => e.key);
+    const keys = ALL_RESOURCE_CONFIG_KEYS.map((k) => `parking.${k}`);
 
     await db
       .delete(entityConfig)
@@ -248,10 +246,7 @@ export const restoreOfficeDefaults = actionClient
       throw new Error("No hay una sede activa seleccionada");
     }
 
-    const keys = resourceConfigToEntries(
-      "office",
-      {} as UpdateResourceConfigInput
-    ).map((e) => e.key);
+    const keys = ALL_RESOURCE_CONFIG_KEYS.map((k) => `office.${k}`);
 
     await db
       .delete(entityConfig)

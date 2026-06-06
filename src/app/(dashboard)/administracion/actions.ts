@@ -10,7 +10,7 @@
 import { actionClient } from "@/lib/actions";
 import { db } from "@/lib/db";
 import { profiles, spots, users } from "@/lib/db/schema";
-import { requireManagerOrAbove } from "@/lib/auth/helpers";
+import { requireAdmin, requireManagerOrAbove } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import {
@@ -187,7 +187,7 @@ export const deleteSpot = actionClient
 export const updateUserRole = actionClient
   .schema(updateUserRoleSchema)
   .action(async ({ parsedInput }) => {
-    const adminUser = await requireManagerOrAbove();
+    const adminUser = await requireAdmin();
     const activeEntityId = await getActiveEntityId();
 
     // Verificar que el usuario objetivo pertenece a la sede activa

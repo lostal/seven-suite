@@ -2,9 +2,8 @@
  * E2E: Flujo de Parking
  *
  * Verifica el flujo completo: ver calendario → seleccionar día → reservar → cancelar.
- * Si no hay sesión autenticada, los tests verifican el redirect a login.
+ * Requiere sesión autenticada (gestionada por auth.setup.ts vía dev-login).
  */
-
 import { test, expect } from "@playwright/test";
 
 test.describe("Parking flow", () => {
@@ -12,13 +11,6 @@ test.describe("Parking flow", () => {
     page,
   }) => {
     await page.goto("/parking");
-
-    // If unauthenticated, we'll be redirected to login
-    const url = page.url();
-    if (url.includes("/login")) {
-      expect(page.getByRole("button", { name: /microsoft/i })).toBeVisible();
-      return;
-    }
 
     await expect(
       page.getByRole("heading", { name: /parking|aparcamiento|plazas/i })
@@ -29,11 +21,6 @@ test.describe("Parking flow", () => {
     page,
   }) => {
     await page.goto("/parking/reservas");
-
-    if (page.url().includes("/login")) {
-      expect(page.getByRole("button", { name: /microsoft/i })).toBeVisible();
-      return;
-    }
 
     const calendar = page.locator('[data-testid="calendar"]');
     if (await calendar.isVisible({ timeout: 3000 })) {
@@ -46,7 +33,6 @@ test.describe("Parking flow", () => {
     }
 
     await page.goto("/mis-reservas");
-    if (page.url().includes("/login")) return;
     await expect(
       page.getByRole("heading", { name: /mis reservas/i })
     ).toBeVisible({ timeout: 5000 });
@@ -54,11 +40,6 @@ test.describe("Parking flow", () => {
 
   test("cancels a parking reservation", async ({ page }) => {
     await page.goto("/mis-reservas");
-
-    if (page.url().includes("/login")) {
-      expect(page.getByRole("button", { name: /microsoft/i })).toBeVisible();
-      return;
-    }
 
     const cancelBtn = page.getByRole("button", { name: /cancelar/i }).first();
     if (await cancelBtn.isVisible({ timeout: 3000 })) {

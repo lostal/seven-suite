@@ -241,6 +241,10 @@ export const reservations = pgTable(
     uniqueIndex("idx_reservations_user_date")
       .on(table.userId, table.date)
       .where(sql`status = 'confirmed' AND start_time IS NULL`),
+    // Partial unique index for time-slotted reservations (office)
+    uniqueIndex("idx_reservations_spot_date_slot")
+      .on(table.spotId, table.date, table.startTime, table.endTime)
+      .where(sql`status = 'confirmed' AND start_time IS NOT NULL`),
   ]
 );
 

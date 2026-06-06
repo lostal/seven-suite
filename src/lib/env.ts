@@ -14,7 +14,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
 
   // Auth.js
-  AUTH_SECRET: z.string().min(1),
+  AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
 
   // Microsoft Entra ID (SSO obligatorio)
   MICROSOFT_CLIENT_ID: z.string().min(1),

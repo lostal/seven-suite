@@ -83,13 +83,12 @@ describe("getUserLeaveRequests", () => {
     expect(result[0]?.employeeName).toBe("");
   });
 
-  it("uses innerJoin with profiles", async () => {
+  it("returns empty array when user has no requests", async () => {
     setupSelectMock([]);
 
-    await getUserLeaveRequests("user-1");
+    const result = await getUserLeaveRequests("user-1");
 
-    const builder = vi.mocked(mockDb.select).mock.results[0]?.value;
-    expect(builder.innerJoin).toHaveBeenCalled();
+    expect(result).toEqual([]);
   });
 });
 

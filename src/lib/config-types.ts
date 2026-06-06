@@ -44,6 +44,26 @@ export type ModuleConfigKey =
   | "payslip_storage_bucket"
   | "tablon_allow_entity_scope";
 
+/** Array de todas las claves de configuración de recursos (sin prefijo) */
+export const ALL_RESOURCE_CONFIG_KEYS: ResourceConfigKey[] = [
+  "booking_enabled",
+  "visitor_booking_enabled",
+  "allowed_days",
+  "max_advance_days",
+  "max_consecutive_days",
+  "max_weekly_reservations",
+  "max_monthly_reservations",
+  "time_slots_enabled",
+  "slot_duration_minutes",
+  "day_start_hour",
+  "day_end_hour",
+  "cession_enabled",
+  "cession_min_advance_hours",
+  "cession_max_per_week",
+  "auto_cession_enabled",
+  "max_daily_reservations",
+];
+
 /** Clave completa en la BD (con prefijo de recurso o módulo) */
 export type FullConfigKey =
   | GlobalConfigKey

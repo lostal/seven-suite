@@ -3,8 +3,24 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { invalidateConfigCache } from "@/lib/config";
+import { requireAdmin } from "@/lib/auth/helpers";
+import { db } from "@/lib/db";
+import { entities } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 
 export async function setActiveEntityAction(entityId: string): Promise<void> {
+  await requireAdmin();
+
+  const [entity] = await db
+    .select({ id: entities.id })
+    .from(entities)
+    .where(and(eq(entities.id, entityId), eq(entities.isActive, true)))
+    .limit(1);
+
+  if (!entity) {
+    throw new Error("Entidad no encontrada o inactiva");
+  }
+
   const cookieStore = await cookies();
   cookieStore.set("active-entity-id", entityId, {
     path: "/",

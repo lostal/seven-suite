@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { leaveRequests, profiles } from "@/lib/db/schema";
 import type { LeaveStatus, LeaveType } from "@/lib/db/types";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 export type { LeaveStatus, LeaveType };
 
@@ -48,14 +48,19 @@ function toRow(r: {
   employeeId: string;
   employeeName: string | null;
   reviewerId: string | null;
+  reviewerName: string | null;
   reviewerNotes: string | null;
 }): LeaveRequestWithDetails {
   return {
     ...r,
     employeeName: r.employeeName ?? "",
-    reviewerName: null,
+    reviewerName: r.reviewerName ?? "",
   };
 }
+
+const LEAVE_FROM = sql`${leaveRequests}
+  inner join ${profiles} on ${leaveRequests.employeeId} = ${profiles.id}
+  left join ${profiles} reviewer_profiles on ${leaveRequests.reviewerId} = reviewer_profiles.id`;
 
 /**
  * Obtiene todas las solicitudes de un empleado, ordenadas por fecha desc.
@@ -64,9 +69,11 @@ export async function getUserLeaveRequests(
   userId: string
 ): Promise<LeaveRequestWithDetails[]> {
   const rows = await db
-    .select(LEAVE_SELECT)
-    .from(leaveRequests)
-    .innerJoin(profiles, eq(leaveRequests.employeeId, profiles.id))
+    .select({
+      ...LEAVE_SELECT,
+      reviewerName: sql<string | null>`reviewer_profiles.full_name`,
+    })
+    .from(LEAVE_FROM)
     .where(eq(leaveRequests.employeeId, userId))
     .orderBy(desc(leaveRequests.createdAt));
 
@@ -85,9 +92,11 @@ export async function getLeaveRequestsByEntity(
   if (status) conditions.push(eq(leaveRequests.status, status));
 
   const rows = await db
-    .select(LEAVE_SELECT)
-    .from(leaveRequests)
-    .innerJoin(profiles, eq(leaveRequests.employeeId, profiles.id))
+    .select({
+      ...LEAVE_SELECT,
+      reviewerName: sql<string | null>`reviewer_profiles.full_name`,
+    })
+    .from(LEAVE_FROM)
     .where(and(...conditions))
     .orderBy(desc(leaveRequests.createdAt));
 

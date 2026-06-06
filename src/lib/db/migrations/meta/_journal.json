@@ -15,6 +15,13 @@
       "when": 1775155200000,
       "tag": "0001_clean_leave_workflow",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780785781399,
+      "tag": "0002_loose_mimic",
+      "breakpoints": true
     }
   ]
 }

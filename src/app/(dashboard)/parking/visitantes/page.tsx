@@ -15,7 +15,7 @@ import { Header } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
-import { VisitantesClient } from "./_components/visitantes-client";
+import { VisitantesClient } from "./_components/visitors-client";
 
 export default async function VisitantesPage() {
   const user = await requireAuth();

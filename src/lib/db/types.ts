@@ -26,8 +26,6 @@ export type EntityModule = typeof schema.entityModules.$inferSelect;
 export type EntityConfig = typeof schema.entityConfig.$inferSelect;
 export type Document = typeof schema.documents.$inferSelect;
 export type LeaveRequest = typeof schema.leaveRequests.$inferSelect;
-export type NotificationSubscription =
-  typeof schema.notificationSubscriptions.$inferSelect;
 export type Announcement = typeof schema.announcements.$inferSelect;
 export type AnnouncementRead = typeof schema.announcementReads.$inferSelect;
 export type HolidayCalendar = typeof schema.holidayCalendars.$inferSelect;
@@ -55,9 +53,5 @@ export type CessionStatus =
   (typeof schema.cessionStatusEnum.enumValues)[number];
 export type CessionRuleType =
   (typeof schema.cessionRuleTypeEnum.enumValues)[number];
-export type DocumentCategory =
-  (typeof schema.documentCategoryEnum.enumValues)[number];
-export type DocumentAccess =
-  (typeof schema.documentAccessEnum.enumValues)[number];
 export type LeaveStatus = (typeof schema.leaveStatusEnum.enumValues)[number];
 export type LeaveType = (typeof schema.leaveTypeEnum.enumValues)[number];

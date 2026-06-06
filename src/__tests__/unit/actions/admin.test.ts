@@ -40,6 +40,7 @@ vi.mock("@/lib/db", async () => {
 
 vi.mock("@/lib/auth/helpers", () => ({
   requireManagerOrAbove: vi.fn(),
+  requireAdmin: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -55,7 +56,7 @@ vi.mock("@/lib/audit", () => ({
   logAuditEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { requireManagerOrAbove } from "@/lib/auth/helpers";
+import { requireManagerOrAbove, requireAdmin } from "@/lib/auth/helpers";
 import { getActiveEntityId } from "@/lib/queries/active-entity";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -68,6 +69,28 @@ const UUID2 = "660e8400-e29b-41d4-a716-446655440001";
  */
 function setupAdminUser() {
   vi.mocked(requireManagerOrAbove).mockResolvedValue({
+    id: UUID,
+    email: "admin@test.com",
+    profile: {
+      id: UUID,
+      email: "admin@test.com",
+      role: "admin" as const,
+      fullName: "Admin",
+      avatarUrl: null,
+      entityId: null,
+      managerId: null,
+      jobTitle: null,
+      createdAt: new Date("2025-01-01T00:00:00Z"),
+      updatedAt: new Date("2025-01-01T00:00:00Z"),
+      dni: null,
+      location: null,
+      phone: null,
+    },
+  });
+}
+
+function setupAdminUserForAdminAction() {
+  vi.mocked(requireAdmin).mockResolvedValue({
     id: UUID,
     email: "admin@test.com",
     profile: {
@@ -313,7 +336,7 @@ describe("deleteSpot", () => {
 describe("updateUserRole", () => {
   beforeEach(() => {
     resetDbMocks();
-    setupAdminUser();
+    setupAdminUserForAdminAction();
   });
 
   it("actualiza el rol con éxito", async () => {

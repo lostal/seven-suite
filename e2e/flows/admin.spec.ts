@@ -2,19 +2,13 @@
  * E2E: Admin CRUD flows
  *
  * Verifica: navegar a admin → crear spot → listar.
- * Si no hay sesión, verifica redirect a login.
+ * Requiere sesión autenticada (gestionada por auth.setup.ts vía dev-login).
  */
-
 import { test, expect } from "@playwright/test";
 
 test.describe("Admin flows", () => {
   test("navigates to admin panel", async ({ page }) => {
     await page.goto("/administracion");
-
-    if (page.url().includes("/login")) {
-      expect(page.getByRole("button", { name: /microsoft/i })).toBeVisible();
-      return;
-    }
 
     await expect(
       page
@@ -25,11 +19,6 @@ test.describe("Admin flows", () => {
 
   test("creates a parking spot", async ({ page }) => {
     await page.goto("/administracion");
-
-    if (page.url().includes("/login")) {
-      expect(page.getByRole("button", { name: /microsoft/i })).toBeVisible();
-      return;
-    }
 
     const createBtn = page.getByRole("button", {
       name: /crear.*plaza|nueva.*plaza|añadir/i,
@@ -49,11 +38,6 @@ test.describe("Admin flows", () => {
   test("lists existing spots", async ({ page }) => {
     await page.goto("/parking/asignaciones");
 
-    if (page.url().includes("/login")) {
-      expect(page.getByRole("button", { name: /microsoft/i })).toBeVisible();
-      return;
-    }
-
     await expect(page.getByRole("heading").first()).toBeVisible({
       timeout: 5000,
     });
@@ -61,11 +45,6 @@ test.describe("Admin flows", () => {
 
   test("mobile viewport: sidebar navigation works", async ({ page }) => {
     await page.goto("/parking");
-
-    if (page.url().includes("/login")) {
-      expect(page.getByRole("button", { name: /microsoft/i })).toBeVisible();
-      return;
-    }
 
     await expect(page.locator("body")).toBeVisible({ timeout: 5000 });
   });
