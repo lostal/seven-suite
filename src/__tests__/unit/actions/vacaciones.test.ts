@@ -1,8 +1,8 @@
 /**
  * Tests de Server Actions de Vacaciones
  *
- * Cubre el workflow completo de aprobación en dos pasos:
- *   pending → manager_approved → hr_approved
+ * Cubre el workflow completo de aprobación en un solo paso:
+ *   pending → approved
  * Y los casos especiales: sick auto-approve, cancelación, edición.
  */
 
@@ -362,13 +362,13 @@ describe("cancelLeaveRequest", () => {
     if (result.success) expect(result.data).toEqual({ cancelled: true });
   });
 
-  it("cancels a manager_approved request", async () => {
-    setupSelectMock([{ status: "manager_approved", employeeId: "employee-1" }]);
-    setupUpdateMock([]);
+  it("returns error when trying to cancel approved request", async () => {
+    setupSelectMock([{ status: "approved", employeeId: "employee-1" }]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
 
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain("approved");
   });
 
   it("returns error when request not found", async () => {
@@ -390,13 +390,13 @@ describe("cancelLeaveRequest", () => {
   });
 
   it("returns error for hr_approved requests", async () => {
-    setupSelectMock([{ status: "hr_approved", employeeId: "employee-1" }]);
+    setupSelectMock([{ status: "approved", employeeId: "employee-1" }]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain("hr_approved");
+      expect(result.error).toContain("approved");
     }
   });
 
@@ -450,37 +450,32 @@ describe("approveLeaveRequest", () => {
     if (result.success) {
       expect(result.data).toEqual({
         approved: true,
-        newStatus: "manager_approved",
+        newStatus: "approved",
       });
     }
   });
 
   it("manager cannot approve already manager_approved", async () => {
     setManager();
-    setupSelectMock([
-      { status: "manager_approved", employeeEntityId: "entity-A" },
-    ]);
+    setupSelectMock([{ status: "approved", employeeEntityId: "entity-A" }]);
 
     const result = await approveLeaveRequest({ id: REQUEST_ID, notes: null });
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain("manager_approved");
+      expect(result.error).toContain("approved");
     }
   });
 
-  it("HR approves manager_approved → hr_approved", async () => {
+  it("HR cannot approve non-pending request", async () => {
     setHR();
-    setupSelectMock([
-      { status: "manager_approved", employeeEntityId: "entity-A" },
-    ]);
-    setupUpdateMock([]);
+    setupSelectMock([{ status: "approved", employeeEntityId: "entity-A" }]);
 
     const result = await approveLeaveRequest({ id: REQUEST_ID, notes: null });
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data).toEqual({ approved: true, newStatus: "hr_approved" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("approved");
     }
   });
 
@@ -504,7 +499,7 @@ describe("approveLeaveRequest", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data).toEqual({ approved: true, newStatus: "hr_approved" });
+      expect(result.data).toEqual({ approved: true, newStatus: "approved" });
     }
   });
 });
@@ -558,9 +553,7 @@ describe("rejectLeaveRequest", () => {
 
   it("manager cannot reject manager_approved request", async () => {
     setManager();
-    setupSelectMock([
-      { status: "manager_approved", employeeEntityId: "entity-A" },
-    ]);
+    setupSelectMock([{ status: "approved", employeeEntityId: "entity-A" }]);
 
     const result = await rejectLeaveRequest({
       id: REQUEST_ID,
@@ -569,24 +562,23 @@ describe("rejectLeaveRequest", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain("manager_approved");
+      expect(result.error).toContain("approved");
     }
   });
 
-  it("HR rejects manager_approved request", async () => {
+  it("HR cannot reject non-pending request", async () => {
     setHR();
-    setupSelectMock([
-      { status: "manager_approved", employeeEntityId: "entity-A" },
-    ]);
-    setupUpdateMock([{ id: REQUEST_ID }]);
+    setupSelectMock([{ status: "approved", employeeEntityId: "entity-A" }]);
 
     const result = await rejectLeaveRequest({
       id: REQUEST_ID,
       notes: "Denegado",
     });
 
-    expect(result.success).toBe(true);
-    if (result.success) expect(result.data).toEqual({ rejected: true });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("approved");
+    }
   });
 
   it("blocks cross-entity rejection", async () => {

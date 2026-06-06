@@ -111,19 +111,11 @@ type LeaveRequestRow = {
   leave_type: "vacation" | "personal" | "sick" | "other";
   start_date: string;
   end_date: string;
-  status:
-    | "pending"
-    | "manager_approved"
-    | "hr_approved"
-    | "rejected"
-    | "cancelled";
+  status: "pending" | "approved" | "rejected" | "cancelled";
   reason: string | null;
-  manager_id: string | null;
-  manager_action_at: string | null;
-  manager_notes: string | null;
-  hr_id: string | null;
-  hr_action_at: string | null;
-  hr_notes: string | null;
+  reviewer_id: string | null;
+  reviewed_at: string | null;
+  reviewer_notes: string | null;
   working_days: number | null;
   created_at: string;
   updated_at: string;
@@ -421,12 +413,9 @@ export function createMockLeaveRequest(
     end_date: "2025-07-14",
     status: "pending",
     reason: null,
-    manager_id: "user-00000000-0000-0000-0000-000000000002",
-    manager_action_at: null,
-    manager_notes: null,
-    hr_id: null,
-    hr_action_at: null,
-    hr_notes: null,
+    reviewer_id: null,
+    reviewed_at: null,
+    reviewer_notes: null,
     working_days: 10,
     created_at: "2025-06-01T00:00:00Z",
     updated_at: "2025-06-01T00:00:00Z",

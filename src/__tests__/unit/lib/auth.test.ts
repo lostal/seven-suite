@@ -25,7 +25,7 @@ import {
   getCurrentUser,
   requireAuth,
   requireAdmin,
-  requireHR,
+  requireHROrAbove,
   requireManagerOrAbove,
   requireSpotOwner,
 } from "@/lib/auth/helpers";
@@ -159,9 +159,9 @@ describe("requireAdmin", () => {
   });
 });
 
-// ─── requireHR ────────────────────────────────────────────────────────────────
+// ─── requireHROrAbove ──────────────────────────────────────────────────────────
 
-describe("requireHR", () => {
+describe("requireHROrAbove", () => {
   beforeEach(() => {
     resetDbMocks();
   });
@@ -170,15 +170,7 @@ describe("requireHR", () => {
     mockSession("user-123", "test@example.com");
     mockProfile("user-123", "employee");
 
-    await expect(requireHR()).rejects.toThrow("REDIRECT");
-    expect(redirect).toHaveBeenCalledWith("/parking");
-  });
-
-  it("manager role → redirect('/parking')", async () => {
-    mockSession("user-123", "test@example.com");
-    mockProfile("user-123", "manager");
-
-    await expect(requireHR()).rejects.toThrow("REDIRECT");
+    await expect(requireHROrAbove()).rejects.toThrow("REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/parking");
   });
 
@@ -186,15 +178,23 @@ describe("requireHR", () => {
     mockSession("user-123", "hr@example.com");
     mockProfile("user-123", "hr");
 
-    const user = await requireHR();
+    const user = await requireHROrAbove();
     expect(user.profile?.role).toBe("hr");
+  });
+
+  it("manager role → returns user", async () => {
+    mockSession("user-123", "mgr@example.com");
+    mockProfile("user-123", "manager");
+
+    const user = await requireHROrAbove();
+    expect(user.profile?.role).toBe("manager");
   });
 
   it("admin role → returns user", async () => {
     mockSession("user-123", "admin@example.com");
     mockProfile("user-123", "admin");
 
-    const user = await requireHR();
+    const user = await requireHROrAbove();
     expect(user.profile?.role).toBe("admin");
   });
 });
@@ -214,20 +214,20 @@ describe("requireManagerOrAbove", () => {
     expect(redirect).toHaveBeenCalledWith("/parking");
   });
 
+  it("hr role → redirect('/parking')", async () => {
+    mockSession("user-123", "hr@example.com");
+    mockProfile("user-123", "hr");
+
+    await expect(requireManagerOrAbove()).rejects.toThrow("REDIRECT");
+    expect(redirect).toHaveBeenCalledWith("/parking");
+  });
+
   it("manager role → returns user", async () => {
     mockSession("user-123", "mgr@example.com");
     mockProfile("user-123", "manager");
 
     const user = await requireManagerOrAbove();
     expect(user.profile?.role).toBe("manager");
-  });
-
-  it("hr role → returns user", async () => {
-    mockSession("user-123", "hr@example.com");
-    mockProfile("user-123", "hr");
-
-    const user = await requireManagerOrAbove();
-    expect(user.profile?.role).toBe("hr");
   });
 
   it("admin role → returns user", async () => {

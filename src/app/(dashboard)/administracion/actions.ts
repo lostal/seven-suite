@@ -10,7 +10,7 @@
 import { actionClient } from "@/lib/actions";
 import { db } from "@/lib/db";
 import { profiles, spots, users } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth/helpers";
+import { requireManagerOrAbove } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import {
@@ -34,7 +34,7 @@ import { eq, and, ne } from "drizzle-orm";
 export const createSpot = actionClient
   .schema(createSpotSchema)
   .action(async ({ parsedInput }) => {
-    await requireAdmin();
+    await requireManagerOrAbove();
     const entityId = await getActiveEntityId();
 
     try {
@@ -75,7 +75,7 @@ export const createSpot = actionClient
 export const updateSpot = actionClient
   .schema(updateSpotSchema)
   .action(async ({ parsedInput }) => {
-    await requireAdmin();
+    await requireManagerOrAbove();
     const activeEntityId = await getActiveEntityId();
 
     const { id, ...updates } = parsedInput;
@@ -141,7 +141,7 @@ export const updateSpot = actionClient
 export const deleteSpot = actionClient
   .schema(deleteSpotSchema)
   .action(async ({ parsedInput }) => {
-    await requireAdmin();
+    await requireManagerOrAbove();
     const activeEntityId = await getActiveEntityId();
 
     const [currentSpot] = await db
@@ -187,7 +187,7 @@ export const deleteSpot = actionClient
 export const updateUserRole = actionClient
   .schema(updateUserRoleSchema)
   .action(async ({ parsedInput }) => {
-    const adminUser = await requireAdmin();
+    const adminUser = await requireManagerOrAbove();
     const activeEntityId = await getActiveEntityId();
 
     // Verificar que el usuario objetivo pertenece a la sede activa
@@ -227,7 +227,7 @@ export const updateUserRole = actionClient
 export const assignSpotToUser = actionClient
   .schema(assignSpotToUserSchema)
   .action(async ({ parsedInput }) => {
-    await requireAdmin();
+    await requireManagerOrAbove();
 
     const { user_id, spot_id, resource_type } = parsedInput;
 
@@ -349,7 +349,7 @@ export const assignUserToSpot = actionClient
   .schema(assignUserToSpotSchema)
   .action(async ({ parsedInput }) => {
     const { spot_id, user_id, resource_type } = parsedInput;
-    await requireAdmin();
+    await requireManagerOrAbove();
 
     if (!user_id) {
       await db
@@ -424,7 +424,7 @@ export const assignUserToSpot = actionClient
 export const deleteUser = actionClient
   .schema(deleteUserSchema)
   .action(async ({ parsedInput }) => {
-    const adminUser = await requireAdmin();
+    const adminUser = await requireManagerOrAbove();
     const activeEntityId = await getActiveEntityId();
 
     // Verificar que el usuario objetivo pertenece a la sede activa

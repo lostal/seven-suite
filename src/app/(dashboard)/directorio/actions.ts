@@ -9,7 +9,7 @@
 import { actionClient } from "@/lib/actions";
 import { db } from "@/lib/db";
 import { profiles, users, userPreferences } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth/helpers";
+import { requireManagerOrAbove } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { getActiveEntityId } from "@/lib/queries/active-entity";
@@ -39,7 +39,7 @@ async function assertEntityInAdminScope(entityId?: string | null) {
 export const updateDirectorioUser = actionClient
   .schema(updateDirectorioUserSchema)
   .action(async ({ parsedInput }) => {
-    await requireAdmin();
+    await requireManagerOrAbove();
     const activeEntityId = await assertEntityInAdminScope(
       parsedInput.entity_id
     );
@@ -81,7 +81,7 @@ export const updateDirectorioUser = actionClient
 export const createDirectorioUser = actionClient
   .schema(createDirectorioUserSchema)
   .action(async ({ parsedInput }) => {
-    await requireAdmin();
+    await requireManagerOrAbove();
     await assertEntityInAdminScope(parsedInput.entity_id);
 
     // Check if user already exists

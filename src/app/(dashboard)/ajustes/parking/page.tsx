@@ -4,7 +4,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { requireAdmin } from "@/lib/auth/helpers";
+import { requireManagerOrAbove } from "@/lib/auth/helpers";
 import { getAllResourceConfigs } from "@/lib/config";
 import { getActiveEntityId } from "@/lib/queries/active-entity";
 import { db } from "@/lib/db";
@@ -17,7 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Building2, Globe } from "lucide-react";
 
 export default async function ConfiguracionParkingPage() {
-  await requireAdmin();
+  await requireManagerOrAbove();
   const entityId = await getActiveEntityId();
 
   let entityName: string | null = null;

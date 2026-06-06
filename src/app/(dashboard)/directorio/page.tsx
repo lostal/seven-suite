@@ -16,14 +16,14 @@ import { type DirectorioUser } from "./_components/directorio-schema";
 
 export default async function DirectorioPage() {
   const user = await requireAuth();
-  const isAdmin = user.profile?.role === "admin";
+  const canEdit = ["manager", "admin"].includes(user.profile?.role ?? "");
   const userEntityId = user.profile?.entityId ?? null;
 
   // Los empleados solo ven usuarios de su propia sede;
-  // los administradores ven los usuarios de la sede activa,
+  // los managers y administradores ven los usuarios de la sede activa,
   // o el directorio global si no tienen sede seleccionada.
-  const activeEntityId = isAdmin ? await getActiveEntityId() : null;
-  const effectiveEntityId = isAdmin ? activeEntityId : userEntityId;
+  const activeEntityId = canEdit ? await getActiveEntityId() : null;
+  const effectiveEntityId = canEdit ? activeEntityId : userEntityId;
 
   const profilesQuery = db
     .select({
@@ -59,7 +59,7 @@ export default async function DirectorioPage() {
   }));
 
   return (
-    <DirectorioProvider isAdmin={isAdmin} entities={allEntities}>
+    <DirectorioProvider isAdmin={canEdit} entities={allEntities}>
       <Header fixed>
         <Search />
         <div className="ms-auto flex items-center space-x-4">

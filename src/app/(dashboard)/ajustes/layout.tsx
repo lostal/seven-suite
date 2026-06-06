@@ -29,7 +29,7 @@ export default async function ConfiguracionLayout({
   children: React.ReactNode;
 }) {
   const user = await requireAuth();
-  const isAdmin = user.profile?.role === "admin";
+  const isAdmin = ["manager", "admin"].includes(user.profile?.role ?? "");
 
   return (
     <>

@@ -24,6 +24,7 @@ vi.mock("@/lib/db", async () => {
 
 vi.mock("@/lib/auth/helpers", () => ({
   requireAdmin: vi.fn(),
+  requireManagerOrAbove: vi.fn(),
 }));
 
 vi.mock("@/lib/config", () => ({
@@ -39,7 +40,7 @@ vi.mock("@/lib/queries/active-entity", () => ({
   getEffectiveEntityId: vi.fn().mockResolvedValue(null),
 }));
 
-import { requireAdmin } from "@/lib/auth/helpers";
+import { requireAdmin, requireManagerOrAbove } from "@/lib/auth/helpers";
 import { invalidateConfigCache } from "@/lib/config";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -61,6 +62,28 @@ function setupAdminUser() {
       id: ADMIN_ID,
       email: "admin@test.com",
       role: "admin" as const,
+      dni: null,
+      location: null,
+      phone: null,
+    },
+  });
+}
+
+function setupManagerUser() {
+  vi.mocked(requireManagerOrAbove).mockResolvedValue({
+    id: ADMIN_ID,
+    email: "manager@test.com",
+    profile: {
+      fullName: "Manager",
+      avatarUrl: null,
+      entityId: null,
+      managerId: null,
+      jobTitle: null,
+      createdAt: new Date("2025-01-01T00:00:00Z"),
+      updatedAt: new Date("2025-01-01T00:00:00Z"),
+      id: ADMIN_ID,
+      email: "manager@test.com",
+      role: "manager" as const,
       dni: null,
       location: null,
       phone: null,
@@ -178,7 +201,7 @@ describe("updateGlobalConfig", () => {
 describe("updateParkingConfig", () => {
   beforeEach(() => {
     resetDbMocks();
-    setupAdminUser();
+    setupManagerUser();
   });
 
   it("guarda la config de parking y devuelve updated:true", async () => {
@@ -220,7 +243,7 @@ describe("updateParkingConfig", () => {
 describe("updateOfficeConfig", () => {
   beforeEach(() => {
     resetDbMocks();
-    setupAdminUser();
+    setupManagerUser();
   });
 
   it("guarda la config de oficinas y devuelve updated:true", async () => {

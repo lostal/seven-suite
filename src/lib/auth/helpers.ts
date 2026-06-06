@@ -72,12 +72,13 @@ export async function requireAdmin(): Promise<AuthUser> {
 }
 
 /**
- * Requiere rol HR o superior (hr | admin).
+ * Requiere rol HR o superior (hr | manager | admin).
  */
-export async function requireHR(): Promise<AuthUser> {
+export async function requireHROrAbove(): Promise<AuthUser> {
   const user = await requireAuth();
 
-  if (user.profile?.role !== "hr" && user.profile?.role !== "admin") {
+  const role = user.profile?.role;
+  if (role !== "hr" && role !== "manager" && role !== "admin") {
     redirect(ROUTES.PARKING);
   }
 
@@ -85,13 +86,13 @@ export async function requireHR(): Promise<AuthUser> {
 }
 
 /**
- * Requiere rol manager o superior (manager | hr | admin).
+ * Requiere rol manager o superior (manager | admin).
  */
 export async function requireManagerOrAbove(): Promise<AuthUser> {
   const user = await requireAuth();
 
   const role = user.profile?.role;
-  if (role !== "manager" && role !== "hr" && role !== "admin") {
+  if (role !== "manager" && role !== "admin") {
     redirect(ROUTES.PARKING);
   }
 

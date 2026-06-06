@@ -10,11 +10,7 @@ import { requireAuth } from "@/lib/auth/helpers";
 import { ROUTES } from "@/lib/constants";
 
 export default async function MisReservasPage() {
-  const user = await requireAuth();
-
-  if ((user.profile?.role ?? "employee") === "admin") {
-    redirect(ROUTES.DASHBOARD);
-  }
+  await requireAuth();
 
   redirect(ROUTES.PARKING);
 }

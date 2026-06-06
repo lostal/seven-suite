@@ -3,9 +3,9 @@
 /**
  * Server Actions de Vacaciones
  *
- * Workflow de aprobación en dos pasos:
- *   empleado → pending → manager_approved → hr_approved
- * Las bajas médicas (sick) van directamente a hr_approved.
+ * Workflow de aprobación en un solo paso:
+ *   empleado → pending → approved (por rrhh, manager o admin)
+ * Las bajas médicas (sick) van directamente a approved.
  */
 
 import { revalidatePath } from "next/cache";
@@ -49,7 +49,6 @@ async function calcWorkingDays(
     years.add(d.getFullYear());
   }
 
-  // Build a combined set of holiday dates for all years in the range (single query)
   const holidayDates = new Set<string>();
   if (entityId) {
     const allYears = Array.from(years);
@@ -60,7 +59,7 @@ async function calcWorkingDays(
   let count = 0;
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const dayOfWeek = d.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) continue; // weekend
+    if (dayOfWeek === 0 || dayOfWeek === 6) continue;
     const dateStr = toServerDateStr(d);
     if (holidayDates.has(dateStr)) continue;
     count++;
@@ -120,8 +119,8 @@ export async function getEntityLeaveRequests(): Promise<
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
     if (
-      user.profile?.role !== "manager" &&
       user.profile?.role !== "hr" &&
+      user.profile?.role !== "manager" &&
       user.profile?.role !== "admin"
     ) {
       return error("Sin permisos");
@@ -177,8 +176,7 @@ export const createLeaveRequest = actionClient
         endDate: parsedInput.end_date,
         reason: parsedInput.reason ?? null,
         workingDays,
-        // Sick leave auto-approved
-        status: isSick ? "hr_approved" : "pending",
+        status: isSick ? "approved" : "pending",
       })
       .returning({ id: leaveRequests.id });
 
@@ -218,12 +216,9 @@ export const updateLeaveRequest = actionClient
         reason: parsedInput.reason ?? null,
         workingDays,
         status: "pending",
-        managerId: null,
-        managerActionAt: null,
-        managerNotes: null,
-        hrId: null,
-        hrActionAt: null,
-        hrNotes: null,
+        reviewerId: null,
+        reviewedAt: null,
+        reviewerNotes: null,
         updatedAt: new Date(),
       })
       .where(
@@ -246,7 +241,7 @@ export const updateLeaveRequest = actionClient
   });
 
 /**
- * Cancela una solicitud propia (solo si pending o manager_approved).
+ * Cancela una solicitud propia (solo si pending).
  */
 export const cancelLeaveRequest = actionClient
   .schema(cancelLeaveRequestSchema)
@@ -254,7 +249,6 @@ export const cancelLeaveRequest = actionClient
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
 
-    // Verify it's in a cancellable state first
     const [current] = await db
       .select({
         status: leaveRequests.status,
@@ -266,7 +260,7 @@ export const cancelLeaveRequest = actionClient
 
     if (!current) throw new Error("Solicitud no encontrada");
     if (current.employeeId !== user.id) throw new Error("Sin permisos");
-    if (current.status !== "pending" && current.status !== "manager_approved") {
+    if (current.status !== "pending") {
       throw new Error(
         `No se puede cancelar una solicitud en estado "${current.status}"`
       );
@@ -283,8 +277,8 @@ export const cancelLeaveRequest = actionClient
 
 /**
  * Aprueba una solicitud.
- * Manager: pending → manager_approved
- * HR/admin: manager_approved → hr_approved (o pending si es admin)
+ * Roles permitidos: hr, manager, admin.
+ * pending → approved.
  */
 export const approveLeaveRequest = actionClient
   .schema(approveLeaveRequestSchema)
@@ -293,47 +287,28 @@ export const approveLeaveRequest = actionClient
     if (!user) throw new Error("No autenticado");
 
     const role = user.profile?.role;
-    if (role !== "manager" && role !== "hr" && role !== "admin") {
+    if (role !== "hr" && role !== "manager" && role !== "admin") {
       throw new Error("Sin permisos para aprobar solicitudes");
     }
 
     const now = new Date();
-
     const current = await getManageableLeaveRequest(parsedInput.id, user);
 
-    let newStatus: "manager_approved" | "hr_approved";
-    let updateData: Partial<typeof leaveRequests.$inferInsert>;
-
-    if (role === "manager" && current.status === "pending") {
-      newStatus = "manager_approved";
-      updateData = {
-        status: newStatus,
-        managerId: user.id,
-        managerActionAt: now,
-        managerNotes: parsedInput.notes ?? null,
-        updatedAt: now,
-      };
-    } else if (
-      (role === "hr" || role === "admin") &&
-      (current.status === "manager_approved" || role === "admin")
-    ) {
-      newStatus = "hr_approved";
-      updateData = {
-        status: newStatus,
-        hrId: user.id,
-        hrActionAt: now,
-        hrNotes: parsedInput.notes ?? null,
-        updatedAt: now,
-      };
-    } else {
+    if (current.status !== "pending") {
       throw new Error(
-        `No puedes aprobar una solicitud en estado "${current.status}" con tu rol`
+        `No puedes aprobar una solicitud en estado "${current.status}"`
       );
     }
 
     await db
       .update(leaveRequests)
-      .set(updateData)
+      .set({
+        status: "approved",
+        reviewerId: user.id,
+        reviewedAt: now,
+        reviewerNotes: parsedInput.notes ?? null,
+        updatedAt: now,
+      })
       .where(
         and(
           eq(leaveRequests.id, parsedInput.id),
@@ -342,11 +317,12 @@ export const approveLeaveRequest = actionClient
       );
 
     revalidatePath("/vacaciones/gestionar");
-    return { approved: true, newStatus };
+    return { approved: true, newStatus: "approved" as const };
   });
 
 /**
- * Rechaza una solicitud (manager o HR/admin). Requiere notas.
+ * Rechaza una solicitud. Requiere notas.
+ * Roles permitidos: hr, manager, admin.
  */
 export const rejectLeaveRequest = actionClient
   .schema(rejectLeaveRequestSchema)
@@ -355,44 +331,29 @@ export const rejectLeaveRequest = actionClient
     if (!user) throw new Error("No autenticado");
 
     const role = user.profile?.role;
-    if (role !== "manager" && role !== "hr" && role !== "admin") {
+    if (role !== "hr" && role !== "manager" && role !== "admin") {
       throw new Error("Sin permisos para rechazar solicitudes");
     }
 
     const current = await getManageableLeaveRequest(parsedInput.id, user);
-    if (
-      (role === "manager" && current.status !== "pending") ||
-      (role === "hr" && current.status !== "manager_approved") ||
-      (role === "admin" &&
-        current.status !== "pending" &&
-        current.status !== "manager_approved")
-    ) {
+
+    if (current.status !== "pending") {
       throw new Error(
-        `No puedes rechazar una solicitud en estado "${current.status}" con tu rol`
+        `No puedes rechazar una solicitud en estado "${current.status}"`
       );
     }
 
     const now = new Date();
-    const isHR = role === "hr" || role === "admin";
-
-    const updateData: Partial<typeof leaveRequests.$inferInsert> = {
-      status: "rejected",
-      updatedAt: now,
-    };
-
-    if (isHR) {
-      updateData.hrId = user.id;
-      updateData.hrActionAt = now;
-      updateData.hrNotes = parsedInput.notes;
-    } else {
-      updateData.managerId = user.id;
-      updateData.managerActionAt = now;
-      updateData.managerNotes = parsedInput.notes;
-    }
 
     const updated = await db
       .update(leaveRequests)
-      .set(updateData)
+      .set({
+        status: "rejected",
+        reviewerId: user.id,
+        reviewedAt: now,
+        reviewerNotes: parsedInput.notes,
+        updatedAt: now,
+      })
       .where(
         and(
           eq(leaveRequests.id, parsedInput.id),

@@ -24,11 +24,6 @@ import { MisReservasClient } from "../../mis-reservas/_components/mis-reservas-c
 
 export default async function OfficeCesionesPage() {
   const user = await requireAuth();
-  const role = user.profile?.role ?? "employee";
-
-  if (role === "admin") {
-    redirect(ROUTES.DASHBOARD);
-  }
 
   const [cessions, officeSpotRows] = await Promise.all([
     getUserCessions(user.id, "office"),

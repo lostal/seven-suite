@@ -18,7 +18,11 @@ import {
   userMicrosoftTokens,
   users,
 } from "@/lib/db/schema";
-import { requireAuth, requireAdmin } from "@/lib/auth/helpers";
+import {
+  requireAuth,
+  requireAdmin,
+  requireManagerOrAbove,
+} from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
 import {
   invalidateConfigCache,
@@ -135,16 +139,16 @@ export const updateGlobalConfig = actionClient
 export const updateParkingConfig = actionClient
   .schema(updateResourceConfigSchema)
   .action(async ({ parsedInput }) => {
-    const adminUser = await requireAdmin();
+    const currentUser = await requireManagerOrAbove();
     const entityId = await getActiveEntityId();
 
     const entries = resourceConfigToEntries("parking", parsedInput);
 
     if (entityId) {
-      await upsertEntityConfigs(entityId, entries, adminUser.id);
+      await upsertEntityConfigs(entityId, entries, currentUser.id);
       await invalidateEntityConfigCache();
     } else {
-      await upsertConfigs(entries, adminUser.id);
+      await upsertConfigs(entries, currentUser.id);
     }
 
     await invalidateConfigCache();
@@ -181,16 +185,16 @@ export async function syncHolidaysAction(): Promise<
 export const updateOfficeConfig = actionClient
   .schema(updateResourceConfigSchema)
   .action(async ({ parsedInput }) => {
-    const adminUser = await requireAdmin();
+    const currentUser = await requireManagerOrAbove();
     const entityId = await getActiveEntityId();
 
     const entries = resourceConfigToEntries("office", parsedInput);
 
     if (entityId) {
-      await upsertEntityConfigs(entityId, entries, adminUser.id);
+      await upsertEntityConfigs(entityId, entries, currentUser.id);
       await invalidateEntityConfigCache();
     } else {
-      await upsertConfigs(entries, adminUser.id);
+      await upsertConfigs(entries, currentUser.id);
     }
 
     await invalidateConfigCache();
@@ -205,7 +209,7 @@ export const updateOfficeConfig = actionClient
 export const restoreParkingDefaults = actionClient
   .schema(z.object({}))
   .action(async () => {
-    await requireAdmin();
+    await requireManagerOrAbove();
     const entityId = await getActiveEntityId();
 
     if (!entityId) {
@@ -237,7 +241,7 @@ export const restoreParkingDefaults = actionClient
 export const restoreOfficeDefaults = actionClient
   .schema(z.object({}))
   .action(async () => {
-    await requireAdmin();
+    await requireManagerOrAbove();
     const entityId = await getActiveEntityId();
 
     if (!entityId) {

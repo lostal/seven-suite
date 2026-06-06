@@ -62,8 +62,7 @@ export const documentAccessEnum = pgEnum("document_access", [
 
 export const leaveStatusEnum = pgEnum("leave_status", [
   "pending",
-  "manager_approved",
-  "hr_approved",
+  "approved",
   "rejected",
   "cancelled",
 ]);
@@ -534,12 +533,9 @@ export const leaveRequests = pgTable(
     endDate: date("end_date").notNull(),
     status: leaveStatusEnum("status").notNull().default("pending"),
     reason: text("reason"),
-    managerId: uuid("manager_id").references(() => profiles.id),
-    managerActionAt: timestamp("manager_action_at", { withTimezone: true }),
-    managerNotes: text("manager_notes"),
-    hrId: uuid("hr_id").references(() => profiles.id),
-    hrActionAt: timestamp("hr_action_at", { withTimezone: true }),
-    hrNotes: text("hr_notes"),
+    reviewerId: uuid("reviewer_id").references(() => profiles.id),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewerNotes: text("reviewer_notes"),
     workingDays: smallint("working_days"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -550,7 +546,7 @@ export const leaveRequests = pgTable(
   },
   (table) => [
     index("idx_leave_requests_employee_id").on(table.employeeId),
-    index("idx_leave_requests_manager_id").on(table.managerId),
+    index("idx_leave_requests_reviewer_id").on(table.reviewerId),
     index("idx_leave_requests_status").on(table.status),
   ]
 );
@@ -879,15 +875,10 @@ export const leaveRequestsRelations = relations(leaveRequests, ({ one }) => ({
     references: [profiles.id],
     relationName: "leaveEmployee",
   }),
-  managerProfile: one(profiles, {
-    fields: [leaveRequests.managerId],
+  reviewer: one(profiles, {
+    fields: [leaveRequests.reviewerId],
     references: [profiles.id],
-    relationName: "leaveManager",
-  }),
-  hrProfile: one(profiles, {
-    fields: [leaveRequests.hrId],
-    references: [profiles.id],
-    relationName: "leaveHr",
+    relationName: "leaveReviewer",
   }),
 }));
 

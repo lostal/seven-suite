@@ -7,7 +7,7 @@ import { announcements } from "@/lib/db/schema";
 import {
   getCurrentUser,
   requireAuth,
-  requireManagerOrAbove,
+  requireHROrAbove,
 } from "@/lib/auth/helpers";
 import {
   createAnnouncementSchema,
@@ -30,7 +30,7 @@ import { eq, and } from "drizzle-orm";
 export const createAnnouncement = actionClient
   .schema(createAnnouncementSchema)
   .action(async ({ parsedInput }) => {
-    const user = await requireManagerOrAbove();
+    const user = await requireHROrAbove();
     const { title, body, entity_id, publish } = parsedInput;
 
     // Managers only create announcements for their own entity
@@ -54,7 +54,7 @@ export const createAnnouncement = actionClient
 export const updateAnnouncement = actionClient
   .schema(updateAnnouncementSchema)
   .action(async ({ parsedInput }) => {
-    const user = await requireManagerOrAbove();
+    const user = await requireHROrAbove();
     const { id, title, body, entity_id, publish } = parsedInput;
 
     // Verify ownership or admin
@@ -88,7 +88,7 @@ export const updateAnnouncement = actionClient
 export const publishAnnouncement = actionClient
   .schema(publishAnnouncementSchema)
   .action(async ({ parsedInput }) => {
-    const user = await requireManagerOrAbove();
+    const user = await requireHROrAbove();
     const { id } = parsedInput;
 
     const [existing] = await db
@@ -114,7 +114,7 @@ export const publishAnnouncement = actionClient
 export const deleteAnnouncement = actionClient
   .schema(deleteAnnouncementSchema)
   .action(async ({ parsedInput }) => {
-    const user = await requireManagerOrAbove();
+    const user = await requireHROrAbove();
     const { id } = parsedInput;
 
     const [existing] = await db
@@ -163,7 +163,7 @@ export async function getManageAnnouncements(): Promise<
   ActionResult<AnnouncementWithAuthor[]>
 > {
   try {
-    await requireManagerOrAbove();
+    await requireHROrAbove();
     const entityId = await getEffectiveEntityId();
     const data = await getAnnouncementsForManagement(entityId);
     return { success: true, data };

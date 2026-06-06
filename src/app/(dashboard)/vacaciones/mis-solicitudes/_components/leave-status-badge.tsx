@@ -6,8 +6,7 @@ import { LEAVE_TYPE_LABELS, type LeaveTypeValue } from "@/lib/validations";
 
 const STATUS_LABEL: Record<LeaveStatus, string> = {
   pending: "Pendiente",
-  manager_approved: "Aprobada (manager)",
-  hr_approved: "Aprobada",
+  approved: "Aprobada",
   rejected: "Rechazada",
   cancelled: "Cancelada",
 };
@@ -17,8 +16,7 @@ const STATUS_VARIANT: Record<
   "default" | "secondary" | "outline" | "destructive"
 > = {
   pending: "secondary",
-  manager_approved: "secondary",
-  hr_approved: "default",
+  approved: "default",
   rejected: "destructive",
   cancelled: "outline",
 };

@@ -4,7 +4,7 @@ vi.mock("@/lib/db", async () => {
   const { mockDb } = await import("../../mocks/db");
   return { db: mockDb };
 });
-vi.mock("@/lib/auth/helpers", () => ({ requireAdmin: vi.fn() }));
+vi.mock("@/lib/auth/helpers", () => ({ requireManagerOrAbove: vi.fn() }));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
   revalidateTag: vi.fn(),
@@ -17,7 +17,7 @@ import {
   setupInsertMock,
   setupUpdateMock,
 } from "../../mocks/db";
-import { requireAdmin } from "@/lib/auth/helpers";
+import { requireManagerOrAbove } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
 import { createMockProfile } from "../../mocks/factories";
 import {
@@ -34,7 +34,7 @@ const mockAdminUser = {
 describe("updateDirectorioUser", () => {
   beforeEach(() => {
     resetDbMocks();
-    vi.mocked(requireAdmin).mockResolvedValue(mockAdminUser as never);
+    vi.mocked(requireManagerOrAbove).mockResolvedValue(mockAdminUser as never);
   });
 
   it("success → returns { success: true, data: { updated: true } }", async () => {
@@ -107,7 +107,7 @@ describe("updateDirectorioUser", () => {
 describe("createDirectorioUser", () => {
   beforeEach(() => {
     resetDbMocks();
-    vi.mocked(requireAdmin).mockResolvedValue(mockAdminUser as never);
+    vi.mocked(requireManagerOrAbove).mockResolvedValue(mockAdminUser as never);
   });
 
   it("success → returns created user", async () => {

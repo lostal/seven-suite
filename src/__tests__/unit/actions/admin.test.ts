@@ -39,7 +39,7 @@ vi.mock("@/lib/db", async () => {
 });
 
 vi.mock("@/lib/auth/helpers", () => ({
-  requireAdmin: vi.fn(),
+  requireManagerOrAbove: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -55,7 +55,7 @@ vi.mock("@/lib/audit", () => ({
   logAuditEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { requireAdmin } from "@/lib/auth/helpers";
+import { requireManagerOrAbove } from "@/lib/auth/helpers";
 import { getActiveEntityId } from "@/lib/queries/active-entity";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -64,10 +64,10 @@ const UUID = "550e8400-e29b-41d4-a716-446655440000";
 const UUID2 = "660e8400-e29b-41d4-a716-446655440001";
 
 /**
- * Configura requireAdmin como admin válido (no redirige).
+ * Configura requireManagerOrAbove como usuario válido (no redirige).
  */
 function setupAdminUser() {
-  vi.mocked(requireAdmin).mockResolvedValue({
+  vi.mocked(requireManagerOrAbove).mockResolvedValue({
     id: UUID,
     email: "admin@test.com",
     profile: {
@@ -167,8 +167,10 @@ describe("createSpot", () => {
     expect(mockDb.insert).not.toHaveBeenCalled();
   });
 
-  it("falla si requireAdmin lanza error (no admin)", async () => {
-    vi.mocked(requireAdmin).mockRejectedValue(new Error("No autorizado"));
+  it("falla si requireManagerOrAbove lanza error (no autorizado)", async () => {
+    vi.mocked(requireManagerOrAbove).mockRejectedValue(
+      new Error("No autorizado")
+    );
 
     const result = await createSpot({
       label: "A-01",

@@ -199,7 +199,7 @@ export async function seedTestLeaveRequest(
     leaveType?: "vacation" | "sick" | "personal" | "other";
     startDate?: string;
     endDate?: string;
-    status?: "pending" | "manager_approved" | "hr_approved" | "rejected";
+    status?: "pending" | "approved" | "rejected";
   }
 ) {
   const leaveId = randomUUID();

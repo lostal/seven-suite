@@ -20,8 +20,7 @@ import { useLeaveRequests } from "./leave-requests-provider";
 function LeaveRowActions({ row }: { row: LeaveRequestWithDetails }) {
   const { setOpen, setCurrentRow, currentUserId } = useLeaveRequests();
   const isOwn = row.employeeId === currentUserId;
-  const canCancel =
-    isOwn && (row.status === "pending" || row.status === "manager_approved");
+  const canCancel = isOwn && row.status === "pending";
   const canEdit = isOwn && row.status === "rejected";
 
   if (!canCancel && !canEdit) return null;

@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth/helpers";
+import { requireManagerOrAbove } from "@/lib/auth/helpers";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -11,7 +11,7 @@ import { SpotsDialogs } from "@/app/(dashboard)/administracion/components/spots-
 import { SpotsPrimaryButtons } from "@/app/(dashboard)/administracion/components/spots-primary-buttons";
 import { SpotsTable } from "@/app/(dashboard)/administracion/components/spots-table";
 export default async function OficinaAsignacionesPage() {
-  await requireAdmin();
+  await requireManagerOrAbove();
 
   const entityId = await getEffectiveEntityId();
 

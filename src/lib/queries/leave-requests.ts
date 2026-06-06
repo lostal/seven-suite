@@ -16,12 +16,9 @@ export type LeaveRequestWithDetails = {
   createdAt: Date;
   employeeId: string;
   employeeName: string;
-  managerId: string | null;
-  managerName: string | null;
-  managerNotes: string | null;
-  hrId: string | null;
-  hrName: string | null;
-  hrNotes: string | null;
+  reviewerId: string | null;
+  reviewerName: string | null;
+  reviewerNotes: string | null;
 };
 
 const LEAVE_SELECT = {
@@ -35,10 +32,8 @@ const LEAVE_SELECT = {
   createdAt: leaveRequests.createdAt,
   employeeId: leaveRequests.employeeId,
   employeeName: profiles.fullName,
-  managerId: leaveRequests.managerId,
-  managerNotes: leaveRequests.managerNotes,
-  hrId: leaveRequests.hrId,
-  hrNotes: leaveRequests.hrNotes,
+  reviewerId: leaveRequests.reviewerId,
+  reviewerNotes: leaveRequests.reviewerNotes,
 } as const;
 
 function toRow(r: {
@@ -52,16 +47,13 @@ function toRow(r: {
   createdAt: Date;
   employeeId: string;
   employeeName: string | null;
-  managerId: string | null;
-  managerNotes: string | null;
-  hrId: string | null;
-  hrNotes: string | null;
+  reviewerId: string | null;
+  reviewerNotes: string | null;
 }): LeaveRequestWithDetails {
   return {
     ...r,
     employeeName: r.employeeName ?? "",
-    managerName: null,
-    hrName: null,
+    reviewerName: null,
   };
 }
 

@@ -4,13 +4,12 @@
  * Defines the navigation structure for the app sidebar.
  * Items are grouped by section and support icons, badges, and sub-items.
  *
- * Role visibility:
- *   employee   → usuario general (puede reservar y ceder si tiene plaza asignada)
- *   admin      → administrador (gestiona usuarios, plazas y configuración)
+ * Role hierarchy: employee → hr → manager → admin
+ * Each level can do everything the previous can plus new capabilities.
  *
  * Estructura de grupos:
  *   "Sede activa"  → Contenido que varía según la sede seleccionada (módulos habilitados)
- *   "Global"       → Siempre visible para admins: Directorio, Sedes, Ajustes
+ *   "General"       → Directorio, Sedes, Ajustes
  */
 
 import {
@@ -60,14 +59,13 @@ export function getSidebarData({
   const vacacionesEnabled =
     !enabledModules || enabledModules.includes("vacaciones");
   const tablonEnabled = !enabledModules || enabledModules.includes("tablon");
-  // "visitors" es un módulo independiente dentro del módulo parking
   const visitorsEnabled =
     parkingEnabled && (!enabledModules || enabledModules.includes("visitors"));
 
   const tablonBadge =
     unreadAnnouncementsCount > 0 ? String(unreadAnnouncementsCount) : undefined;
 
-  // ─── Subitems de empleado ─────────────────────────────────
+  // ─── Subitems para empleado/hr ────────────────────────────
   const parkingSubItems = [
     hasParkingSpot
       ? {
@@ -100,7 +98,7 @@ export function getSidebarData({
     { title: "Mapa", url: ROUTES.OFFICES_MAP, icon: MapPin },
   ];
 
-  // ─── Subitems de admin ────────────────────────────────────
+  // ─── Subitems para manager/admin ──────────────────────────
   const adminParkingItems = [
     ...(visitorsEnabled
       ? [{ title: "Visitantes", url: ROUTES.VISITORS, icon: Users }]
@@ -114,64 +112,64 @@ export function getSidebarData({
 
   return {
     navGroups: [
-      // ─── Sede activa: varía según módulos habilitados ──────
+      // ─── Sede activa ──────────────────────────────────────
       {
         title: "Sede activa",
         items: [
-          // Panel (admin — analytics de la sede activa)
+          // Panel — solo admin
           {
             title: "Panel",
             url: ROUTES.DASHBOARD,
             icon: LayoutDashboard,
             roles: ["admin"] as UserRole[],
           },
-          // Parking (employee)
+          // Parking — empleado/hr (reservas, cesiones, visitantes)
           ...(parkingEnabled
             ? [
                 {
                   title: "Parking",
                   url: ROUTES.PARKING,
                   icon: ParkingCircle,
-                  roles: ["employee"] as UserRole[],
+                  roles: ["employee", "hr"] as UserRole[],
                   items: parkingSubItems,
                 },
               ]
             : []),
-          // Parking (admin)
+          // Parking — manager/admin (asignaciones, visitantes)
           ...(parkingEnabled
             ? [
                 {
                   title: "Parking",
                   icon: ParkingCircle,
-                  roles: ["admin"] as UserRole[],
+                  roles: ["manager", "admin"] as UserRole[],
                   items: adminParkingItems,
                 },
               ]
             : []),
-          // Oficinas (employee)
+          // Oficinas — empleado/hr (reservas, cesiones, mapa)
           ...(officeEnabled
             ? [
                 {
                   title: "Oficinas",
                   url: ROUTES.OFFICES,
                   icon: Building2,
-                  roles: ["employee"] as UserRole[],
+                  roles: ["employee", "hr"] as UserRole[],
                   items: oficinasSubItems,
                 },
               ]
             : []),
-          // Oficinas (admin)
+          // Oficinas — manager/admin (asignaciones)
           ...(officeEnabled
             ? [
                 {
                   title: "Oficinas",
                   icon: Building2,
-                  roles: ["admin"] as UserRole[],
+                  roles: ["manager", "admin"] as UserRole[],
                   items: adminOficinaItems,
                 },
               ]
             : []),
-          // Vacaciones — employee ve solo "Mis solicitudes"
+          // Vacaciones — empleado (solo "Mis solicitudes")
           ...(vacacionesEnabled
             ? [
                 {
@@ -186,11 +184,15 @@ export function getSidebarData({
                     },
                   ],
                 },
-                // manager/hr/admin ven también "Gestionar"
+              ]
+            : []),
+          // Vacaciones — hr/manager/admin (Mis solicitudes + Gestionar)
+          ...(vacacionesEnabled
+            ? [
                 {
                   title: "Vacaciones",
                   icon: Palmtree,
-                  roles: ["manager", "hr", "admin"] as UserRole[],
+                  roles: ["hr", "manager", "admin"] as UserRole[],
                   items: [
                     {
                       title: "Mis solicitudes",
@@ -206,7 +208,7 @@ export function getSidebarData({
                 },
               ]
             : []),
-          // Tablón — todos ven las novedades; manager/hr/admin también pueden gestionar
+          // Tablón — empleado (solo novedades)
           ...(tablonEnabled
             ? [
                 {
@@ -216,11 +218,16 @@ export function getSidebarData({
                   badge: tablonBadge,
                   roles: ["employee"] as UserRole[],
                 },
+              ]
+            : []),
+          // Tablón — hr/manager/admin (Novedades + Gestionar)
+          ...(tablonEnabled
+            ? [
                 {
                   title: "Tablón",
                   icon: Megaphone,
                   badge: tablonBadge,
-                  roles: ["manager", "hr", "admin"] as UserRole[],
+                  roles: ["hr", "manager", "admin"] as UserRole[],
                   items: [
                     {
                       title: "Novedades",
@@ -246,7 +253,7 @@ export function getSidebarData({
             title: "Directorio",
             url: ROUTES.DIRECTORIO,
             icon: BookUser,
-            roles: ["admin"] as UserRole[],
+            roles: ["manager", "admin"] as UserRole[],
           },
           {
             title: "Sedes",
@@ -254,10 +261,11 @@ export function getSidebarData({
             icon: Landmark,
             roles: ["admin"] as UserRole[],
           },
+          // Ajustes personal — todos
           {
             title: "Ajustes",
             icon: Settings,
-            roles: ["employee", "manager", "hr"] as UserRole[],
+            roles: ["employee", "hr", "manager", "admin"] as UserRole[],
             items: [
               { title: "Perfil", url: "/ajustes/perfil", icon: User },
               {
@@ -275,13 +283,37 @@ export function getSidebarData({
                 url: "/ajustes/microsoft",
                 icon: Cloud,
               },
-              {
-                title: "Seguridad",
-                url: "/ajustes/seguridad",
-                icon: Shield,
-              },
+              { title: "Seguridad", url: "/ajustes/seguridad", icon: Shield },
             ],
           },
+          // Ajustes de sede — manager/admin (parking, oficinas)
+          {
+            title: "Ajustes",
+            icon: Settings,
+            roles: ["manager", "admin"] as UserRole[],
+            items: [
+              { title: "Perfil", url: "/ajustes/perfil", icon: User },
+              {
+                title: "Notificaciones",
+                url: "/ajustes/notificaciones",
+                icon: Bell,
+              },
+              {
+                title: "Apariencia",
+                url: "/ajustes/apariencia",
+                icon: Palette,
+              },
+              {
+                title: "Microsoft 365",
+                url: "/ajustes/microsoft",
+                icon: Cloud,
+              },
+              { title: "Seguridad", url: "/ajustes/seguridad", icon: Shield },
+              { title: "Parking", url: "/ajustes/parking", icon: Car },
+              { title: "Oficinas", url: "/ajustes/oficinas", icon: Building2 },
+            ],
+          },
+          // Ajustes globales — solo admin
           {
             title: "Ajustes",
             icon: Settings,
@@ -303,26 +335,10 @@ export function getSidebarData({
                 url: "/ajustes/microsoft",
                 icon: Cloud,
               },
-              {
-                title: "Seguridad",
-                url: "/ajustes/seguridad",
-                icon: Shield,
-              },
-              {
-                title: "General",
-                url: "/ajustes/general",
-                icon: Globe,
-              },
-              {
-                title: "Parking",
-                url: "/ajustes/parking",
-                icon: Car,
-              },
-              {
-                title: "Oficinas",
-                url: "/ajustes/oficinas",
-                icon: Building2,
-              },
+              { title: "Seguridad", url: "/ajustes/seguridad", icon: Shield },
+              { title: "General", url: "/ajustes/general", icon: Globe },
+              { title: "Parking", url: "/ajustes/parking", icon: Car },
+              { title: "Oficinas", url: "/ajustes/oficinas", icon: Building2 },
             ],
           },
         ],

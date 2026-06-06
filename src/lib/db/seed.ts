@@ -487,11 +487,11 @@ async function seed() {
       leaveType: "vacation" as const,
       startDate: dstr(new Date(2026, 7, 14)), // Aug 14, 2026
       endDate: dstr(new Date(2026, 7, 22)), // Aug 22, 2026
-      status: "manager_approved" as const,
+      status: "approved" as const,
       reason: "Viaje familiar",
-      managerId: managerProfileId,
-      managerActionAt: now,
-      managerNotes: "Aprobado sin incidencias",
+      reviewerId: managerProfileId,
+      reviewedAt: now,
+      reviewerNotes: "Aprobado sin incidencias",
       workingDays: 7,
     },
     {
@@ -508,12 +508,10 @@ async function seed() {
       leaveType: "vacation" as const,
       startDate: dstr(new Date(2026, 2, 10)), // March 10, 2026
       endDate: dstr(new Date(2026, 2, 12)), // March 12, 2026
-      status: "hr_approved" as const,
+      status: "approved" as const,
       reason: "Puente de marzo",
-      managerId: managerProfileId,
-      managerActionAt: new Date(2026, 1, 20),
-      hrId: UUIDS.users.hr,
-      hrActionAt: new Date(2026, 1, 22),
+      reviewerId: UUIDS.users.hr,
+      reviewedAt: new Date(2026, 1, 22),
       workingDays: 3,
     },
   ];
@@ -557,9 +555,9 @@ async function seed() {
       endDate: dstr(addDays(t, 2)),
       status: "rejected" as const,
       reason: "Cita médica",
-      managerId: managerProfileId,
-      managerActionAt: new Date(),
-      managerNotes: "Día con mucha carga de trabajo, solicitar otra fecha",
+      reviewerId: managerProfileId,
+      reviewedAt: new Date(),
+      reviewerNotes: "Día con mucha carga de trabajo, solicitar otra fecha",
       workingDays: 1,
     },
   ];
@@ -567,9 +565,7 @@ async function seed() {
   for (const lr of extraLeaveRequests) {
     await db.insert(schema.leaveRequests).values(lr).onConflictDoNothing();
   }
-  log(
-    "Leave requests: 8 total (pending, manager_approved, hr_approved, rejected, personal)"
-  );
+  log("Leave requests: 8 total (pending, approved, rejected, personal)");
 
   // ─── Announcements ─────────────────────────────────────────────────────
 

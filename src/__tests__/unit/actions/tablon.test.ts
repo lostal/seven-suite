@@ -14,7 +14,7 @@ vi.mock("@/lib/db", async () => {
 vi.mock("@/lib/auth/helpers", () => ({
   getCurrentUser: vi.fn(),
   requireAuth: vi.fn(),
-  requireManagerOrAbove: vi.fn(),
+  requireHROrAbove: vi.fn(),
 }));
 vi.mock("@/lib/queries/announcements", () => ({
   getPublishedAnnouncements: vi.fn().mockResolvedValue([]),
@@ -29,7 +29,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 import {
   getCurrentUser,
   requireAuth,
-  requireManagerOrAbove,
+  requireHROrAbove,
   type AuthUser,
 } from "@/lib/auth/helpers";
 import {
@@ -65,7 +65,7 @@ function setManager(entityId = "entity-A") {
     profile: { role: "manager", entityId } as AuthUser["profile"],
   } as AuthUser;
   vi.mocked(requireAuth).mockResolvedValue(user);
-  vi.mocked(requireManagerOrAbove).mockResolvedValue(user);
+  vi.mocked(requireHROrAbove).mockResolvedValue(user);
 }
 
 function setAdmin() {
@@ -75,7 +75,7 @@ function setAdmin() {
     profile: { role: "admin", entityId: null } as AuthUser["profile"],
   } as AuthUser;
   vi.mocked(requireAuth).mockResolvedValue(user);
-  vi.mocked(requireManagerOrAbove).mockResolvedValue(user);
+  vi.mocked(requireHROrAbove).mockResolvedValue(user);
 }
 
 // ─── createAnnouncement ───────────────────────────────────────────────────────
@@ -390,10 +390,8 @@ describe("getManageAnnouncements", () => {
     vi.clearAllMocks();
   });
 
-  it("returns error when requireManagerOrAbove throws", async () => {
-    vi.mocked(requireManagerOrAbove).mockRejectedValue(
-      new Error("Sin permisos")
-    );
+  it("returns error when requireHROrAbove throws", async () => {
+    vi.mocked(requireHROrAbove).mockRejectedValue(new Error("Sin permisos"));
 
     const result = await getManageAnnouncements();
 

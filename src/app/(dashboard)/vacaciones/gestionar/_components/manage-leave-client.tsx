@@ -53,8 +53,7 @@ type FilterStatus = LeaveStatus | "all";
 const STATUS_FILTER_OPTIONS: { value: FilterStatus; label: string }[] = [
   { value: "all", label: "Todos" },
   { value: "pending", label: "Pendientes" },
-  { value: "manager_approved", label: "Aprobadas (manager)" },
-  { value: "hr_approved", label: "Aprobadas" },
+  { value: "approved", label: "Aprobadas" },
   { value: "rejected", label: "Rechazadas" },
   { value: "cancelled", label: "Canceladas" },
 ];
@@ -105,18 +104,22 @@ export function ManageLeaveClient({
       : data.filter((r) => r.status === filterStatus);
 
   const canApprove = (row: LeaveRequestWithDetails) => {
-    if (currentUserRole === "manager") return row.status === "pending";
-    if (currentUserRole === "hr") return row.status === "manager_approved";
-    if (currentUserRole === "admin")
-      return row.status === "pending" || row.status === "manager_approved";
+    if (
+      currentUserRole === "hr" ||
+      currentUserRole === "manager" ||
+      currentUserRole === "admin"
+    )
+      return row.status === "pending";
     return false;
   };
 
   const canReject = (row: LeaveRequestWithDetails) => {
-    if (currentUserRole === "manager") return row.status === "pending";
-    if (currentUserRole === "hr") return row.status === "manager_approved";
-    if (currentUserRole === "admin")
-      return row.status === "pending" || row.status === "manager_approved";
+    if (
+      currentUserRole === "hr" ||
+      currentUserRole === "manager" ||
+      currentUserRole === "admin"
+    )
+      return row.status === "pending";
     return false;
   };
 

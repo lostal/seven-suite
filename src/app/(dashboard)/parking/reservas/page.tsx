@@ -25,11 +25,6 @@ import { MisReservasClient } from "../../mis-reservas/_components/mis-reservas-c
 
 export default async function ParkingReservasPage() {
   const user = await requireAuth();
-  const role = user.profile?.role ?? "employee";
-
-  if (role === "admin") {
-    redirect(ROUTES.DASHBOARD);
-  }
 
   const [reservations, cessions, parkingSpotRows] = await Promise.all([
     getUserReservations(user.id, "parking"),

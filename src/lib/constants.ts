@@ -12,7 +12,7 @@ export const APP_DESCRIPTION = "Sistema de gestión de espacios corporativos";
 export const ROUTES = {
   LOGIN: "/login",
   DASHBOARD: "/panel",
-  /** Home page for non-admin roles (employee) */
+  /** Home page for all roles */
   PARKING: "/parking",
   MIS_RESERVAS: "/mis-reservas",
   PARKING_CESSIONS: "/parking/cesiones",
@@ -52,9 +52,8 @@ export const ROUTES = {
  * mirroring the order of items in the sidebar (first visible item per role).
  */
 export function getHomeRouteForRole(
-  role: "admin" | "employee" | string | undefined | null
+  _role: "admin" | "employee" | string | undefined | null
 ): string {
-  if (role === "admin") return ROUTES.DASHBOARD;
   return ROUTES.PARKING;
 }
 
