@@ -16,7 +16,6 @@ export const ROUTES = {
   PARKING: "/parking",
   MIS_RESERVAS: "/mis-reservas",
   PARKING_CESSIONS: "/parking/cesiones",
-  OFFICES_MAP: "/oficinas/mapa",
   PARKING_RESERVAS: "/parking/reservas",
   OFFICES_RESERVAS: "/oficinas/reservas",
   VISITORS: "/parking/visitantes",

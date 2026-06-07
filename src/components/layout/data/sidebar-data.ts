@@ -16,7 +16,6 @@ import {
   LayoutDashboard,
   Users,
   Settings,
-  MapPin,
   LayoutGrid,
   Building2,
   ParkingCircle,
@@ -95,7 +94,6 @@ export function getSidebarData({
           url: ROUTES.OFFICES_RESERVAS,
           icon: CalendarCheck,
         },
-    { title: "Mapa", url: ROUTES.OFFICES_MAP, icon: MapPin },
   ];
 
   // ─── Subitems para manager/admin (heredan los de empleado + asignaciones) ──
@@ -146,7 +144,7 @@ export function getSidebarData({
                 },
               ]
             : []),
-          // Oficinas — empleado/hr (reservas, cesiones, mapa)
+          // Oficinas — empleado/hr (reservas, cesiones)
           ...(officeEnabled
             ? [
                 {
@@ -158,7 +156,7 @@ export function getSidebarData({
                 },
               ]
             : []),
-          // Oficinas — manager/admin (reservas/cesiones, mapa, asignaciones)
+          // Oficinas — manager/admin (reservas/cesiones, asignaciones)
           ...(officeEnabled
             ? [
                 {
