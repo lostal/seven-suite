@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 import { requireManagerOrAbove } from "@/lib/auth/helpers";
 import { getAllResourceConfigs } from "@/lib/config";
-import { getActiveEntityId } from "@/lib/queries/active-entity";
+import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { db } from "@/lib/db";
 import { entities } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -18,7 +18,7 @@ import { Building2, Globe } from "lucide-react";
 
 export default async function ConfiguracionOficinaPage() {
   await requireManagerOrAbove();
-  const entityId = await getActiveEntityId();
+  const entityId = await getEffectiveEntityId();
 
   let entityName: string | null = null;
   if (entityId) {

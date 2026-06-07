@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { leaveRequests, profiles } from "@/lib/db/schema";
 import type { LeaveStatus, LeaveType } from "@/lib/db/types";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, aliasedTable } from "drizzle-orm";
 
 export type { LeaveStatus, LeaveType };
 
@@ -58,9 +58,7 @@ function toRow(r: {
   };
 }
 
-const LEAVE_FROM = sql`${leaveRequests}
-  inner join ${profiles} on ${leaveRequests.employeeId} = ${profiles.id}
-  left join ${profiles} reviewer_profiles on ${leaveRequests.reviewerId} = reviewer_profiles.id`;
+const reviewerProfiles = aliasedTable(profiles, "reviewer_profiles");
 
 /**
  * Obtiene todas las solicitudes de un empleado, ordenadas por fecha desc.
@@ -71,9 +69,14 @@ export async function getUserLeaveRequests(
   const rows = await db
     .select({
       ...LEAVE_SELECT,
-      reviewerName: sql<string | null>`reviewer_profiles.full_name`,
+      reviewerName: reviewerProfiles.fullName,
     })
-    .from(LEAVE_FROM)
+    .from(leaveRequests)
+    .innerJoin(profiles, eq(leaveRequests.employeeId, profiles.id))
+    .leftJoin(
+      reviewerProfiles,
+      eq(leaveRequests.reviewerId, reviewerProfiles.id)
+    )
     .where(eq(leaveRequests.employeeId, userId))
     .orderBy(desc(leaveRequests.createdAt));
 
@@ -94,9 +97,14 @@ export async function getLeaveRequestsByEntity(
   const rows = await db
     .select({
       ...LEAVE_SELECT,
-      reviewerName: sql<string | null>`reviewer_profiles.full_name`,
+      reviewerName: reviewerProfiles.fullName,
     })
-    .from(LEAVE_FROM)
+    .from(leaveRequests)
+    .innerJoin(profiles, eq(leaveRequests.employeeId, profiles.id))
+    .leftJoin(
+      reviewerProfiles,
+      eq(leaveRequests.reviewerId, reviewerProfiles.id)
+    )
     .where(and(...conditions))
     .orderBy(desc(leaveRequests.createdAt));
 

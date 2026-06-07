@@ -57,7 +57,7 @@ export default async function ConfiguracionLayout({
           <aside className="top-0 lg:sticky lg:w-1/5">
             <SettingsSidebar isAdmin={isAdmin} />
           </aside>
-          <div className="flex min-h-0 w-full overflow-y-auto p-1">
+          <div className="bg-background flex min-h-0 w-full overflow-y-auto p-1">
             {children}
           </div>
         </div>

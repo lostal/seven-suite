@@ -4,24 +4,24 @@ import { signIn } from "next-auth/react";
 
 const DEMO_USERS = [
   {
-    role: "Administrador",
-    email: "admin@gruposiete.es",
-    description: "Acceso total — analíticas, CRUD, configuración",
-  },
-  {
-    role: "Manager",
-    email: "manager@gruposiete.es",
-    description: "Plazas asignadas — cede parking, aprueba ausencias",
+    role: "Empleado",
+    email: "empleado@gruposiete.es",
+    description: "Reserva plazas, solicita vacaciones",
   },
   {
     role: "RRHH",
     email: "rrhh@gruposiete.es",
-    description: "Valida vacaciones, publica anuncios",
+    description: "Aprueba/rechaza vacaciones, publica anuncios",
   },
   {
-    role: "Empleado",
-    email: "empleado@gruposiete.es",
-    description: "Reserva plazas, solicita vacaciones",
+    role: "Manager",
+    email: "manager@gruposiete.es",
+    description: "Administra su sede — plazas, usuarios, vacaciones",
+  },
+  {
+    role: "Administrador",
+    email: "admin@gruposiete.es",
+    description: "Acceso global — entidades, configuración, analíticas",
   },
 ];
 

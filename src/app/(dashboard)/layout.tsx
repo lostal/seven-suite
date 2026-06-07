@@ -106,25 +106,12 @@ export default async function DashboardLayout({
         ? cookieEntityId
         : (entities[0]?.id ?? null);
       entityIdPersisted = isValidCookieEntity;
-
-      // Persistir la cookie en el servidor en el primer render para evitar
-      // que las Server Actions posteriores lean entityId = null durante
-      // la ventana entre SSR y la hidratación del EntitySwitcher.
-      if (!isValidCookieEntity && activeEntityId) {
-        cookieStore.set("active-entity-id", activeEntityId, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 7,
-          httpOnly: true,
-          sameSite: "lax",
-          secure: process.env.NODE_ENV === "production",
-        });
-      }
       if (activeEntityId) {
         enabledModules = await getEntityEnabledModules(activeEntityId);
       }
-    } catch {
-      // table doesn't exist yet — migration pending
-      entities = [];
+    } catch (err) {
+      console.error("[layout] Error cargando entidades para admin:", err);
+      entities = undefined;
     }
   } else if (user.profile?.entityId) {
     // Para employees: obtener nombre de sede y módulos habilitados de su sede
@@ -170,8 +157,8 @@ export default async function DashboardLayout({
         <SidebarInset
           className={cn(
             "@container/content",
-            "has-data-[layout=fixed]:h-svh",
-            "peer-data-[variant=inset]:has-data-[layout=fixed]:h-[calc(100svh-(var(--spacing)*4))]"
+            "has-data-[layout=fixed]:min-h-svh",
+            "peer-data-[variant=inset]:has-data-[layout=fixed]:min-h-[calc(100svh-(var(--spacing)*4))]"
           )}
         >
           <main id="content">{children}</main>

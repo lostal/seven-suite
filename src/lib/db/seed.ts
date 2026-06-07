@@ -4,7 +4,7 @@
  * Creates demo data for development:
  * - 3 entities (multi-tenant)
  * - 4 users with different roles (dev login via email)
- * - Parking & office spots with manager assignments
+ * - Parking & office spots with employee assignments
  * - Sample reservations, cessions, visitor reservations
  * - Leave requests in various approval states
  * - Professional announcements
@@ -77,9 +77,16 @@ async function seed() {
       id: UUIDS.entities.central,
       name: "Sede Central",
       shortCode: "SC",
-      autonomousCommunity: "Comunidad de Madrid",
+      autonomousCommunity: "ES-MD",
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: schema.entities.id,
+      set: {
+        name: "Sede Central",
+        shortCode: "SC",
+        autonomousCommunity: "ES-MD",
+      },
+    });
 
   await db
     .insert(schema.entities)
@@ -87,9 +94,16 @@ async function seed() {
       id: UUIDS.entities.norte,
       name: "Sede Norte",
       shortCode: "SN",
-      autonomousCommunity: "Cantabria",
+      autonomousCommunity: "ES-CB",
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: schema.entities.id,
+      set: {
+        name: "Sede Norte",
+        shortCode: "SN",
+        autonomousCommunity: "ES-CB",
+      },
+    });
 
   await db
     .insert(schema.entities)
@@ -97,9 +111,16 @@ async function seed() {
       id: UUIDS.entities.levante,
       name: "Sede Levante",
       shortCode: "SL",
-      autonomousCommunity: "Comunitat Valenciana",
+      autonomousCommunity: "ES-VC",
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: schema.entities.id,
+      set: {
+        name: "Sede Levante",
+        shortCode: "SL",
+        autonomousCommunity: "ES-VC",
+      },
+    });
 
   log("Entities: Sede Central, Sede Norte, Sede Levante");
 

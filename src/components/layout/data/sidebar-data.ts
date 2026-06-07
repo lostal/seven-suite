@@ -98,15 +98,14 @@ export function getSidebarData({
     { title: "Mapa", url: ROUTES.OFFICES_MAP, icon: MapPin },
   ];
 
-  // ─── Subitems para manager/admin ──────────────────────────
-  const adminParkingItems = [
-    ...(visitorsEnabled
-      ? [{ title: "Visitantes", url: ROUTES.VISITORS, icon: Users }]
-      : []),
+  // ─── Subitems para manager/admin (heredan los de empleado + asignaciones) ──
+  const managerParkingItems = [
+    ...parkingSubItems,
     { title: "Asignaciones", url: ROUTES.ADMIN_PARKING, icon: LayoutGrid },
   ];
 
-  const adminOficinaItems = [
+  const managerOficinaItems = [
+    ...oficinasSubItems,
     { title: "Asignaciones", url: ROUTES.ADMIN_OFFICES, icon: LayoutGrid },
   ];
 
@@ -116,12 +115,12 @@ export function getSidebarData({
       {
         title: "Sede activa",
         items: [
-          // Panel — solo admin
+          // Panel — todos los roles
           {
             title: "Panel",
             url: ROUTES.DASHBOARD,
             icon: LayoutDashboard,
-            roles: ["admin"] as UserRole[],
+            roles: ["employee", "hr", "manager", "admin"] as UserRole[],
           },
           // Parking — empleado/hr (reservas, cesiones, visitantes)
           ...(parkingEnabled
@@ -135,14 +134,15 @@ export function getSidebarData({
                 },
               ]
             : []),
-          // Parking — manager/admin (asignaciones, visitantes)
+          // Parking — manager/admin (reservas/cesiones, visitantes, asignaciones)
           ...(parkingEnabled
             ? [
                 {
                   title: "Parking",
+                  url: ROUTES.PARKING,
                   icon: ParkingCircle,
                   roles: ["manager", "admin"] as UserRole[],
-                  items: adminParkingItems,
+                  items: managerParkingItems,
                 },
               ]
             : []),
@@ -158,14 +158,15 @@ export function getSidebarData({
                 },
               ]
             : []),
-          // Oficinas — manager/admin (asignaciones)
+          // Oficinas — manager/admin (reservas/cesiones, mapa, asignaciones)
           ...(officeEnabled
             ? [
                 {
                   title: "Oficinas",
+                  url: ROUTES.OFFICES,
                   icon: Building2,
                   roles: ["manager", "admin"] as UserRole[],
-                  items: adminOficinaItems,
+                  items: managerOficinaItems,
                 },
               ]
             : []),
@@ -174,6 +175,7 @@ export function getSidebarData({
             ? [
                 {
                   title: "Vacaciones",
+                  url: ROUTES.LEAVE,
                   icon: Palmtree,
                   roles: ["employee"] as UserRole[],
                   items: [
@@ -191,6 +193,7 @@ export function getSidebarData({
             ? [
                 {
                   title: "Vacaciones",
+                  url: ROUTES.LEAVE,
                   icon: Palmtree,
                   roles: ["hr", "manager", "admin"] as UserRole[],
                   items: [
@@ -225,6 +228,7 @@ export function getSidebarData({
             ? [
                 {
                   title: "Tablón",
+                  url: ROUTES.TABLON,
                   icon: Megaphone,
                   badge: tablonBadge,
                   roles: ["hr", "manager", "admin"] as UserRole[],
@@ -253,7 +257,7 @@ export function getSidebarData({
             title: "Directorio",
             url: ROUTES.DIRECTORIO,
             icon: BookUser,
-            roles: ["manager", "admin"] as UserRole[],
+            roles: ["employee", "hr", "manager", "admin"] as UserRole[],
           },
           {
             title: "Sedes",
@@ -261,11 +265,11 @@ export function getSidebarData({
             icon: Landmark,
             roles: ["admin"] as UserRole[],
           },
-          // Ajustes personal — todos
+          // Ajustes — empleado (solo personal)
           {
             title: "Ajustes",
             icon: Settings,
-            roles: ["employee", "hr", "manager", "admin"] as UserRole[],
+            roles: ["employee"] as UserRole[],
             items: [
               { title: "Perfil", url: "/ajustes/perfil", icon: User },
               {
@@ -286,11 +290,36 @@ export function getSidebarData({
               { title: "Seguridad", url: "/ajustes/seguridad", icon: Shield },
             ],
           },
-          // Ajustes de sede — manager/admin (parking, oficinas)
+          // Ajustes — hr (solo personal)
           {
             title: "Ajustes",
             icon: Settings,
-            roles: ["manager", "admin"] as UserRole[],
+            roles: ["hr"] as UserRole[],
+            items: [
+              { title: "Perfil", url: "/ajustes/perfil", icon: User },
+              {
+                title: "Notificaciones",
+                url: "/ajustes/notificaciones",
+                icon: Bell,
+              },
+              {
+                title: "Apariencia",
+                url: "/ajustes/apariencia",
+                icon: Palette,
+              },
+              {
+                title: "Microsoft 365",
+                url: "/ajustes/microsoft",
+                icon: Cloud,
+              },
+              { title: "Seguridad", url: "/ajustes/seguridad", icon: Shield },
+            ],
+          },
+          // Ajustes — manager (personal + sede)
+          {
+            title: "Ajustes",
+            icon: Settings,
+            roles: ["manager"] as UserRole[],
             items: [
               { title: "Perfil", url: "/ajustes/perfil", icon: User },
               {
@@ -313,7 +342,7 @@ export function getSidebarData({
               { title: "Oficinas", url: "/ajustes/oficinas", icon: Building2 },
             ],
           },
-          // Ajustes globales — solo admin
+          // Ajustes — admin (personal + sede + global)
           {
             title: "Ajustes",
             icon: Settings,
