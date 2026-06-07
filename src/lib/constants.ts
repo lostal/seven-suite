@@ -14,7 +14,6 @@ export const ROUTES = {
   DASHBOARD: "/panel",
   /** Home page for all roles */
   PARKING: "/parking",
-  MIS_RESERVAS: "/mis-reservas",
   PARKING_CESSIONS: "/parking/cesiones",
   PARKING_RESERVAS: "/parking/reservas",
   OFFICES_RESERVAS: "/oficinas/reservas",
@@ -37,8 +36,6 @@ export const ROUTES = {
   OFFICES_CESSIONS: "/oficinas/cesiones",
   ADMIN_ENTITIES: "/administracion/entidades",
   DIRECTORIO: "/directorio",
-  // Legacy
-  SETTINGS_PREFERENCES: "/ajustes/apariencia",
   LEAVE: "/vacaciones",
   LEAVE_MY_REQUESTS: "/vacaciones/mis-solicitudes",
   LEAVE_MANAGE: "/vacaciones/gestionar",

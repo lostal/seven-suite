@@ -107,6 +107,26 @@ export function getSidebarData({
     { title: "Asignaciones", url: ROUTES.ADMIN_OFFICES, icon: LayoutGrid },
   ];
 
+  const settingsBase = [
+    { title: "Perfil", url: "/ajustes/perfil", icon: User },
+    {
+      title: "Notificaciones",
+      url: "/ajustes/notificaciones",
+      icon: Bell,
+    },
+    {
+      title: "Apariencia",
+      url: "/ajustes/apariencia",
+      icon: Palette,
+    },
+    {
+      title: "Microsoft 365",
+      url: "/ajustes/microsoft",
+      icon: Cloud,
+    },
+    { title: "Seguridad", url: "/ajustes/seguridad", icon: Shield },
+  ];
+
   return {
     navGroups: [
       // ─── Sede activa ──────────────────────────────────────
@@ -263,109 +283,49 @@ export function getSidebarData({
             icon: Landmark,
             roles: ["admin"] as UserRole[],
           },
-          // Ajustes — empleado (solo personal)
+          // Ajustes — los ítems personales son comunes a todos los roles.
+          // Manager y admin añaden configuración de sede/global por composición.
           {
             title: "Ajustes",
             icon: Settings,
-            roles: ["employee"] as UserRole[],
-            items: [
-              { title: "Perfil", url: "/ajustes/perfil", icon: User },
-              {
-                title: "Notificaciones",
-                url: "/ajustes/notificaciones",
-                icon: Bell,
-              },
-              {
-                title: "Apariencia",
-                url: "/ajustes/apariencia",
-                icon: Palette,
-              },
-              {
-                title: "Microsoft 365",
-                url: "/ajustes/microsoft",
-                icon: Cloud,
-              },
-              { title: "Seguridad", url: "/ajustes/seguridad", icon: Shield },
-            ],
+            roles: ["employee", "hr"] as UserRole[],
+            items: settingsBase,
           },
-          // Ajustes — hr (solo personal)
-          {
-            title: "Ajustes",
-            icon: Settings,
-            roles: ["hr"] as UserRole[],
-            items: [
-              { title: "Perfil", url: "/ajustes/perfil", icon: User },
-              {
-                title: "Notificaciones",
-                url: "/ajustes/notificaciones",
-                icon: Bell,
-              },
-              {
-                title: "Apariencia",
-                url: "/ajustes/apariencia",
-                icon: Palette,
-              },
-              {
-                title: "Microsoft 365",
-                url: "/ajustes/microsoft",
-                icon: Cloud,
-              },
-              { title: "Seguridad", url: "/ajustes/seguridad", icon: Shield },
-            ],
-          },
-          // Ajustes — manager (personal + sede)
           {
             title: "Ajustes",
             icon: Settings,
             roles: ["manager"] as UserRole[],
             items: [
-              { title: "Perfil", url: "/ajustes/perfil", icon: User },
+              ...settingsBase,
               {
-                title: "Notificaciones",
-                url: "/ajustes/notificaciones",
-                icon: Bell,
+                title: "Parking",
+                url: ROUTES.ADMIN_SETTINGS_PARKING,
+                icon: Car,
               },
               {
-                title: "Apariencia",
-                url: "/ajustes/apariencia",
-                icon: Palette,
+                title: "Oficinas",
+                url: ROUTES.ADMIN_SETTINGS_OFFICES,
+                icon: Building2,
               },
-              {
-                title: "Microsoft 365",
-                url: "/ajustes/microsoft",
-                icon: Cloud,
-              },
-              { title: "Seguridad", url: "/ajustes/seguridad", icon: Shield },
-              { title: "Parking", url: "/ajustes/parking", icon: Car },
-              { title: "Oficinas", url: "/ajustes/oficinas", icon: Building2 },
             ],
           },
-          // Ajustes — admin (personal + sede + global)
           {
             title: "Ajustes",
             icon: Settings,
             roles: ["admin"] as UserRole[],
             items: [
-              { title: "Perfil", url: "/ajustes/perfil", icon: User },
+              ...settingsBase,
+              { title: "General", url: ROUTES.ADMIN_SETTINGS, icon: Globe },
               {
-                title: "Notificaciones",
-                url: "/ajustes/notificaciones",
-                icon: Bell,
+                title: "Parking",
+                url: ROUTES.ADMIN_SETTINGS_PARKING,
+                icon: Car,
               },
               {
-                title: "Apariencia",
-                url: "/ajustes/apariencia",
-                icon: Palette,
+                title: "Oficinas",
+                url: ROUTES.ADMIN_SETTINGS_OFFICES,
+                icon: Building2,
               },
-              {
-                title: "Microsoft 365",
-                url: "/ajustes/microsoft",
-                icon: Cloud,
-              },
-              { title: "Seguridad", url: "/ajustes/seguridad", icon: Shield },
-              { title: "General", url: "/ajustes/general", icon: Globe },
-              { title: "Parking", url: "/ajustes/parking", icon: Car },
-              { title: "Oficinas", url: "/ajustes/oficinas", icon: Building2 },
             ],
           },
         ],

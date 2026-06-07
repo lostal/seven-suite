@@ -41,7 +41,7 @@ export function ProfileDropdownClient({
   const reservationLink =
     role === "employee"
       ? {
-          href: ROUTES.MIS_RESERVAS,
+          href: ROUTES.PARKING,
           label: "Mi Actividad",
           icon: CalendarCheck,
         }
