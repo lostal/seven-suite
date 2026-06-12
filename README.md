@@ -71,13 +71,9 @@ El diagrama organiza las entidades en cuatro áreas conceptuales: organización,
 
 <div align="center">
 
-![Estados de Cesión](modelosUML/svg/estadosCesion.svg)
-
-<sub>[Código fuente](modelosUML/puml/estadosCesion.puml)</sub>
-
-![Estados de SolicitudAusencia](modelosUML/svg/estadosSolicitudAusencia.svg)
-
-<sub>[Código fuente](modelosUML/puml/estadosSolicitudAusencia.puml)</sub>
+| Cesión                                                                                                                   | Solicitud de Ausencia                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Estados de Cesión](modelosUML/svg/estadosCesion.svg)<br><sub>[Código fuente](modelosUML/puml/estadosCesion.puml)</sub> | ![Estados de SolicitudAusencia](modelosUML/svg/estadosSolicitudAusencia.svg)<br><sub>[Código fuente](modelosUML/puml/estadosSolicitudAusencia.puml)</sub> |
 
 </div>
 
@@ -97,17 +93,9 @@ El sistema colabora con dos servicios externos: **Microsoft Entra ID** como prov
 
 <div align="center">
 
-![Casos de uso - espacios](modelosUML/svg/casosUso.svg)
-
-<sub>[Código fuente](modelosUML/puml/casosUso.puml)</sub>
-
-![Casos de uso - personas](modelosUML/svg/casosUsoPersonas.svg)
-
-<sub>[Código fuente](modelosUML/puml/casosUsoPersonas.puml)</sub>
-
-![Casos de uso - administración](modelosUML/svg/casosUsoAdmin.svg)
-
-<sub>[Código fuente](modelosUML/puml/casosUsoAdmin.puml)</sub>
+| Espacios                                                                                                             | Personas                                                                                                                             | Administración                                                                                                                       |
+| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| ![Casos de uso - espacios](modelosUML/svg/casosUso.svg)<br><sub>[Código fuente](modelosUML/puml/casosUso.puml)</sub> | ![Casos de uso - personas](modelosUML/svg/casosUsoPersonas.svg)<br><sub>[Código fuente](modelosUML/puml/casosUsoPersonas.puml)</sub> | ![Casos de uso - administración](modelosUML/svg/casosUsoAdmin.svg)<br><sub>[Código fuente](modelosUML/puml/casosUsoAdmin.puml)</sub> |
 
 </div>
 
