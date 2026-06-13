@@ -1,6 +1,6 @@
 <div align="center">
 
-# Seven Suite — Portal del empleado
+# Seven Suite - Portal del empleado
 
 _Trabajo de Fin de Grado · Ingeniería Informática · UNEATLANTICO · 2025–2026_
 
@@ -20,32 +20,10 @@ ERP modular de reservas corporativas y gestión interna para GRUPOSIETE: parking
 
 ### Contexto GRUPOSIETE
 
-- Fusión de ocho empresas de distribución de materiales de construcción (2022), con sedes en seis comunidades autónomas y oficina central en Alcobendas (Madrid, 240 m²).
-- La coordinación de plazas de parking y puestos de oficina se realiza por WhatsApp, sin registro ni visibilidad.
-- El panel del empleado actual (a3innuva de Wolters Kluwer) solo se usa para nóminas; el resto de secciones están abandonadas por su baja usabilidad.
-- Ninguna solución del mercado integra gestión de espacios físicos, portal ESS y SSO Microsoft 365 en un único producto extensible.
-
-### Análisis del mercado
-
-| Solución    | Precio/mes   | M365        | Multi-sede | Nóminas API    | Custom/Modular |
-| ----------- | ------------ | ----------- | ---------- | -------------- | -------------- |
-| Personio    | Consulta\*   | Teams/Slack | Sí         | Sí (a3innuva)  | Alta           |
-| Factorial   | 5,50 €/usu   | Outlook     | Sí         | Automatización | Alta           |
-| a3innuva    | Consulta\*   | No          | Parcial    | Sí             | Baja           |
-| SAP/Workday | Muy alto     | Parcial     | Sí         | No             | Media          |
-| GRUPOSIETE  | Sin licencia | SSO         | Sí         | Sí (futuro)    | Total          |
-
-_Comparativa de soluciones ESS/RRHH. \* Precio no público._
-
-| Solución   | Precio/mes     | M365 | Parking | Oficina | Multi-sede |
-| ---------- | -------------- | ---- | ------- | ------- | ---------- |
-| Skedda     | Consulta\*     | No   | Sí      | Sí      | No         |
-| Deskbird   | 2,50 €/usu/mes | Sí   | No      | Sí      | Sí         |
-| Parkalot   | 49 $/50 usu    | No   | Sí      | No      | Sí         |
-| KALENA     | 60 €/mes       | No   | Sí      | Sí      | Sí         |
-| GRUPOSIETE | Sin licencia   | SSO  | Sí      | Sí      | Sí         |
-
-_Comparativa de soluciones de gestión de espacios. \* Precio no público._
+- GRUPOSIETE nace en 2022 de la fusión de ocho empresas de distribución de materiales de construcción, con sedes en seis comunidades autónomas y oficina central en Alcobendas (Madrid, 240 m²). El reto principal: unificar procesos que cada empresa gestionaba de forma distinta.
+- El intento previo de unificación fue a3innuva (Wolters Kluwer) como panel del empleado. Solo se usa para nóminas; la baja usabilidad abandonó el resto de secciones.
+- El proyecto arrancó como una app de reservas de parking para Alcobendas (Madrid). Durante el requisitado escaló: se añadió reserva de oficinas y finalmente multi-sede + vacaciones, directorio y tablón para dar cohesión a todas las sedes.
+- El mercado ofrece herramientas de RRHH por un lado y de gestión de espacios por otro, pero ninguna las unifica integrándose además con servicios de Microsoft. Para ocho empresas en plena fusión, esa fragmentación es especialmente grave.
 
 ---
 
@@ -58,10 +36,6 @@ El diagrama organiza las entidades en cuatro áreas conceptuales: organización,
 ![Modelo del dominio](modelosUML/svg/dominioClases.svg)
 
 <sub>[Código fuente](modelosUML/puml/dominioClases.puml)</sub>
-
-![Diagrama de objetos](modelosUML/svg/dominioObjetos.svg)
-
-<sub>[Código fuente](modelosUML/puml/dominioObjetos.puml)</sub>
 
 </div>
 
@@ -298,7 +272,7 @@ Pipeline mediante GitHub Actions: `pnpm check` (typecheck, lint, format, tests) 
 - La integración con Microsoft Entra ID elimina la fricción de acceso; la arquitectura está preparada para integrarse con Graph API (notificaciones por Teams, sincronización con calendarios de Outlook).
 - La migración temprana de Supabase a PostgreSQL autoalojado mantuvo la compatibilidad del modelo de datos y dio al cliente el control total sobre su información, con coste operativo asumible.
 - 85,3 % de cobertura de tests, 100/100 Lighthouse en rendimiento y CI/CD automatizado mediante GitHub Actions.
-- La trazabilidad completa —escenario → requisitos → análisis y diseño → implementación → evaluación— verifica un proceso de ingeniería riguroso y auditable.
+- La trazabilidad completa -escenario → requisitos → análisis y diseño → implementación → evaluación- verifica un proceso de ingeniería riguroso y auditable.
 
 ---
 
@@ -306,7 +280,7 @@ Pipeline mediante GitHub Actions: `pnpm check` (typecheck, lint, format, tests) 
 
 |               | _(este README)_ | Capítulo I                                 | Capítulo II                          | Capítulo III                                     | Capítulo IV                                  | Capítulo V                               |
 | ------------- | --------------- | ------------------------------------------ | ------------------------------------ | ------------------------------------------------ | -------------------------------------------- | ---------------------------------------- |
-| **Fecha**     | —               | 16/03                                      | 06/04                                | 27/04                                            | 26/05                                        | 26/05                                    |
+| **Fecha**     | -               | 16/03                                      | 06/04                                | 27/04                                            | 26/05                                        | 26/05                                    |
 | **Documento** | Presentación    | [Marco teórico](docs/TFG/MARCO_TEORICO.md) | [Requisitos](docs/TFG/REQUISITOS.md) | [Análisis y diseño](docs/TFG/ANALISIS_DISENO.md) | [Implementación](docs/TFG/IMPLEMENTACION.md) | [Conclusiones](docs/TFG/CONCLUSIONES.md) |
 
 | [Cap. 1 →](docs/TFG/MARCO_TEORICO.md) |
