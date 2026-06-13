@@ -234,19 +234,19 @@ Cada clase de análisis tiene su contraparte directa en el repositorio, verifica
 
 ## Tecnologías
 
-| Categoría        | Tecnología                      |
-| ---------------- | ------------------------------- |
-| Framework        | Next.js 16 (App Router)         |
-| Lenguaje         | TypeScript                      |
-| Base de datos    | PostgreSQL 16                   |
-| ORM              | Drizzle ORM                     |
-| Autenticación    | Auth.js v5 + Microsoft Entra ID |
-| UI               | Tailwind CSS v4 + shadcn/ui     |
-| Testing unitario | Vitest (45 archivos, 831 tests) |
-| Testing E2E      | Playwright                      |
-| CI/CD            | GitHub Actions                  |
-| Contenedores     | Docker + Docker Compose         |
-| Email            | Resend + React Email            |
+| Categoría        | Tecnología                      | Para qué                                                |
+| ---------------- | ------------------------------- | ------------------------------------------------------- |
+| Framework        | Next.js 16 (App Router)         | Full-stack: renderizado, Server Actions y API           |
+| Lenguaje         | TypeScript                      | Tipado estático en todo el proyecto                     |
+| Base de datos    | PostgreSQL 16                   | Autoalojada en servidor propio con Docker Compose       |
+| ORM              | Drizzle ORM                     | Acceso a datos con tipos inferidos del esquema SQL      |
+| Autenticación    | Auth.js v5 + Microsoft Entra ID | Login con cuenta Microsoft, sin almacenar contraseñas   |
+| UI               | Tailwind CSS v4 + shadcn/ui     | Componentes accesibles y responsivos                    |
+| Testing unitario | Vitest (45 archivos, 831 tests) | Cobertura de Server Actions, queries y validaciones Zod |
+| Testing E2E      | Playwright                      | Flujos completos desde la perspectiva del usuario       |
+| CI/CD            | GitHub Actions                  | Tests automáticos en cada push, despliegue al pasar     |
+| Contenedores     | Docker + Docker Compose         | App y base de datos en servidor propio                  |
+| Email            | Resend + React Email            | Correos transaccionales de confirmación                 |
 
 ---
 
