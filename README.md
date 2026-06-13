@@ -22,7 +22,7 @@ ERP modular de reservas corporativas y gestión interna para GRUPOSIETE: parking
 
 - GRUPOSIETE nace en 2022 de la fusión de ocho empresas de distribución de materiales de construcción, con sedes en seis comunidades autónomas y oficina central en Alcobendas (Madrid, 240 m²). El reto principal: unificar procesos que cada empresa gestionaba de forma distinta.
 - El intento previo de unificación fue a3innuva (Wolters Kluwer) como panel del empleado. Solo se usa para nóminas; la baja usabilidad abandonó el resto de secciones.
-- El proyecto arrancó como una app de reservas de parking para Alcobendas (Madrid). Durante el requisitado escaló: se añadió reserva de oficinas y finalmente multi-sede + vacaciones, directorio y tablón para dar cohesión a todas las sedes.
+- El proyecto arrancó como una app de reservas de parking para Alcobendas (Madrid). Durante el requisitado escaló: se añadió reserva de oficinas y finalmente multi-sede, vacaciones, directorio y tablón para dar cohesión a todas las sedes.
 - El mercado ofrece herramientas de RRHH por un lado y de gestión de espacios por otro, pero ninguna las unifica integrándose además con servicios de Microsoft. Para ocho empresas en plena fusión, esa fragmentación es especialmente grave.
 
 ---
@@ -84,6 +84,18 @@ El sistema se expresa como una máquina de estados: se pueden asociar vistas del
 ![Diagrama de contexto](modelosUML/svg/contexto.svg)
 
 <sub>[Código fuente](modelosUML/puml/contexto.puml)</sub>
+
+</div>
+
+---
+
+## Análisis
+
+<div align="center">
+
+![Panorama de clases de análisis](modelosUML/svg/analisisClases.svg)
+
+<sub>[Código fuente](modelosUML/puml/analisisClases.puml)</sub>
 
 </div>
 
