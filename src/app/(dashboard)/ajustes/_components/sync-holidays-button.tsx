@@ -17,19 +17,21 @@ export function SyncHolidaysButton() {
         toast.error(result.error ?? "Error al sincronizar festivos");
         return;
       }
-      const { synced, errors } = result.data;
+      const { ccaaCount, totalHolidays, errors } = result.data;
       if (errors.length > 0) {
+        const ccaaErrors = errors.map((e) => e.ccaa).join(", ");
         toast.warning(
-          `Sincronizadas ${synced} sedes. Errores: ${errors.length}`
+          `Sincronizadas ${ccaaCount} CCAA, ${totalHolidays} festivos. Errores: ${ccaaErrors}`
+        );
+        setLastResult(
+          `${ccaaCount} CCAA OK, ${totalHolidays} festivos. ${errors.length} error(es): ${ccaaErrors}`
         );
       } else {
-        toast.success(`Festivos sincronizados para ${synced} sede(s)`);
+        toast.success(
+          `${ccaaCount} CCAA sincronizadas, ${totalHolidays} festivos importados`
+        );
+        setLastResult(`${ccaaCount} CCAA, ${totalHolidays} festivos`);
       }
-      setLastResult(
-        errors.length > 0
-          ? `${synced} sedes OK, ${errors.length} errores`
-          : `${synced} sede(s) sincronizadas`
-      );
     });
   };
 
@@ -37,7 +39,7 @@ export function SyncHolidaysButton() {
     <div className="flex flex-col gap-2">
       <p className="text-muted-foreground text-sm">
         Descarga los festivos nacionales y autonómicos para el año actual y el
-        siguiente. Requiere que cada sede tenga su comunidad autónoma asignada.
+        siguiente. Se agrupan por comunidad autónoma (sin duplicar llamadas).
       </p>
       <div className="flex items-center gap-4">
         <Button

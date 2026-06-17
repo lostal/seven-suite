@@ -156,12 +156,15 @@ export const createVisitorReservation = actionClient
     if (!user) throw new Error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
-    // Comprobar si las reservas de visitantes están habilitadas
-    const visitorEnabled = await getResourceConfig(
-      "parking",
-      "visitor_booking_enabled",
-      entityId
-    );
+    const [bookingEnabled, visitorEnabled] = await Promise.all([
+      getResourceConfig("parking", "booking_enabled", entityId),
+      getResourceConfig("parking", "visitor_booking_enabled", entityId),
+    ]);
+    if (!bookingEnabled) {
+      throw new Error(
+        "Las reservas de parking están deshabilitadas actualmente"
+      );
+    }
     if (!visitorEnabled) {
       throw new Error(
         "Las reservas para visitantes están deshabilitadas actualmente"
@@ -271,6 +274,22 @@ export const updateVisitorReservation = actionClient
 
     const isAdmin = user.profile?.role === "admin";
 
+    const entityId = await getEffectiveEntityId();
+    const [bookingEnabled, visitorEnabled] = await Promise.all([
+      getResourceConfig("parking", "booking_enabled", entityId),
+      getResourceConfig("parking", "visitor_booking_enabled", entityId),
+    ]);
+    if (!bookingEnabled) {
+      throw new Error(
+        "Las reservas de parking están deshabilitadas actualmente"
+      );
+    }
+    if (!visitorEnabled) {
+      throw new Error(
+        "Las reservas para visitantes están deshabilitadas actualmente"
+      );
+    }
+
     // Obtener spot label y entityId de la nueva plaza
     const [spotData] = await db
       .select({
@@ -290,7 +309,6 @@ export const updateVisitorReservation = actionClient
       throw new Error("La plaza seleccionada no es una plaza de visitantes");
     }
 
-    const entityId = await getEffectiveEntityId();
     if (
       entityId &&
       spotData.entityId !== null &&
@@ -390,6 +408,22 @@ export const cancelVisitorReservation = actionClient
     if (!user) throw new Error("No autenticado");
 
     const isAdmin = user.profile?.role === "admin";
+
+    const entityId = await getEffectiveEntityId();
+    const [bookingEnabled, visitorEnabled] = await Promise.all([
+      getResourceConfig("parking", "booking_enabled", entityId),
+      getResourceConfig("parking", "visitor_booking_enabled", entityId),
+    ]);
+    if (!bookingEnabled) {
+      throw new Error(
+        "Las reservas de parking están deshabilitadas actualmente"
+      );
+    }
+    if (!visitorEnabled) {
+      throw new Error(
+        "Las reservas para visitantes están deshabilitadas actualmente"
+      );
+    }
 
     // Obtener los detalles antes de cancelar (para el email)
     const fetchConditions = isAdmin

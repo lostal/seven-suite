@@ -125,6 +125,7 @@ function VisitorSection({
       </div>
       <Switch
         checked={values.visitor_booking_enabled}
+        disabled={!values.booking_enabled}
         onCheckedChange={(checked) =>
           setValue("visitor_booking_enabled", checked, { shouldDirty: true })
         }

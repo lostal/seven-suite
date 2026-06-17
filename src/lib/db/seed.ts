@@ -41,6 +41,22 @@ const UUIDS = {
     levante: "00000000-0000-0000-0000-000000000012",
   },
   calendar: "00000000-0000-0000-0000-000000000020",
+  announcements: {
+    welcome: "00000000-0000-0000-0000-000000000030",
+    protocol: "00000000-0000-0000-0000-000000000031",
+    nominas: "00000000-0000-0000-0000-000000000032",
+    holidays: "00000000-0000-0000-0000-000000000033",
+  },
+  leaves: {
+    summer: "00000000-0000-0000-0000-000000000040",
+    family: "00000000-0000-0000-0000-000000000041",
+    personal: "00000000-0000-0000-0000-000000000042",
+    puente: "00000000-0000-0000-0000-000000000043",
+    carlos: "00000000-0000-0000-0000-000000000044",
+    laura: "00000000-0000-0000-0000-000000000045",
+    sanjuan: "00000000-0000-0000-0000-000000000046",
+    cita: "00000000-0000-0000-0000-000000000047",
+  },
 };
 
 // ─── Date helpers ─────────────────────────────────────────────────────────
@@ -68,6 +84,29 @@ async function seed() {
   const t = today();
 
   log("Seeding database...\n");
+
+  // ─── Clean previous seed data ──────────────────────────────────────────
+
+  const seedUserIds = Object.values(UUIDS.users);
+  await db.delete(schema.reservations).where(
+    sql`${schema.reservations.userId} IN (${sql.join(
+      seedUserIds.map((id) => sql`${id}::uuid`),
+      sql`, `
+    )})`
+  );
+  await db.delete(schema.cessions).where(
+    sql`${schema.cessions.userId} IN (${sql.join(
+      seedUserIds.map((id) => sql`${id}::uuid`),
+      sql`, `
+    )})`
+  );
+  await db.delete(schema.visitorReservations).where(
+    sql`${schema.visitorReservations.reservedBy} IN (${sql.join(
+      seedUserIds.map((id) => sql`${id}::uuid`),
+      sql`, `
+    )})`
+  );
+  log("Cleaned previous seed reservations, cessions, visitors");
 
   // ─── Entities ──────────────────────────────────────────────────────────
 
@@ -325,7 +364,7 @@ async function seed() {
       s.label !== "SC-P02"
   );
 
-  const reservationDays = [-3, -1, 1, 3, 4, 8, 9, 10];
+  const reservationDays = [-3, -1, 4, 8];
   for (let i = 0; i < reservationDays.length; i++) {
     const spot = centralParkingFree[i % centralParkingFree.length]!;
     await db
@@ -335,21 +374,28 @@ async function seed() {
         userId: employeeId,
         date: dstr(addDays(t, reservationDays[i]!)),
         status: "confirmed",
+        startTime: "09:00",
+        endTime: "18:00",
       })
       .onConflictDoNothing();
   }
 
-  // Additional reservations for a denser calendar (creates "few spots" visuals)
+  // Additional reservations for a varied calendar:
+  //   plenty (1-2/8) → few (3-5/8) → none (7-8/8)
   const denseReservations: { day: number; spots: number }[] = [
-    { day: 1, spots: 3 },
-    { day: 3, spots: 6 },
-    { day: 5, spots: 2 },
-    { day: 8, spots: 4 },
-    { day: 10, spots: 5 },
-    { day: 12, spots: 3 },
-    { day: 15, spots: 6 },
-    { day: 17, spots: 4 },
-    { day: 20, spots: 2 },
+    { day: 1, spots: 2 }, // 6 free → plenty
+    { day: 2, spots: 4 }, // 4 free → few
+    { day: 3, spots: 2 }, // 6 free → plenty
+    { day: 5, spots: 6 }, // 2 free → few (casi lleno)
+    { day: 6, spots: 1 }, // 7 free → plenty
+    { day: 7, spots: 1 }, // 7 free → plenty
+    { day: 8, spots: 8 }, // 0 free → none (Ana ya tiene, día lleno)
+    { day: 9, spots: 3 }, // 5 free → plenty
+    { day: 10, spots: 3 }, // 5 free → plenty
+    { day: 11, spots: 2 }, // 6 free → plenty
+    { day: 12, spots: 5 }, // 3 free → few
+    { day: 13, spots: 4 }, // 4 free → few
+    { day: 14, spots: 2 }, // 6 free → plenty
   ];
 
   const userIds = [employeeId, UUIDS.users.manager, UUIDS.users.hr];
@@ -368,6 +414,8 @@ async function seed() {
           userId: userIds[j % userIds.length]!,
           date: dateStr,
           status: "confirmed",
+          startTime: "09:00",
+          endTime: "18:00",
         })
         .onConflictDoNothing();
     }
@@ -375,6 +423,20 @@ async function seed() {
   }
 
   log("Reservations: 50+ created (dense calendar with Ana, Carlos, Laura)");
+
+  // Ana reservation for demo day (today)
+  const todaySpot = centralParkingFree[0]!;
+  await db
+    .insert(schema.reservations)
+    .values({
+      spotId: todaySpot.id,
+      userId: employeeId,
+      date: dstr(t),
+      status: "confirmed",
+      startTime: "09:00",
+      endTime: "18:00",
+    })
+    .onConflictDoNothing();
 
   // ─── Cessions ──────────────────────────────────────────────────────────
   // Carlos cedes P01 on several days, some get reserved by Ana
@@ -484,17 +546,71 @@ async function seed() {
       status: "confirmed" as const,
       notificationSent: false,
     },
+    {
+      spotId: visitorSpot.id,
+      reservedBy: employeeId,
+      date: dstr(t),
+      visitorName: "Javier Ruiz",
+      visitorCompany: "TechSolutions Iberia S.L.",
+      visitorEmail: "j.ruiz@techsolutions.es",
+      status: "confirmed" as const,
+      notificationSent: false,
+    },
   ];
 
   for (const v of extraVisitors) {
     await db.insert(schema.visitorReservations).values(v).onConflictDoNothing();
   }
-  log("Visitors: 3 reservations created");
+  log("Visitors: 4 reservations created (includes today)");
+
+  // ─── Office reservations ────────────────────────────────────────────────
+
+  const centralOfficeSpots = allSpots.filter(
+    (s) => s.resourceType === "office" && s.entityId === UUIDS.entities.central
+  );
+
+  const officeDense: { day: number; spots: number }[] = [
+    { day: 1, spots: 2 },
+    { day: 2, spots: 3 },
+    { day: 3, spots: 1 },
+    { day: 4, spots: 2 },
+    { day: 5, spots: 3 },
+    { day: 6, spots: 1 },
+    { day: 7, spots: 2 },
+    { day: 8, spots: 3 },
+    { day: 9, spots: 2 },
+    { day: 10, spots: 1 },
+  ];
+
+  for (const { day, spots: count } of officeDense) {
+    const dateStr = dstr(addDays(t, day));
+    const taken = new Set<string>();
+    for (let j = 0; j < count; j++) {
+      const spot = centralOfficeSpots[j % centralOfficeSpots.length]!;
+      const user = userIds[j % userIds.length]!;
+      const key = `${spot.id}-${dateStr}-${user}`;
+      if (taken.has(key)) continue;
+      taken.add(key);
+      await db
+        .insert(schema.reservations)
+        .values({
+          spotId: spot.id,
+          userId: user,
+          date: dateStr,
+          status: "confirmed",
+        })
+        .onConflictDoNothing();
+    }
+    taken.clear();
+  }
+
+  log("Office reservations: varied density across days");
 
   // ─── Leave requests ────────────────────────────────────────────────────
 
   const leaveRequests = [
     {
+      id: UUIDS.leaves.summer,
       employeeId,
       leaveType: "vacation" as const,
       startDate: dstr(new Date(2026, 6, 14)), // July 14, 2026
@@ -504,6 +620,7 @@ async function seed() {
       workingDays: 11,
     },
     {
+      id: UUIDS.leaves.family,
       employeeId,
       leaveType: "vacation" as const,
       startDate: dstr(new Date(2026, 7, 14)), // Aug 14, 2026
@@ -516,6 +633,7 @@ async function seed() {
       workingDays: 7,
     },
     {
+      id: UUIDS.leaves.personal,
       employeeId,
       leaveType: "personal" as const,
       startDate: dstr(addDays(t, 5)),
@@ -525,14 +643,15 @@ async function seed() {
       workingDays: 1,
     },
     {
+      id: UUIDS.leaves.puente,
       employeeId,
       leaveType: "vacation" as const,
-      startDate: dstr(new Date(2026, 2, 10)), // March 10, 2026
-      endDate: dstr(new Date(2026, 2, 12)), // March 12, 2026
+      startDate: dstr(addDays(t, -90)),
+      endDate: dstr(addDays(t, -88)),
       status: "approved" as const,
       reason: "Puente de marzo",
       reviewerId: UUIDS.users.hr,
-      reviewedAt: new Date(2026, 1, 22),
+      reviewedAt: addDays(t, -92),
       workingDays: 3,
     },
   ];
@@ -543,15 +662,17 @@ async function seed() {
   // Additional pending requests for a populated bandeja
   const extraLeaveRequests = [
     {
+      id: UUIDS.leaves.carlos,
       employeeId: UUIDS.users.manager,
       leaveType: "vacation" as const,
-      startDate: dstr(new Date(2026, 5, 2)),
-      endDate: dstr(new Date(2026, 5, 6)),
+      startDate: dstr(addDays(t, 22)),
+      endDate: dstr(addDays(t, 26)),
       status: "pending" as const,
       reason: "Asuntos personales",
       workingDays: 5,
     },
     {
+      id: UUIDS.leaves.laura,
       employeeId: UUIDS.users.hr,
       leaveType: "vacation" as const,
       startDate: dstr(new Date(2026, 8, 1)),
@@ -561,6 +682,7 @@ async function seed() {
       workingDays: 11,
     },
     {
+      id: UUIDS.leaves.sanjuan,
       employeeId,
       leaveType: "vacation" as const,
       startDate: dstr(new Date(2026, 5, 22)),
@@ -570,6 +692,7 @@ async function seed() {
       workingDays: 2,
     },
     {
+      id: UUIDS.leaves.cita,
       employeeId,
       leaveType: "personal" as const,
       startDate: dstr(addDays(t, 2)),
@@ -592,6 +715,7 @@ async function seed() {
 
   const announcementRows = [
     {
+      id: UUIDS.announcements.welcome,
       title: "Bienvenidos a Seven Suite",
       body: "Nos complace presentar el nuevo portal del empleado de GRUPOSIETE. Desde aquí podrás gestionar tus reservas de parking y oficina, solicitar vacaciones, consultar el directorio de compañeros y estar al día de las comunicaciones internas. Si tienes cualquier duda, contacta con el equipo de RRHH.",
       entityId: UUIDS.entities.central,
@@ -599,6 +723,7 @@ async function seed() {
       createdBy: UUIDS.users.hr,
     },
     {
+      id: UUIDS.announcements.protocol,
       title: "Nuevo protocolo de reserva de plazas",
       body: "Recordamos a todos los empleados el procedimiento para la reserva de plazas de parking:\n\n1. Las plazas asignadas a directores pueden ser cedidas cuando no estén en la oficina.\n2. Las reservas pueden hacerse con hasta 30 días de antelación.\n3. Las cancelaciones deben realizarse con al menos 2 horas de antelación para liberar la plaza.\n4. Los visitantes deben ser registrados por el empleado anfitrión.\n\nCualquier incidencia puede reportarse a través de la sección de Ajustes.",
       entityId: UUIDS.entities.central,
@@ -606,13 +731,15 @@ async function seed() {
       createdBy: UUIDS.users.hr,
     },
     {
-      title: "Próximo cierre de nóminas — Mayo 2026",
-      body: "Informamos que el cierre de nóminas del mes de mayo se realizará el día 26. Rogamos que todas las incidencias (horas extra, bajas, ausencias) estén registradas antes del día 24 a las 14:00.\n\nPara cualquier consulta relacionada con la nómina, podéis contactar con Laura Martínez (rrhh@gruposiete.es).",
+      id: UUIDS.announcements.nominas,
+      title: "Próximo cierre de nóminas — Junio 2026",
+      body: "Informamos que el cierre de nóminas del mes de junio se realizará el día 27. Rogamos que todas las incidencias (horas extra, bajas, ausencias) estén registradas antes del día 25 a las 14:00.\n\nPara cualquier consulta relacionada con la nómina, podéis contactar con Laura Martínez (rrhh@gruposiete.es).",
       entityId: UUIDS.entities.central,
       publishedAt: addDays(t, -2),
       createdBy: UUIDS.users.hr,
     },
     {
+      id: UUIDS.announcements.holidays,
       title: "Calendario de festivos 2026",
       body: "Ya está disponible el calendario de festivos para el año 2026. Los días no laborables se reflejan automáticamente en el sistema de reservas. Podéis consultar los festivos nacionales, autonómicos y locales en el calendario de vuestra sede.",
       entityId: null, // global

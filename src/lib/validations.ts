@@ -7,6 +7,8 @@
 
 import { z } from "zod/v4";
 
+import { AUTONOMOUS_COMMUNITIES } from "@/lib/constants";
+
 const isoCalendarDate = z.iso.date().refine((value) => {
   const [y, m, d] = value.split("-").map(Number);
   const parsed = new Date(y!, m! - 1, d!);
@@ -17,10 +19,19 @@ const isoCalendarDate = z.iso.date().refine((value) => {
   );
 }, "Fecha inválida");
 
+/** Regex UUID PostgreSQL-compatible — acepta versiones no-RFC como los UUIDs de seed.
+ *  Equivalente al `z.string().uuid()` de Zod v3 / `guid()` de Zod v4 (deprecated). */
+const UUID_RE =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+/** Helper que reemplaza a `z.string().uuid()` de Zod v4 (demasiado estricto con RFC 9562).
+ *  Acepta todos los UUIDs que PostgreSQL acepta, incluyendo los determinísticos de seed. */
+export const uuidString = (message?: string) =>
+  z.string().regex(UUID_RE, message ?? "UUID inválido");
+
 // ─── Reservations ────────────────────────────────────────────
 
 export const createReservationSchema = z.object({
-  spot_id: z.string().uuid(),
+  spot_id: uuidString(),
   date: isoCalendarDate,
   notes: z.string().max(500).optional(),
 });
@@ -30,7 +41,7 @@ export type CreateReservationInput = z.infer<typeof createReservationSchema>;
 // ─── Cessions ────────────────────────────────────────────────
 
 export const createCessionSchema = z.object({
-  spot_id: z.string().uuid(),
+  spot_id: uuidString(),
   dates: z.array(isoCalendarDate).min(1, "Selecciona al menos un día"),
 });
 
@@ -39,7 +50,7 @@ export type CreateCessionInput = z.infer<typeof createCessionSchema>;
 // ─── Visitors ────────────────────────────────────────────────
 
 export const createVisitorReservationSchema = z.object({
-  spot_id: z.string().uuid(),
+  spot_id: uuidString(),
   date: isoCalendarDate,
   visitor_name: z.string().min(1, "Nombre requerido").max(200),
   visitor_company: z.string().min(1, "Empresa requerida").max(200),
@@ -57,7 +68,7 @@ export const createSpotSchema = z.object({
   label: z.string().min(1, "Etiqueta requerida").max(20),
   type: z.enum(["standard", "visitor"]),
   resource_type: z.enum(["parking", "office"]),
-  assigned_to: z.string().uuid().optional(),
+  assigned_to: uuidString().optional(),
 });
 
 export type CreateSpotInput = z.infer<typeof createSpotSchema>;
@@ -66,7 +77,7 @@ export const updateSpotSchema = createSpotSchema
   .omit({ assigned_to: true })
   .partial()
   .extend({
-    id: z.string().uuid(),
+    id: uuidString(),
     is_active: z.boolean().optional(),
   });
 
@@ -75,7 +86,7 @@ export type UpdateSpotInput = z.infer<typeof updateSpotSchema>;
 // ─── Cancel Operations ───────────────────────────────────────
 
 /** Schema base reutilizado por todas las operaciones de cancelación por id. */
-const cancelByIdSchema = z.object({ id: z.string().uuid() });
+const cancelByIdSchema = z.object({ id: uuidString() });
 
 export const cancelReservationSchema = cancelByIdSchema;
 export type CancelReservationInput = z.infer<typeof cancelReservationSchema>;
@@ -90,7 +101,7 @@ export type CancelVisitorReservationInput = z.infer<
 
 export const updateVisitorReservationSchema =
   createVisitorReservationSchema.extend({
-    id: z.string().uuid(),
+    id: uuidString(),
   });
 
 export type UpdateVisitorReservationInput = z.infer<
@@ -100,7 +111,7 @@ export type UpdateVisitorReservationInput = z.infer<
 // ─── Admin: Spots Delete ─────────────────────────────────────
 
 export const deleteSpotSchema = z.object({
-  id: z.string().uuid(),
+  id: uuidString(),
 });
 
 export type DeleteSpotInput = z.infer<typeof deleteSpotSchema>;
@@ -108,7 +119,7 @@ export type DeleteSpotInput = z.infer<typeof deleteSpotSchema>;
 // ─── Admin: Users ────────────────────────────────────────────
 
 export const updateUserRoleSchema = z.object({
-  user_id: z.string().uuid(),
+  user_id: uuidString(),
   role: z.enum(["employee", "manager", "hr", "admin"]),
 });
 
@@ -117,16 +128,16 @@ export type UpdateUserRoleInput = z.infer<typeof updateUserRoleSchema>;
 // ─── Admin: Delete user account ────────────────────────────
 
 export const deleteUserSchema = z.object({
-  user_id: z.string().uuid(),
+  user_id: uuidString(),
 });
 export type DeleteUserInput = z.infer<typeof deleteUserSchema>;
 
 // ─── Admin: Assign spot to user ─────────────────────────────
 
 export const assignSpotToUserSchema = z.object({
-  user_id: z.string().uuid(),
+  user_id: uuidString(),
   /** UUID of the spot to assign, or null to unassign */
-  spot_id: z.string().uuid().nullable(),
+  spot_id: uuidString().nullable(),
   /** Resource type needed to correctly scope un/assignment to parking xor office */
   resource_type: z.enum(["parking", "office"]),
 });
@@ -134,8 +145,8 @@ export const assignSpotToUserSchema = z.object({
 export type AssignSpotToUserInput = z.infer<typeof assignSpotToUserSchema>;
 
 export const assignUserToSpotSchema = z.object({
-  spot_id: z.string().uuid(),
-  user_id: z.string().uuid().nullable(),
+  spot_id: uuidString(),
+  user_id: uuidString().nullable(),
   resource_type: z.enum(["parking", "office"]),
 });
 
@@ -249,16 +260,19 @@ export type UpdateResourceConfigInput = z.infer<
 export const createEntitySchema = z.object({
   name: z.string().min(1, "Nombre requerido").max(100),
   is_active: z.boolean().optional(),
-  autonomous_community: z.string().optional().nullable(),
+  autonomous_community: z
+    .enum(AUTONOMOUS_COMMUNITIES.map((c) => c.code) as [string, ...string[]])
+    .optional()
+    .nullable(),
 });
 export type CreateEntityInput = z.infer<typeof createEntitySchema>;
 
 export const updateEntitySchema = createEntitySchema.partial().extend({
-  id: z.string().uuid(),
+  id: uuidString(),
 });
 export type UpdateEntityInput = z.infer<typeof updateEntitySchema>;
 
-export const deleteEntitySchema = z.object({ id: z.string().uuid() });
+export const deleteEntitySchema = z.object({ id: uuidString() });
 export type DeleteEntityInput = z.infer<typeof deleteEntitySchema>;
 
 export const ENTITY_MODULES = [
@@ -271,7 +285,7 @@ export const ENTITY_MODULES = [
 export type EntityModuleKey = (typeof ENTITY_MODULES)[number];
 
 export const toggleEntityModuleSchema = z.object({
-  entity_id: z.string().uuid(),
+  entity_id: uuidString(),
   module: z.enum(ENTITY_MODULES),
   enabled: z.boolean(),
 });
@@ -281,7 +295,7 @@ export type ToggleEntityModuleInput = z.infer<typeof toggleEntityModuleSchema>;
 
 export const createOfficeReservationSchema = z
   .object({
-    spot_id: z.string().uuid(),
+    spot_id: uuidString(),
     date: z.iso.date(),
     start_time: z
       .string()
@@ -317,11 +331,11 @@ export type CreateOfficeReservationInput = z.infer<
 // ─── Admin: Directorio ────────────────────────────────────────
 
 export const updateDirectorioUserSchema = z.object({
-  user_id: z.string().uuid(),
+  user_id: uuidString(),
   nombre: z.string().min(1, "Nombre requerido"),
   puesto: z.string().optional().default(""),
   telefono: z.string().optional().default(""),
-  entity_id: z.string().uuid().optional(),
+  entity_id: uuidString().optional(),
 });
 export type UpdateDirectorioUserInput = z.infer<
   typeof updateDirectorioUserSchema
@@ -332,7 +346,7 @@ export const createDirectorioUserSchema = z.object({
   correo: z.string().email("Email inválido"),
   puesto: z.string().optional().default(""),
   telefono: z.string().optional().default(""),
-  entity_id: z.string().uuid().optional(),
+  entity_id: uuidString().optional(),
 });
 export type CreateDirectorioUserInput = z.infer<
   typeof createDirectorioUserSchema
@@ -365,7 +379,7 @@ export type CreateLeaveRequestInput = z.infer<typeof createLeaveRequestSchema>;
 
 export const updateLeaveRequestSchema = z
   .object({
-    id: z.string().uuid(),
+    id: uuidString(),
     leave_type: z.enum(LEAVE_TYPES),
     start_date: z.iso.date(),
     end_date: z.iso.date(),
@@ -378,7 +392,7 @@ export const updateLeaveRequestSchema = z
 export type UpdateLeaveRequestInput = z.infer<typeof updateLeaveRequestSchema>;
 
 export const approveLeaveRequestSchema = z.object({
-  id: z.string().uuid(),
+  id: uuidString(),
   notes: z.string().max(500).optional().nullable(),
 });
 export type ApproveLeaveRequestInput = z.infer<
@@ -386,13 +400,13 @@ export type ApproveLeaveRequestInput = z.infer<
 >;
 
 export const rejectLeaveRequestSchema = z.object({
-  id: z.string().uuid(),
+  id: uuidString(),
   notes: z.string().min(1, "El motivo del rechazo es obligatorio").max(500),
 });
 export type RejectLeaveRequestInput = z.infer<typeof rejectLeaveRequestSchema>;
 
 export const cancelLeaveRequestSchema = z.object({
-  id: z.string().uuid(),
+  id: uuidString(),
 });
 export type CancelLeaveRequestInput = z.infer<typeof cancelLeaveRequestSchema>;
 
@@ -404,34 +418,34 @@ export const createAnnouncementSchema = z.object({
     .string()
     .min(1, "El contenido no puede estar vacío")
     .max(10000, "El contenido no puede exceder 10.000 caracteres"),
-  entity_id: z.string().uuid().nullable().optional(),
+  entity_id: uuidString().nullable().optional(),
   publish: z.boolean().optional(),
 });
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 
 export const updateAnnouncementSchema = z.object({
-  id: z.string().uuid(),
+  id: uuidString(),
   title: z.string().min(1, "Título requerido").max(200).optional(),
   body: z
     .string()
     .min(1, "El contenido no puede estar vacío")
     .max(10000, "El contenido no puede exceder 10.000 caracteres")
     .optional(),
-  entity_id: z.string().uuid().nullable().optional(),
+  entity_id: uuidString().nullable().optional(),
   publish: z.boolean().optional(),
 });
 export type UpdateAnnouncementInput = z.infer<typeof updateAnnouncementSchema>;
 
-export const publishAnnouncementSchema = z.object({ id: z.string().uuid() });
+export const publishAnnouncementSchema = z.object({ id: uuidString() });
 export type PublishAnnouncementInput = z.infer<
   typeof publishAnnouncementSchema
 >;
 
-export const deleteAnnouncementSchema = z.object({ id: z.string().uuid() });
+export const deleteAnnouncementSchema = z.object({ id: uuidString() });
 export type DeleteAnnouncementInput = z.infer<typeof deleteAnnouncementSchema>;
 
 export const markAnnouncementReadSchema = z.object({
-  announcement_id: z.string().uuid(),
+  announcement_id: uuidString(),
 });
 export type MarkAnnouncementReadInput = z.infer<
   typeof markAnnouncementReadSchema

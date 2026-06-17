@@ -10,8 +10,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ROUTES } from "@/lib/constants";
 
+import { uuidString } from "@/lib/validations";
+
 const onboardingSchema = z.object({
-  entityId: z.string().uuid("Selecciona una sede"),
+  entityId: uuidString("Selecciona una sede"),
   phone: z.string().optional(),
   hasFixedParking: z.boolean().optional(),
   hasFixedOffice: z.boolean().optional(),

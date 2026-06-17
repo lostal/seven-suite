@@ -18,10 +18,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { completeOnboarding } from "../actions";
+import { uuidString } from "@/lib/validations";
 import type { Entity } from "@/lib/db/types";
 
 const formSchema = z.object({
-  entityId: z.string().uuid("Selecciona tu sede"),
+  entityId: uuidString("Selecciona tu sede"),
   phone: z.string().optional(),
   hasFixedParking: z.boolean(),
   hasFixedOffice: z.boolean(),

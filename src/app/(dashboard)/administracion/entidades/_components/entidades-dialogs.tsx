@@ -474,7 +474,10 @@ function EntidadModulesDialogInner({
               </div>
               <Switch
                 checked={enabled}
-                disabled={isPending}
+                disabled={
+                  isPending ||
+                  (mod.key === "visitors" && !(moduleStates["parking"] ?? true))
+                }
                 onCheckedChange={(checked) => handleToggle(mod.key, checked)}
               />
             </div>

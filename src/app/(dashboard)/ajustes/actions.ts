@@ -29,7 +29,7 @@ import {
   invalidateEntityConfigCache,
 } from "@/lib/config";
 import { getActiveEntityId } from "@/lib/queries/active-entity";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   updateGlobalConfigSchema,
   updateResourceConfigSchema,
@@ -41,7 +41,7 @@ import {
   type UpdateResourceConfigInput,
 } from "@/lib/validations";
 import { ALL_RESOURCE_CONFIG_KEYS } from "@/lib/config-types";
-import { syncAllHolidays } from "@/lib/holidays-sync";
+import { syncAllHolidays, type SyncHolidaysResult } from "@/lib/holidays-sync";
 
 // ─── Helper interno ───────────────────────────────────────────
 
@@ -53,18 +53,19 @@ async function upsertConfigs(
   adminUserId: string
 ): Promise<void> {
   for (const { key, value } of entries) {
+    const dbValue = value === null ? sql`'null'::jsonb` : (value as never);
     await db
       .insert(systemConfig)
       .values({
         key,
-        value: value as never,
+        value: dbValue,
         updatedBy: adminUserId,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
         target: systemConfig.key,
         set: {
-          value: value as never,
+          value: dbValue,
           updatedBy: adminUserId,
           updatedAt: new Date(),
         },
@@ -81,19 +82,20 @@ async function upsertEntityConfigs(
   adminUserId: string
 ): Promise<void> {
   for (const { key, value } of entries) {
+    const dbValue = value === null ? sql`'null'::jsonb` : (value as never);
     await db
       .insert(entityConfig)
       .values({
         entityId,
         key,
-        value: value as never,
+        value: dbValue,
         updatedBy: adminUserId,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
         target: [entityConfig.entityId, entityConfig.key],
         set: {
-          value: value as never,
+          value: dbValue,
           updatedBy: adminUserId,
           updatedAt: new Date(),
         },
@@ -166,12 +168,14 @@ export const updateParkingConfig = actionClient
  * desde la API OpenHolidays. Solo admin.
  */
 export async function syncHolidaysAction(): Promise<
-  ActionResult<{ synced: number; errors: string[] }>
+  ActionResult<SyncHolidaysResult>
 > {
   await requireAdmin();
   try {
     const result = await syncAllHolidays();
     revalidatePath("/ajustes/general");
+    revalidatePath("/vacaciones");
+    revalidatePath("/parking");
     return success(result);
   } catch (err) {
     console.error("[config] syncHolidaysAction error:", err);
