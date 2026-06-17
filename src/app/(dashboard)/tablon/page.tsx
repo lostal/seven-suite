@@ -1,4 +1,5 @@
 import { requireAuth } from "@/lib/auth/helpers";
+import { requireModuleEnabled } from "@/lib/module-guard";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import {
   getPublishedAnnouncements,
@@ -9,6 +10,7 @@ import { AnnouncementsFeed } from "./_components/announcements-feed";
 export default async function TablonPage() {
   const user = await requireAuth();
   const entityId = await getEffectiveEntityId();
+  await requireModuleEnabled("tablon", entityId);
 
   const [announcements, unreadIds] = await Promise.all([
     getPublishedAnnouncements(entityId),

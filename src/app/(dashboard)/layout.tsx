@@ -136,6 +136,7 @@ export default async function DashboardLayout({
     <SearchProvider
       role={(user.profile?.role ?? "employee") as UserRole}
       visitorBookingEnabled={visitorBookingEnabled}
+      enabledModules={enabledModules}
     >
       <SidebarProvider defaultOpen={defaultOpen}>
         <SkipToMain />

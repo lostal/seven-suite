@@ -108,7 +108,7 @@ describe("createOfficeReservation", () => {
   });
 
   it("crea la reserva y devuelve el id", async () => {
-    // 1. select spot
+    setupSelectMock([]);
     setupSelectMock([{ id: UUID, resourceType: "office", entityId: null }]);
     // 2. insert reservation
     setupInsertMock([{ id: "new-res-id" }]);
@@ -156,7 +156,7 @@ describe("createOfficeReservation", () => {
   });
 
   it("falla si el usuario ya tiene reserva de oficina ese día (constraint 23505)", async () => {
-    // 1. select spot succeeds
+    setupSelectMock([]);
     setupSelectMock([{ id: UUID, resourceType: "office", entityId: null }]);
     // 2. insert throws 23505
     mockDb.insert.mockImplementationOnce(() => {
@@ -175,7 +175,7 @@ describe("createOfficeReservation", () => {
   });
 
   it("falla con error genérico si el insert devuelve un error no controlado", async () => {
-    // 1. select spot succeeds
+    setupSelectMock([]);
     setupSelectMock([{ id: UUID, resourceType: "office", entityId: null }]);
     // 2. insert throws generic error
     mockDb.insert.mockImplementationOnce(() => {
@@ -214,6 +214,7 @@ describe("createOfficeReservation", () => {
   });
 
   it("rechaza reservar un puesto de otra sede", async () => {
+    setupSelectMock([]);
     vi.mocked(getEffectiveEntityId).mockResolvedValue("entity-A");
     // 1. select spot with different entityId
     setupSelectMock([

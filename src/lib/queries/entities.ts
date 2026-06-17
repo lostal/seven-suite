@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/schema";
 import type { Entity, EntityModule } from "@/lib/db/types";
 import { eq, asc } from "drizzle-orm";
+import { ENTITY_MODULES } from "@/lib/validations";
 
 export type { Entity, EntityModule };
 export type EntityWithModules = Entity & { modules: EntityModule[] };
@@ -54,7 +55,7 @@ export async function getEntityWithModules(
 export async function getEntityEnabledModules(
   entityId: string
 ): Promise<string[]> {
-  const ALL_MODULES = ["parking", "office", "visitors", "vacaciones", "tablon"];
+  const ALL_MODULES = [...ENTITY_MODULES];
   try {
     const rows = await db
       .select({

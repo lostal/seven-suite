@@ -28,6 +28,7 @@ import {
   type ReservationRow,
 } from "@/lib/queries/reservations";
 import { getAllResourceConfigs } from "@/lib/config";
+import { assertModuleEnabled } from "@/lib/module-guard";
 import { getDayOfWeek } from "@/lib/utils";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { validateBookingDate } from "@/lib/booking-validation";
@@ -46,6 +47,7 @@ export async function getAvailableSpotsForDate(
     if (!user) return error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("parking", entityId);
     const config = await getAllResourceConfigs("parking", entityId);
 
     if (!config.booking_enabled) return success([]);
@@ -184,6 +186,7 @@ export const createReservation = actionClient
     if (!user) throw new Error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("parking", entityId);
     const isAdmin = user.profile?.role === "admin";
 
     if (!isAdmin && !entityId) {
@@ -288,6 +291,9 @@ export const cancelReservation = actionClient
   .action(async ({ parsedInput }) => {
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
+
+    const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("parking", entityId);
 
     const updated = await db
       .update(reservations)

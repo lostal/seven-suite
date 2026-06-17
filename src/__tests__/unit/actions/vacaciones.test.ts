@@ -352,6 +352,7 @@ describe("cancelLeaveRequest", () => {
   });
 
   it("cancels a pending request", async () => {
+    setupSelectMock([]);
     setupSelectMock([{ status: "pending", employeeId: "employee-1" }]);
     setupUpdateMock([]);
 
@@ -362,6 +363,7 @@ describe("cancelLeaveRequest", () => {
   });
 
   it("returns error when trying to cancel approved request", async () => {
+    setupSelectMock([]);
     setupSelectMock([{ status: "approved", employeeId: "employee-1" }]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
@@ -372,6 +374,7 @@ describe("cancelLeaveRequest", () => {
 
   it("returns error when request not found", async () => {
     setupSelectMock([]);
+    setupSelectMock([]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
 
@@ -380,6 +383,7 @@ describe("cancelLeaveRequest", () => {
   });
 
   it("returns error when trying to cancel someone elses request", async () => {
+    setupSelectMock([]);
     setupSelectMock([{ status: "pending", employeeId: "other-user" }]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
@@ -389,6 +393,7 @@ describe("cancelLeaveRequest", () => {
   });
 
   it("returns error for hr_approved requests", async () => {
+    setupSelectMock([]);
     setupSelectMock([{ status: "approved", employeeId: "employee-1" }]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
@@ -400,6 +405,7 @@ describe("cancelLeaveRequest", () => {
   });
 
   it("returns error for rejected requests", async () => {
+    setupSelectMock([]);
     setupSelectMock([{ status: "rejected", employeeId: "employee-1" }]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
@@ -440,6 +446,7 @@ describe("approveLeaveRequest", () => {
 
   it("manager approves pending → manager_approved", async () => {
     setManager();
+    setupSelectMock([]);
     setupSelectMock([{ status: "pending", employeeEntityId: "entity-A" }]);
     setupUpdateMock([]);
 
@@ -456,6 +463,7 @@ describe("approveLeaveRequest", () => {
 
   it("manager cannot approve already manager_approved", async () => {
     setManager();
+    setupSelectMock([]);
     setupSelectMock([{ status: "approved", employeeEntityId: "entity-A" }]);
 
     const result = await approveLeaveRequest({ id: REQUEST_ID, notes: null });
@@ -468,6 +476,7 @@ describe("approveLeaveRequest", () => {
 
   it("HR cannot approve non-pending request", async () => {
     setHR();
+    setupSelectMock([]);
     setupSelectMock([{ status: "approved", employeeEntityId: "entity-A" }]);
 
     const result = await approveLeaveRequest({ id: REQUEST_ID, notes: null });
@@ -480,6 +489,7 @@ describe("approveLeaveRequest", () => {
 
   it("blocks cross-entity approval", async () => {
     setManager();
+    setupSelectMock([]);
     setupSelectMock([{ status: "pending", employeeEntityId: "entity-B" }]);
 
     const result = await approveLeaveRequest({ id: REQUEST_ID, notes: null });
@@ -490,7 +500,7 @@ describe("approveLeaveRequest", () => {
 
   it("admin approves pending → hr_approved", async () => {
     setAdmin();
-    vi.mocked(getEffectiveEntityId).mockResolvedValue("entity-A");
+    setupSelectMock([]);
     setupSelectMock([{ status: "pending", employeeEntityId: "entity-A" }]);
     setupUpdateMock([]);
 
@@ -538,6 +548,7 @@ describe("rejectLeaveRequest", () => {
 
   it("manager rejects pending request", async () => {
     setManager();
+    setupSelectMock([]);
     setupSelectMock([{ status: "pending", employeeEntityId: "entity-A" }]);
     setupUpdateMock([{ id: REQUEST_ID }]);
 
@@ -552,6 +563,7 @@ describe("rejectLeaveRequest", () => {
 
   it("manager cannot reject manager_approved request", async () => {
     setManager();
+    setupSelectMock([]);
     setupSelectMock([{ status: "approved", employeeEntityId: "entity-A" }]);
 
     const result = await rejectLeaveRequest({
@@ -567,6 +579,7 @@ describe("rejectLeaveRequest", () => {
 
   it("HR cannot reject non-pending request", async () => {
     setHR();
+    setupSelectMock([]);
     setupSelectMock([{ status: "approved", employeeEntityId: "entity-A" }]);
 
     const result = await rejectLeaveRequest({
@@ -582,6 +595,7 @@ describe("rejectLeaveRequest", () => {
 
   it("blocks cross-entity rejection", async () => {
     setManager();
+    setupSelectMock([]);
     setupSelectMock([{ status: "pending", employeeEntityId: "entity-B" }]);
 
     const result = await rejectLeaveRequest({

@@ -19,6 +19,7 @@ import {
 } from "@/lib/validations";
 import type { SpotWithStatus, TimeSlot, ReservationWithDetails } from "@/types";
 import { getAllResourceConfigs } from "@/lib/config";
+import { assertModuleEnabled } from "@/lib/module-guard";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import {
   getOfficeAvailabilityForDate,
@@ -45,6 +46,7 @@ export async function getOfficeSpotsForDate(
     if (!user) return error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("office", entityId);
     const config = await getAllResourceConfigs("office", entityId);
 
     if (!config.booking_enabled) return success([]);
@@ -80,6 +82,7 @@ export async function getOfficeTimeSlotsForSpot(
     if (!user) return error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("office", entityId);
     const config = await getAllResourceConfigs("office", entityId);
 
     if (!config.time_slots_enabled) {
@@ -150,6 +153,7 @@ export const createOfficeReservation = actionClient
     if (!user) throw new Error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("office", entityId);
     const isAdmin = user.profile?.role === "admin";
 
     if (!isAdmin && !entityId) {
@@ -256,6 +260,9 @@ export const cancelOfficeReservation = actionClient
   .action(async ({ parsedInput }) => {
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
+
+    const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("office", entityId);
 
     const updated = await db
       .update(reservations)

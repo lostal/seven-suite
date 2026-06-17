@@ -16,6 +16,7 @@ type SearchContextType = {
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   role: UserRole;
   visitorBookingEnabled: boolean;
+  enabledModules?: string[];
 };
 
 const SearchContext = createContext<SearchContextType | null>(null);
@@ -24,12 +25,14 @@ type SearchProviderProps = {
   children: React.ReactNode;
   role: UserRole;
   visitorBookingEnabled?: boolean;
+  enabledModules?: string[];
 };
 
 export function SearchProvider({
   children,
   role,
   visitorBookingEnabled = true,
+  enabledModules,
 }: SearchProviderProps) {
   const [open, setOpen] = useState(false);
 
@@ -45,7 +48,9 @@ export function SearchProvider({
   }, []);
 
   return (
-    <SearchContext value={{ open, setOpen, role, visitorBookingEnabled }}>
+    <SearchContext
+      value={{ open, setOpen, role, visitorBookingEnabled, enabledModules }}
+    >
       {children}
       <CommandMenu />
     </SearchContext>

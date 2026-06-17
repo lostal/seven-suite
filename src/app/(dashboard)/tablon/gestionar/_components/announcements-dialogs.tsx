@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -26,13 +26,43 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { TiptapEditor } from "@/components/tiptap-editor";
 import {
   createAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
+  getManageEntities,
 } from "../../actions";
 import { useAnnouncements } from "./announcements-provider";
+
+type EntityOption = { id: string; name: string };
+type EntityScope = "auto" | "global" | "entity";
+
+function useEntities() {
+  const [entities, setEntities] = useState<EntityOption[]>([]);
+
+  useEffect(() => {
+    getManageEntities()
+      .then(setEntities)
+      .catch(() => {});
+  }, []);
+
+  return entities;
+}
+
+function entityScopeFromRow(entityId: string | null): EntityScope {
+  if (entityId === null) return "global";
+  return "entity";
+}
 
 // ─── Create Dialog ─────────────────────────────────────────────────────────────
 
@@ -40,13 +70,16 @@ const createSchema = z.object({
   title: z.string().min(1, "Título requerido").max(200),
   body: z.string().min(1, "El contenido no puede estar vacío"),
   publish: z.boolean().optional(),
+  entity_id: z.string().nullable().optional(),
 });
 type CreateForm = z.infer<typeof createSchema>;
 
-function CreateAnnouncementDialog() {
+function CreateAnnouncementDialog({ isAdmin }: { isAdmin: boolean }) {
   const { open, setOpen, setCurrentRow } = useAnnouncements();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const entities = isAdmin ? useEntities() : [];
+  const [scope, setScope] = useState<EntityScope>("auto");
 
   const form = useForm<CreateForm>({
     resolver: zodResolver(createSchema),
@@ -57,14 +90,23 @@ function CreateAnnouncementDialog() {
     setOpen(null);
     setCurrentRow(null);
     form.reset();
+    setScope("auto");
   };
 
   const onSubmit = (values: CreateForm) => {
     startTransition(async () => {
+      const entity_id =
+        scope === "global"
+          ? null
+          : scope === "entity"
+            ? (values.entity_id ?? undefined)
+            : undefined;
+
       const result = await createAnnouncement({
         title: values.title,
         body: values.body,
         publish: values.publish,
+        entity_id,
       });
       if (!result.success) {
         toast.error(result.error);
@@ -86,8 +128,8 @@ function CreateAnnouncementDialog() {
         <DialogHeader>
           <DialogTitle>Nuevo comunicado</DialogTitle>
           <DialogDescription>
-            Crea un nuevo comunicado para la sede. Puedes guardarlo como
-            borrador o publicarlo directamente.
+            Crea un nuevo comunicado. Puedes guardarlo como borrador o
+            publicarlo directamente.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -142,6 +184,63 @@ function CreateAnnouncementDialog() {
                 </FormItem>
               )}
             />
+            {isAdmin && (
+              <div className="rounded-lg border p-4">
+                <Label className="text-sm font-medium">Alcance</Label>
+                <RadioGroup
+                  value={scope}
+                  onValueChange={(v) => setScope(v as EntityScope)}
+                  className="mt-2 space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="auto" id="scope-auto" />
+                    <Label htmlFor="scope-auto" className="font-normal">
+                      Sede actual (usar la sede seleccionada)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="global" id="scope-global" />
+                    <Label htmlFor="scope-global" className="font-normal">
+                      Global (visible en todas las sedes)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="entity" id="scope-entity" />
+                    <Label htmlFor="scope-entity" className="font-normal">
+                      Sede específica
+                    </Label>
+                  </div>
+                </RadioGroup>
+                {scope === "entity" && (
+                  <FormField
+                    control={form.control}
+                    name="entity_id"
+                    render={({ field }) => (
+                      <FormItem className="mt-2">
+                        <FormControl>
+                          <Select
+                            value={field.value ?? ""}
+                            onValueChange={field.onChange}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona una sede..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {entities.map((e) => (
+                                <SelectItem key={e.id} value={e.id}>
+                                  {e.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+            )}
             <DialogFooter>
               <Button
                 type="button"
@@ -169,18 +268,28 @@ const editSchema = z.object({
   title: z.string().min(1, "Título requerido").max(200),
   body: z.string().min(1, "El contenido no puede estar vacío"),
   publish: z.boolean().optional(),
+  entity_id: z.string().nullable().optional(),
 });
 type EditForm = z.infer<typeof editSchema>;
 
-function EditAnnouncementDialog() {
+function EditAnnouncementDialog({ isAdmin }: { isAdmin: boolean }) {
   const { open, setOpen, currentRow, setCurrentRow } = useAnnouncements();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const entities = isAdmin ? useEntities() : [];
+  const [scope, setScope] = useState<EntityScope>(
+    currentRow ? entityScopeFromRow(currentRow.entityId) : "auto"
+  );
 
   const form = useForm<EditForm>({
     resolver: zodResolver(editSchema),
     values: currentRow
-      ? { title: currentRow.title, body: currentRow.body, publish: false }
+      ? {
+          title: currentRow.title,
+          body: currentRow.body,
+          publish: false,
+          entity_id: currentRow.entityId,
+        }
       : { title: "", body: "", publish: false },
   });
 
@@ -193,11 +302,19 @@ function EditAnnouncementDialog() {
 
   const onSubmit = (values: EditForm) => {
     startTransition(async () => {
+      const entity_id =
+        scope === "global"
+          ? null
+          : scope === "entity"
+            ? (values.entity_id ?? undefined)
+            : undefined;
+
       const result = await updateAnnouncement({
         id: currentRow.id,
         title: values.title,
         body: values.body,
         publish: values.publish,
+        entity_id: isAdmin ? entity_id : undefined,
       });
       if (!result.success) {
         toast.error(result.error);
@@ -255,6 +372,57 @@ function EditAnnouncementDialog() {
                 </FormItem>
               )}
             />
+            {isAdmin && (
+              <div className="rounded-lg border p-4">
+                <Label className="text-sm font-medium">Alcance</Label>
+                <RadioGroup
+                  value={scope}
+                  onValueChange={(v) => setScope(v as EntityScope)}
+                  className="mt-2 space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="global" id="edit-scope-global" />
+                    <Label htmlFor="edit-scope-global" className="font-normal">
+                      Global (visible en todas las sedes)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="entity" id="edit-scope-entity" />
+                    <Label htmlFor="edit-scope-entity" className="font-normal">
+                      Sede específica
+                    </Label>
+                  </div>
+                </RadioGroup>
+                {scope === "entity" && (
+                  <FormField
+                    control={form.control}
+                    name="entity_id"
+                    render={({ field }) => (
+                      <FormItem className="mt-2">
+                        <FormControl>
+                          <Select
+                            value={field.value ?? ""}
+                            onValueChange={field.onChange}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona una sede..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {entities.map((e) => (
+                                <SelectItem key={e.id} value={e.id}>
+                                  {e.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+            )}
             {isDraft && (
               <FormField
                 control={form.control}
@@ -355,11 +523,17 @@ function DeleteAnnouncementDialog() {
 
 // ─── Composite export ──────────────────────────────────────────────────────────
 
-export function AnnouncementsDialogs() {
+export function AnnouncementsDialogs({
+  currentUserRole,
+}: {
+  currentUserRole: string;
+}) {
+  const isAdmin = currentUserRole === "admin";
+
   return (
     <>
-      <CreateAnnouncementDialog />
-      <EditAnnouncementDialog />
+      <CreateAnnouncementDialog isAdmin={isAdmin} />
+      <EditAnnouncementDialog isAdmin={isAdmin} />
       <DeleteAnnouncementDialog />
     </>
   );

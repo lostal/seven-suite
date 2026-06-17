@@ -27,6 +27,7 @@ import {
 } from "@/lib/queries/leave-requests";
 import { getHolidayDatesSetForYears } from "@/lib/queries/holidays";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
+import { assertModuleEnabled } from "@/lib/module-guard";
 import { eq, and } from "drizzle-orm";
 import { toServerDateStr } from "@/lib/utils";
 
@@ -155,6 +156,7 @@ export const createLeaveRequest = actionClient
     }
 
     const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("vacaciones", entityId);
     const workingDays = await calcWorkingDays(
       parsedInput.start_date,
       parsedInput.end_date,
@@ -197,6 +199,7 @@ export const updateLeaveRequest = actionClient
     if (!user) throw new Error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("vacaciones", entityId);
     const workingDays = await calcWorkingDays(
       parsedInput.start_date,
       parsedInput.end_date,
@@ -249,6 +252,9 @@ export const cancelLeaveRequest = actionClient
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
 
+    const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("vacaciones", entityId);
+
     const [current] = await db
       .select({
         status: leaveRequests.status,
@@ -290,6 +296,9 @@ export const approveLeaveRequest = actionClient
     if (role !== "hr" && role !== "manager" && role !== "admin") {
       throw new Error("Sin permisos para aprobar solicitudes");
     }
+
+    const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("vacaciones", entityId);
 
     const now = new Date();
     const current = await getManageableLeaveRequest(parsedInput.id, user);
@@ -334,6 +343,9 @@ export const rejectLeaveRequest = actionClient
     if (role !== "hr" && role !== "manager" && role !== "admin") {
       throw new Error("Sin permisos para rechazar solicitudes");
     }
+
+    const entityId = await getEffectiveEntityId();
+    await assertModuleEnabled("vacaciones", entityId);
 
     const current = await getManageableLeaveRequest(parsedInput.id, user);
 

@@ -1,4 +1,5 @@
 import { requireManagerOrAbove } from "@/lib/auth/helpers";
+import { requireModuleEnabled } from "@/lib/module-guard";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -14,6 +15,7 @@ export default async function ParkingAsignacionesPage() {
   await requireManagerOrAbove();
 
   const entityId = await getEffectiveEntityId();
+  await requireModuleEnabled("parking", entityId);
 
   const [spotsData, profilesData] = await Promise.all([
     getSpots("parking", true, entityId),

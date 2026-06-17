@@ -57,6 +57,25 @@ export function buildAnnouncementsColumns(
       ),
     },
     {
+      id: "scope",
+      accessorFn: (row) => (row.entityId === null ? "Global" : "Sede"),
+      header: "Alcance",
+      cell: ({ row }) => {
+        const isGlobal = row.original.entityId === null;
+        return isGlobal ? (
+          <Badge className="border-0 bg-blue-500/15 text-blue-700 dark:text-blue-400">
+            Global
+          </Badge>
+        ) : (
+          <Badge className="bg-muted text-muted-foreground border-0">
+            Sede
+          </Badge>
+        );
+      },
+      filterFn: (row, id, values: string[]) =>
+        values.includes(row.getValue(id)),
+    },
+    {
       id: "status",
       accessorFn: (row) => getAnnouncementStatus(row),
       header: ({ column }) => (

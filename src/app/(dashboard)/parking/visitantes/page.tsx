@@ -12,6 +12,7 @@
 import { requireAuth } from "@/lib/auth/helpers";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { getResourceConfig } from "@/lib/config";
+import { requireVisitorsEnabled } from "@/lib/module-guard";
 import { Header } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -23,6 +24,7 @@ import { VisitantesClient } from "./_components/visitors-client";
 export default async function VisitantesPage() {
   const user = await requireAuth();
   const entityId = await getEffectiveEntityId();
+  await requireVisitorsEnabled(entityId);
 
   const [bookingEnabled, visitorBookingEnabled] = await Promise.all([
     getResourceConfig("parking", "booking_enabled", entityId),

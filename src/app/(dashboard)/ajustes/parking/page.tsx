@@ -5,6 +5,7 @@
 export const dynamic = "force-dynamic";
 
 import { requireManagerOrAbove } from "@/lib/auth/helpers";
+import { requireModuleEnabled } from "@/lib/module-guard";
 import { getAllResourceConfigs } from "@/lib/config";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { db } from "@/lib/db";
@@ -19,6 +20,7 @@ import { Building2, Globe } from "lucide-react";
 export default async function ConfiguracionParkingPage() {
   await requireManagerOrAbove();
   const entityId = await getEffectiveEntityId();
+  await requireModuleEnabled("parking", entityId);
 
   let entityName: string | null = null;
   if (entityId) {

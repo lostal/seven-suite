@@ -10,6 +10,8 @@ import Link from "next/link";
 import { ArrowRight, ParkingCircle } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/helpers";
+import { requireModuleEnabled } from "@/lib/module-guard";
+import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { db } from "@/lib/db";
 import { spots } from "@/lib/db/schema";
 import { getUserCessions } from "@/lib/queries/cessions";
@@ -24,6 +26,8 @@ import { MisReservasClient } from "../../mis-reservas/_components/mis-reservas-c
 
 export default async function ParkingCesionesPage() {
   const user = await requireAuth();
+  const entityId = await getEffectiveEntityId();
+  await requireModuleEnabled("parking", entityId);
 
   const [cessions, parkingSpotRows] = await Promise.all([
     getUserCessions(user.id, "parking"),

@@ -23,6 +23,8 @@ import {
   type AnnouncementWithAuthor,
 } from "@/lib/queries/announcements";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
+import { assertModuleEnabled } from "@/lib/module-guard";
+import { getAllEntities } from "@/lib/queries/entities";
 import { eq, and } from "drizzle-orm";
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
@@ -33,11 +35,20 @@ export const createAnnouncement = actionClient
     const user = await requireHROrAbove();
     const { title, body, entity_id, publish } = parsedInput;
 
-    // Managers only create announcements for their own entity
-    const effectiveEntityId =
-      user.profile?.role === "admin"
-        ? (entity_id ?? (await getEffectiveEntityId()))
-        : (user.profile?.entityId ?? null);
+    let effectiveEntityId: string | null;
+    if (user.profile?.role === "admin") {
+      if (entity_id === null) {
+        effectiveEntityId = null;
+      } else if (entity_id !== undefined) {
+        effectiveEntityId = entity_id;
+      } else {
+        effectiveEntityId = await getEffectiveEntityId();
+      }
+    } else {
+      effectiveEntityId = user.profile?.entityId ?? null;
+    }
+
+    await assertModuleEnabled("tablon", effectiveEntityId);
 
     await db.insert(announcements).values({
       title,
@@ -68,6 +79,12 @@ export const updateAnnouncement = actionClient
     if (existing.createdBy !== user.id && user.profile?.role !== "admin") {
       throw new Error("No tienes permiso para editar este comunicado");
     }
+
+    const updateEntityId =
+      user.profile?.role === "admin"
+        ? await getEffectiveEntityId()
+        : (user.profile?.entityId ?? null);
+    await assertModuleEnabled("tablon", updateEntityId);
 
     const updateValues: Partial<typeof announcements.$inferInsert> = {};
     if (title !== undefined) updateValues.title = title;
@@ -102,6 +119,12 @@ export const publishAnnouncement = actionClient
       throw new Error("No tienes permiso para publicar este comunicado");
     }
 
+    const pubEntityId =
+      user.profile?.role === "admin"
+        ? await getEffectiveEntityId()
+        : (user.profile?.entityId ?? null);
+    await assertModuleEnabled("tablon", pubEntityId);
+
     await db
       .update(announcements)
       .set({ publishedAt: new Date() })
@@ -128,6 +151,12 @@ export const deleteAnnouncement = actionClient
       throw new Error("No tienes permiso para eliminar este comunicado");
     }
 
+    const delEntityId =
+      user.profile?.role === "admin"
+        ? await getEffectiveEntityId()
+        : (user.profile?.entityId ?? null);
+    await assertModuleEnabled("tablon", delEntityId);
+
     await db.delete(announcements).where(eq(announcements.id, id));
     revalidatePath("/tablon");
     return { ok: true };
@@ -142,6 +171,17 @@ export const markAnnouncementRead = actionClient
     revalidatePath("/tablon");
     return { ok: true };
   });
+
+export async function getManageEntities(): Promise<
+  {
+    id: string;
+    name: string;
+  }[]
+> {
+  await requireHROrAbove();
+  const rows = await getAllEntities();
+  return rows.map((e) => ({ id: e.id, name: e.name }));
+}
 
 // ─── Query wrappers ───────────────────────────────────────────────────────────
 

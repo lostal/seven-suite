@@ -25,12 +25,14 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
+import { requireModuleEnabled } from "@/lib/module-guard";
 import { eq, and } from "drizzle-orm";
 
 export default async function ParkingPage() {
   const user = await requireAuth();
 
   const entityId = await getEffectiveEntityId();
+  await requireModuleEnabled("parking", entityId);
   const [[assignedParkingSpot], bookingEnabled] = await Promise.all([
     db
       .select()

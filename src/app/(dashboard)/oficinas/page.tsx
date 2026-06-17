@@ -26,11 +26,13 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
+import { requireModuleEnabled } from "@/lib/module-guard";
 
 export default async function OficinasPage() {
   const user = await requireAuth();
 
   const entityId = await getEffectiveEntityId();
+  await requireModuleEnabled("office", entityId);
   const [assignedSpotRows, officeConfig] = await Promise.all([
     db
       .select({ id: spots.id, label: spots.label })

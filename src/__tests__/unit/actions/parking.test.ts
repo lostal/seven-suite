@@ -354,6 +354,8 @@ describe("createReservation", () => {
   });
 
   it("crea la reserva y devuelve el id", async () => {
+    // 0. module guard — getEntityEnabledModules returns [] (all enabled)
+    setupSelectMock([]);
     // 1. select spot
     setupSelectMock([{ id: UUID, resourceType: "parking", entityId: null }]);
     // 2. select existing reservation → none
@@ -383,6 +385,7 @@ describe("createReservation", () => {
   });
 
   it("falla si el usuario ya tiene reserva ese día", async () => {
+    setupSelectMock([]);
     // 1. select spot
     setupSelectMock([{ id: UUID, resourceType: "parking", entityId: null }]);
     // 2. select existing reservation → exists
@@ -400,7 +403,7 @@ describe("createReservation", () => {
   });
 
   it("falla con mensaje claro en violación de constraint único (23505)", async () => {
-    // 1. select spot
+    setupSelectMock([]);
     setupSelectMock([{ id: UUID, resourceType: "parking", entityId: null }]);
     // 2. select existing reservation → none
     setupSelectMock([]);
@@ -423,7 +426,7 @@ describe("createReservation", () => {
   });
 
   it("si hay carrera concurrente y termina existiendo reserva del usuario, devuelve mensaje de duplicado de usuario", async () => {
-    // 1. select spot
+    setupSelectMock([]);
     setupSelectMock([{ id: UUID, resourceType: "parking", entityId: null }]);
     // 2. select existing reservation → none (pre-insert check)
     setupSelectMock([]);
@@ -446,7 +449,7 @@ describe("createReservation", () => {
   });
 
   it("falla con error genérico de BD si el código no es 23505", async () => {
-    // 1. select spot
+    setupSelectMock([]);
     setupSelectMock([{ id: UUID, resourceType: "parking", entityId: null }]);
     // 2. select existing reservation → none
     setupSelectMock([]);
@@ -467,6 +470,7 @@ describe("createReservation", () => {
   });
 
   it("rechaza reservar una plaza de otra sede", async () => {
+    setupSelectMock([]);
     vi.mocked(getEffectiveEntityId).mockResolvedValue("entity-A");
     // 1. select spot with different entityId
     setupSelectMock([
@@ -512,6 +516,7 @@ describe("cancelReservation", () => {
   });
 
   it("cancela la reserva con éxito", async () => {
+    setupSelectMock([]);
     setupUpdateMock([{ id: UUID }]);
 
     const result = await cancelReservation({ id: UUID });
@@ -530,6 +535,7 @@ describe("cancelReservation", () => {
   });
 
   it("falla si la BD devuelve error al actualizar", async () => {
+    setupSelectMock([]);
     mockDb.update.mockImplementationOnce(() => {
       throw new Error("Row not found or no permission");
     });

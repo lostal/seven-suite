@@ -28,7 +28,7 @@ import { updateTheme } from "@/app/(dashboard)/ajustes/actions";
 export function CommandMenu() {
   const router = useRouter();
   const { setTheme } = useTheme();
-  const { open, setOpen, role } = useSearch();
+  const { open, setOpen, role, enabledModules } = useSearch();
 
   const runCommand = React.useCallback(
     (command: () => unknown) => {
@@ -49,6 +49,7 @@ export function CommandMenu() {
     const data = getSidebarData({
       hasParkingSpot: false,
       hasOfficeSpot: false,
+      enabledModules,
     });
     return data.navGroups
       .map((group) => ({

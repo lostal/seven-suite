@@ -31,7 +31,7 @@ export function ManageAnnouncementsClient({
         currentUserId={currentUserId}
         currentUserRole={currentUserRole}
       />
-      <AnnouncementsDialogs />
+      <AnnouncementsDialogs currentUserRole={currentUserRole} />
     </AnnouncementsProvider>
   );
 }

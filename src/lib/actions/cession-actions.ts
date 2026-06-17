@@ -13,6 +13,7 @@ import { spots, reservations, cessions } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { createCessionSchema, cancelCessionSchema } from "@/lib/validations";
 import { getAllResourceConfigs } from "@/lib/config";
+import { assertModuleEnabled } from "@/lib/module-guard";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { isTooSoonForCession } from "@/lib/calendar/calendar-utils";
 import {
@@ -42,6 +43,7 @@ export function buildCessionActions(cfg: CessionConfig) {
       if (!user) throw new Error("No autenticado");
 
       const entityId = await getEffectiveEntityId();
+      await assertModuleEnabled(cfg.resourceType, entityId);
       const config = await getAllResourceConfigs(cfg.resourceType, entityId);
       if (!config.cession_enabled) {
         throw new Error(
@@ -127,6 +129,9 @@ export function buildCessionActions(cfg: CessionConfig) {
     .action(async ({ parsedInput }) => {
       const user = await getCurrentUser();
       if (!user) throw new Error("No autenticado");
+
+      const cancelEntityId = await getEffectiveEntityId();
+      await assertModuleEnabled(cfg.resourceType, cancelEntityId);
 
       const [cession] = await db
         .select({
