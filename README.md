@@ -271,12 +271,6 @@ Pipeline mediante GitHub Actions: `pnpm check` (typecheck, lint, format, tests) 
 
 ---
 
-## Solución
-
-[https://github.com/lostal/seven-suite](https://github.com/lostal/seven-suite)
-
----
-
 ## Conclusiones
 
 - El portal resuelve la fragmentación entre sedes integrando parking, oficinas, vacaciones, directorio y tablón en una única plataforma con SSO Microsoft 365.
