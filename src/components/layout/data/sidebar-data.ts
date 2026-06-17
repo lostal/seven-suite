@@ -133,12 +133,12 @@ export function getSidebarData({
       {
         title: "Sede activa",
         items: [
-          // Panel — todos los roles
+          // Panel — solo admin
           {
             title: "Panel",
             url: ROUTES.DASHBOARD,
             icon: LayoutDashboard,
-            roles: ["employee", "hr", "manager", "admin"] as UserRole[],
+            roles: ["admin"] as UserRole[],
           },
           // Parking — empleado/hr (reservas, cesiones, visitantes)
           ...(parkingEnabled

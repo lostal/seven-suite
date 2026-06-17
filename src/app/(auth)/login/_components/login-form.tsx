@@ -32,17 +32,17 @@ export function LoginForm() {
             <Image
               src="/logo-light.png"
               alt="GRUPOSIETE"
-              width={240}
+              width={200}
               height={80}
-              className="h-20 w-auto dark:hidden"
+              className="dark:hidden"
               priority
             />
             <Image
               src="/logo-dark.png"
               alt="GRUPOSIETE"
-              width={240}
+              width={200}
               height={80}
-              className="hidden h-20 w-auto dark:block"
+              className="hidden dark:block"
               priority
             />
           </div>
@@ -75,6 +75,7 @@ export function LoginForm() {
           src="/mockup-light.png"
           alt="Seven Suite"
           fill
+          sizes="(max-width: 1024px) 100vw, 50vw"
           className="object-cover object-top select-none dark:hidden"
           priority
         />
@@ -82,6 +83,7 @@ export function LoginForm() {
           src="/mockup-dark.png"
           alt="Seven Suite"
           fill
+          sizes="(max-width: 1024px) 100vw, 50vw"
           className="hidden object-cover object-top select-none dark:block"
           priority
         />

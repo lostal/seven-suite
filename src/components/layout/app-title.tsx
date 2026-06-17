@@ -17,7 +17,13 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-export function AppTitle({ entityName }: { entityName?: string }) {
+export function AppTitle({
+  entityName,
+  firstNavUrl,
+}: {
+  entityName?: string;
+  firstNavUrl?: string;
+}) {
   const { setOpenMobile } = useSidebar();
   return (
     <SidebarMenu>
@@ -28,7 +34,7 @@ export function AppTitle({ entityName }: { entityName?: string }) {
           asChild
         >
           <Link
-            href={ROUTES.DASHBOARD}
+            href={firstNavUrl ?? ROUTES.DASHBOARD}
             onClick={() => setOpenMobile(false)}
             className="flex items-center gap-2"
           >

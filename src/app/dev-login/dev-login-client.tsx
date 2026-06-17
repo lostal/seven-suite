@@ -4,9 +4,14 @@ import { signIn } from "next-auth/react";
 
 const DEMO_USERS = [
   {
-    role: "Empleado",
+    role: "Empleado 1",
     email: "empleado@gruposiete.es",
-    description: "Reserva plazas, solicita vacaciones",
+    description: "Sin plazas asignadas — reserva y cancela",
+  },
+  {
+    role: "Empleado 2",
+    email: "empleado2@gruposiete.es",
+    description: "Con plazas asignadas — cede y gestiona",
   },
   {
     role: "RRHH",

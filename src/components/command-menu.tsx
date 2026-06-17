@@ -59,7 +59,7 @@ export function CommandMenu() {
         ),
       }))
       .filter((group) => group.items.length > 0);
-  }, [role]);
+  }, [role, enabledModules]);
 
   return (
     <CommandDialog modal open={open} onOpenChange={setOpen}>

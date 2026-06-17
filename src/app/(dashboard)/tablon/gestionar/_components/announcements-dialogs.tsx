@@ -78,7 +78,7 @@ function CreateAnnouncementDialog({ isAdmin }: { isAdmin: boolean }) {
   const { open, setOpen, setCurrentRow } = useAnnouncements();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const entities = isAdmin ? useEntities() : [];
+  const entities = useEntities();
   const [scope, setScope] = useState<EntityScope>("auto");
 
   const form = useForm<CreateForm>({
@@ -276,7 +276,7 @@ function EditAnnouncementDialog({ isAdmin }: { isAdmin: boolean }) {
   const { open, setOpen, currentRow, setCurrentRow } = useAnnouncements();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const entities = isAdmin ? useEntities() : [];
+  const entities = useEntities();
   const [scope, setScope] = useState<EntityScope>(
     currentRow ? entityScopeFromRow(currentRow.entityId) : "auto"
   );

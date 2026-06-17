@@ -3,9 +3,9 @@
  *
  * Creates demo data for development:
  * - 3 entities (multi-tenant)
- * - 4 users with different roles (dev login via email)
- * - Parking & office spots with employee assignments
- * - Sample reservations, cessions, visitor reservations
+ * - 5 users with different roles (dev login via email)
+ * - Parking & office spots with assignments
+ * - Realistic reservations, cessions, visitor reservations
  * - Leave requests in various approval states
  * - Professional announcements
  * - Spanish holiday calendar
@@ -34,6 +34,7 @@ const UUIDS = {
     manager: "00000000-0000-0000-0000-000000000002",
     hr: "00000000-0000-0000-0000-000000000003",
     employee: "00000000-0000-0000-0000-000000000004",
+    employee2: "00000000-0000-0000-0000-000000000005",
   },
   entities: {
     central: "00000000-0000-0000-0000-000000000010",
@@ -46,18 +47,23 @@ const UUIDS = {
     protocol: "00000000-0000-0000-0000-000000000031",
     nominas: "00000000-0000-0000-0000-000000000032",
     holidays: "00000000-0000-0000-0000-000000000033",
+    newhire: "00000000-0000-0000-0000-000000000034",
   },
   leaves: {
     summer: "00000000-0000-0000-0000-000000000040",
     family: "00000000-0000-0000-0000-000000000041",
-    personal: "00000000-0000-0000-0000-000000000042",
-    puente: "00000000-0000-0000-0000-000000000043",
+    medical: "00000000-0000-0000-0000-000000000042",
+    rejectedPersonal: "00000000-0000-0000-0000-000000000043",
     carlos: "00000000-0000-0000-0000-000000000044",
     laura: "00000000-0000-0000-0000-000000000045",
     sanjuan: "00000000-0000-0000-0000-000000000046",
-    cita: "00000000-0000-0000-0000-000000000047",
+    sanjose: "00000000-0000-0000-0000-000000000047",
   },
 };
+
+const seedUserIds = Object.values(UUIDS.users);
+const seedEntityIds = Object.values(UUIDS.entities);
+const seedAnnouncementIds = Object.values(UUIDS.announcements);
 
 // ─── Date helpers ─────────────────────────────────────────────────────────
 
@@ -77,17 +83,9 @@ function addDays(d: Date, n: number): Date {
   return r;
 }
 
-// ─── Main ──────────────────────────────────────────────────────────────────
+// ─── Cleanup ──────────────────────────────────────────────────────────────
 
-async function seed() {
-  const now = new Date();
-  const t = today();
-
-  log("Seeding database...\n");
-
-  // ─── Clean previous seed data ──────────────────────────────────────────
-
-  const seedUserIds = Object.values(UUIDS.users);
+async function cleanPreviousSeed() {
   await db.delete(schema.reservations).where(
     sql`${schema.reservations.userId} IN (${sql.join(
       seedUserIds.map((id) => sql`${id}::uuid`),
@@ -106,7 +104,36 @@ async function seed() {
       sql`, `
     )})`
   );
-  log("Cleaned previous seed reservations, cessions, visitors");
+  await db.delete(schema.leaveRequests).where(
+    sql`${schema.leaveRequests.employeeId} IN (${sql.join(
+      seedUserIds.map((id) => sql`${id}::uuid`),
+      sql`, `
+    )})`
+  );
+  await db.delete(schema.announcements).where(
+    sql`${schema.announcements.id} IN (${sql.join(
+      seedAnnouncementIds.map((id) => sql`${id}::uuid`),
+      sql`, `
+    )})`
+  );
+  await db.delete(schema.spots).where(
+    sql`${schema.spots.entityId} IN (${sql.join(
+      seedEntityIds.map((id) => sql`${id}::uuid`),
+      sql`, `
+    )})`
+  );
+  log("Cleaned previous seed data");
+}
+
+// ─── Main ──────────────────────────────────────────────────────────────────
+
+async function seed() {
+  const now = new Date();
+  const t = today();
+
+  log("Seeding database...\n");
+
+  await cleanPreviousSeed();
 
   // ─── Entities ──────────────────────────────────────────────────────────
 
@@ -118,14 +145,7 @@ async function seed() {
       shortCode: "SC",
       autonomousCommunity: "ES-MD",
     })
-    .onConflictDoUpdate({
-      target: schema.entities.id,
-      set: {
-        name: "Sede Central",
-        shortCode: "SC",
-        autonomousCommunity: "ES-MD",
-      },
-    });
+    .onConflictDoNothing();
 
   await db
     .insert(schema.entities)
@@ -135,14 +155,7 @@ async function seed() {
       shortCode: "SN",
       autonomousCommunity: "ES-CB",
     })
-    .onConflictDoUpdate({
-      target: schema.entities.id,
-      set: {
-        name: "Sede Norte",
-        shortCode: "SN",
-        autonomousCommunity: "ES-CB",
-      },
-    });
+    .onConflictDoNothing();
 
   await db
     .insert(schema.entities)
@@ -152,14 +165,7 @@ async function seed() {
       shortCode: "SL",
       autonomousCommunity: "ES-VC",
     })
-    .onConflictDoUpdate({
-      target: schema.entities.id,
-      set: {
-        name: "Sede Levante",
-        shortCode: "SL",
-        autonomousCommunity: "ES-VC",
-      },
-    });
+    .onConflictDoNothing();
 
   log("Entities: Sede Central, Sede Norte, Sede Levante");
 
@@ -169,7 +175,7 @@ async function seed() {
     {
       id: UUIDS.users.admin,
       email: "admin@gruposiete.es",
-      name: "Administrador del Sistema",
+      name: "Alejandro Torres Vega",
     },
     {
       id: UUIDS.users.manager,
@@ -186,6 +192,11 @@ async function seed() {
       email: "empleado@gruposiete.es",
       name: "Ana López Fernández",
     },
+    {
+      id: UUIDS.users.employee2,
+      email: "empleado2@gruposiete.es",
+      name: "Miguel Ángel Sánchez Gil",
+    },
   ];
 
   for (const u of userRows) {
@@ -194,45 +205,60 @@ async function seed() {
       .values({ id: u.id, email: u.email, name: u.name, emailVerified: now })
       .onConflictDoNothing();
   }
-  log("Users: 4 created");
+  log("Users: 5 created");
 
   // ─── Profiles ──────────────────────────────────────────────────────────
+
+  const managerId = UUIDS.users.manager;
+  const hrId = UUIDS.users.hr;
+  const employeeId = UUIDS.users.employee;
+  const employee2Id = UUIDS.users.employee2;
+  const centralId = UUIDS.entities.central;
 
   const profileRows = [
     {
       id: UUIDS.users.admin,
       email: "admin@gruposiete.es",
-      fullName: "Administrador del Sistema",
+      fullName: "Alejandro Torres Vega",
       role: "admin" as const,
-      entityId: UUIDS.entities.central,
+      entityId: centralId,
       jobTitle: "Director de IT",
       location: "Alcobendas",
     },
     {
-      id: UUIDS.users.manager,
+      id: managerId,
       email: "manager@gruposiete.es",
       fullName: "Carlos García López",
       role: "manager" as const,
-      entityId: UUIDS.entities.central,
+      entityId: centralId,
       jobTitle: "Director Comercial",
       location: "Alcobendas",
     },
     {
-      id: UUIDS.users.hr,
+      id: hrId,
       email: "rrhh@gruposiete.es",
       fullName: "Laura Martínez Ruiz",
       role: "hr" as const,
-      entityId: UUIDS.entities.central,
+      entityId: centralId,
       jobTitle: "Responsable de RRHH",
       location: "Alcobendas",
     },
     {
-      id: UUIDS.users.employee,
+      id: employeeId,
       email: "empleado@gruposiete.es",
       fullName: "Ana López Fernández",
       role: "employee" as const,
-      entityId: UUIDS.entities.central,
+      entityId: centralId,
       jobTitle: "Analista de Logística",
+      location: "Alcobendas",
+    },
+    {
+      id: employee2Id,
+      email: "empleado2@gruposiete.es",
+      fullName: "Miguel Ángel Sánchez Gil",
+      role: "employee" as const,
+      entityId: centralId,
+      jobTitle: "Desarrollador Senior",
       location: "Alcobendas",
     },
   ];
@@ -241,13 +267,18 @@ async function seed() {
     await db.insert(schema.profiles).values(p).onConflictDoNothing();
   }
 
-  // Set manager relationship: Ana is managed by Carlos
+  // Both employees report to Carlos
   await db
     .update(schema.profiles)
-    .set({ managerId: UUIDS.users.manager })
-    .where(sql`${schema.profiles.id} = ${UUIDS.users.employee}`);
+    .set({ managerId })
+    .where(
+      sql`${schema.profiles.id} IN (${sql.join(
+        [employeeId, employee2Id].map((id) => sql`${id}::uuid`),
+        sql`, `
+      )})`
+    );
 
-  log("Profiles: 4 with roles (admin, manager, hr, employee)");
+  log("Profiles: 5 with roles (admin, manager, hr, employee, employee2)");
 
   // ─── User preferences ──────────────────────────────────────────────────
 
@@ -257,72 +288,125 @@ async function seed() {
       .values({ userId: u.id })
       .onConflictDoNothing();
   }
-  log("Preferences: 4 defaults created");
+  log("Preferences: 5 defaults created");
 
   // ─── Spots ─────────────────────────────────────────────────────────────
-  // Parking: P01-P10, Office: D01-D08 for Sede Central
-  // Also spots for other entities. Labels must be globally unique.
+  //
+  // Sede Central (focused):
+  //   Parking:  SC-P01 (Carlos), SC-P02 (Miguel), SC-P03–P07 (free),
+  //             SC-P08 (visitor)
+  //   Office:   SC-D01 (Miguel), SC-D02–D06 (free)
+  //
+  // Other entities: minimal spots (3 parking + 3 office each, none assigned)
 
-  const spotConfigs: {
-    prefix: string;
-    entityId: string;
-    parking: number;
-    office: number;
-    assignedParking?: number[];
-  }[] = [
-    {
-      prefix: "SC",
-      entityId: UUIDS.entities.central,
-      parking: 10,
-      office: 8,
-      assignedParking: [1, 2],
-    },
-    { prefix: "SN", entityId: UUIDS.entities.norte, parking: 5, office: 4 },
-    { prefix: "SL", entityId: UUIDS.entities.levante, parking: 4, office: 3 },
+  // Sede Central — Parking
+  const centralParkingLabels = [
+    { label: "SC-P01", assignedTo: managerId },
+    { label: "SC-P02", assignedTo: employee2Id },
+    { label: "SC-P03" },
+    { label: "SC-P04" },
+    { label: "SC-P05" },
+    { label: "SC-P06" },
+    { label: "SC-P07" },
   ];
 
-  const managerProfileId = UUIDS.users.manager;
-
-  for (const cfg of spotConfigs) {
-    for (let i = 1; i <= cfg.parking; i++) {
-      const label = `${cfg.prefix}-P${String(i).padStart(2, "0")}`;
-      const isAssigned = cfg.assignedParking?.includes(i) ?? false;
-
-      await db
-        .insert(schema.spots)
-        .values({
-          label,
-          type: "standard",
-          resourceType: "parking",
-          entityId: cfg.entityId,
-          assignedTo: isAssigned ? managerProfileId : null,
-          isActive: true,
-          positionX: 10 + i * 15,
-          positionY: 10 + i * 10,
-        })
-        .onConflictDoNothing();
-    }
-
-    for (let i = 1; i <= cfg.office; i++) {
-      const label = `${cfg.prefix}-D${String(i).padStart(2, "0")}`;
-
-      await db
-        .insert(schema.spots)
-        .values({
-          label,
-          type: "standard",
-          resourceType: "office",
-          entityId: cfg.entityId,
-          isActive: true,
-          positionX: 10 + i * 15,
-          positionY: 50 + i * 10,
-        })
-        .onConflictDoNothing();
-    }
+  for (let i = 0; i < centralParkingLabels.length; i++) {
+    const cfg = centralParkingLabels[i]!;
+    await db.insert(schema.spots).values({
+      label: cfg.label,
+      type: "standard",
+      resourceType: "parking",
+      entityId: centralId,
+      assignedTo: cfg.assignedTo ?? null,
+      isActive: true,
+      positionX: 10 + (i + 1) * 15,
+      positionY: 10 + (i + 1) * 10,
+    });
   }
 
-  // Query created spots to get real IDs
+  // SC-P08 — visitor parking spot
+  await db.insert(schema.spots).values({
+    label: "SC-P08",
+    type: "visitor",
+    resourceType: "parking",
+    entityId: centralId,
+    isActive: true,
+    positionX: 130,
+    positionY: 90,
+  });
+
+  // Sede Central — Office
+  const centralOfficeLabels = [
+    { label: "SC-D01", assignedTo: employee2Id },
+    { label: "SC-D02" },
+    { label: "SC-D03" },
+    { label: "SC-D04" },
+    { label: "SC-D05" },
+    { label: "SC-D06" },
+  ];
+
+  for (let i = 0; i < centralOfficeLabels.length; i++) {
+    const cfg = centralOfficeLabels[i]!;
+    await db.insert(schema.spots).values({
+      label: cfg.label,
+      type: "standard",
+      resourceType: "office",
+      entityId: centralId,
+      assignedTo: cfg.assignedTo ?? null,
+      isActive: true,
+      positionX: 10 + (i + 1) * 15,
+      positionY: 50 + (i + 1) * 10,
+    });
+  }
+
+  // Sede Norte — 3 parking + 3 office
+  for (let i = 1; i <= 3; i++) {
+    await db.insert(schema.spots).values({
+      label: `SN-P${String(i).padStart(2, "0")}`,
+      type: "standard",
+      resourceType: "parking",
+      entityId: UUIDS.entities.norte,
+      isActive: true,
+      positionX: 10 + i * 15,
+      positionY: 10 + i * 10,
+    });
+    await db.insert(schema.spots).values({
+      label: `SN-D${String(i).padStart(2, "0")}`,
+      type: "standard",
+      resourceType: "office",
+      entityId: UUIDS.entities.norte,
+      isActive: true,
+      positionX: 10 + i * 15,
+      positionY: 50 + i * 10,
+    });
+  }
+
+  // Sede Levante — 3 parking + 3 office
+  for (let i = 1; i <= 3; i++) {
+    await db.insert(schema.spots).values({
+      label: `SL-P${String(i).padStart(2, "0")}`,
+      type: "standard",
+      resourceType: "parking",
+      entityId: UUIDS.entities.levante,
+      isActive: true,
+      positionX: 10 + i * 15,
+      positionY: 10 + i * 10,
+    });
+    await db.insert(schema.spots).values({
+      label: `SL-D${String(i).padStart(2, "0")}`,
+      type: "standard",
+      resourceType: "office",
+      entityId: UUIDS.entities.levante,
+      isActive: true,
+      positionX: 10 + i * 15,
+      positionY: 50 + i * 10,
+    });
+  }
+
   const allSpots = await db.select().from(schema.spots);
+  const spotByLabel = (label: string) =>
+    allSpots.find((s) => s.label === label)!;
+
   log(`Spots: ${allSpots.length} created (parking + office across 3 entities)`);
 
   // ─── Entity modules ────────────────────────────────────────────────────
@@ -338,11 +422,7 @@ async function seed() {
     "ajustes",
   ];
 
-  for (const eid of [
-    UUIDS.entities.central,
-    UUIDS.entities.norte,
-    UUIDS.entities.levante,
-  ]) {
+  for (const eid of seedEntityIds) {
     for (const mod of modules) {
       await db
         .insert(schema.entityModules)
@@ -352,259 +432,236 @@ async function seed() {
   }
   log("Modules: all enabled for all entities");
 
-  // ─── Reservations ──────────────────────────────────────────────────────
-  // Ana reserves spots over the next 2 weeks (skip SC-P01/P02 which are assigned)
+  // ─── Parking reservations ──────────────────────────────────────────────
+  //
+  // Free pool: SC-P03 to SC-P07 (5 spots)
+  // Ana reserves regularly (no assigned spot)
+  // Carlos, Laura, Miguel reserve occasionally
 
-  const employeeId = UUIDS.users.employee;
-  const centralParkingFree = allSpots.filter(
-    (s) =>
-      s.resourceType === "parking" &&
-      s.entityId === UUIDS.entities.central &&
-      s.label !== "SC-P01" &&
-      s.label !== "SC-P02"
-  );
+  type ParkRes = { user: string; spot: string; day: number };
 
-  const reservationDays = [-3, -1, 4, 8];
-  for (let i = 0; i < reservationDays.length; i++) {
-    const spot = centralParkingFree[i % centralParkingFree.length]!;
-    await db
-      .insert(schema.reservations)
-      .values({
-        spotId: spot.id,
-        userId: employeeId,
-        date: dstr(addDays(t, reservationDays[i]!)),
-        status: "confirmed",
-        startTime: "09:00",
-        endTime: "18:00",
-      })
-      .onConflictDoNothing();
-  }
-
-  // Additional reservations for a varied calendar:
-  //   plenty (1-2/8) → few (3-5/8) → none (7-8/8)
-  const denseReservations: { day: number; spots: number }[] = [
-    { day: 1, spots: 2 }, // 6 free → plenty
-    { day: 2, spots: 4 }, // 4 free → few
-    { day: 3, spots: 2 }, // 6 free → plenty
-    { day: 5, spots: 6 }, // 2 free → few (casi lleno)
-    { day: 6, spots: 1 }, // 7 free → plenty
-    { day: 7, spots: 1 }, // 7 free → plenty
-    { day: 8, spots: 8 }, // 0 free → none (Ana ya tiene, día lleno)
-    { day: 9, spots: 3 }, // 5 free → plenty
-    { day: 10, spots: 3 }, // 5 free → plenty
-    { day: 11, spots: 2 }, // 6 free → plenty
-    { day: 12, spots: 5 }, // 3 free → few
-    { day: 13, spots: 4 }, // 4 free → few
-    { day: 14, spots: 2 }, // 6 free → plenty
+  const anaParking: ParkRes[] = [
+    { user: "employee", spot: "SC-P03", day: 0 },
+    { user: "employee", spot: "SC-P04", day: 1 },
+    { user: "employee", spot: "SC-P05", day: 2 },
+    { user: "employee", spot: "SC-P04", day: 6 },
+    { user: "employee", spot: "SC-P05", day: 7 },
+    { user: "employee", spot: "SC-P03", day: 8 },
+    { user: "employee", spot: "SC-P04", day: 9 },
+    { user: "employee", spot: "SC-P05", day: 13 },
+    { user: "employee", spot: "SC-P03", day: 12 },
+    { user: "employee", spot: "SC-P04", day: 14 },
+    { user: "employee", spot: "SC-P05", day: 15 },
   ];
 
-  const userIds = [employeeId, UUIDS.users.manager, UUIDS.users.hr];
-  for (const { day, spots: count } of denseReservations) {
-    const dateStr = dstr(addDays(t, day));
-    const taken = new Set<string>();
-    for (let j = 0; j < count; j++) {
-      const spot = centralParkingFree[j % centralParkingFree.length]!;
-      const key = `${spot.id}-${dateStr}`;
-      if (taken.has(key)) continue;
-      taken.add(key);
-      await db
-        .insert(schema.reservations)
-        .values({
-          spotId: spot.id,
-          userId: userIds[j % userIds.length]!,
-          date: dateStr,
-          status: "confirmed",
-          startTime: "09:00",
-          endTime: "18:00",
-        })
-        .onConflictDoNothing();
-    }
-    taken.clear();
-  }
+  const otherParking: ParkRes[] = [
+    { user: "manager", spot: "SC-P06", day: 1 },
+    { user: "hr", spot: "SC-P07", day: 2 },
+    { user: "manager", spot: "SC-P06", day: 6 },
+    { user: "hr", spot: "SC-P07", day: 5 },
+    { user: "employee2", spot: "SC-P07", day: 7 },
+    { user: "employee2", spot: "SC-P06", day: 9 },
+    { user: "manager", spot: "SC-P06", day: 13 },
+    { user: "hr", spot: "SC-P07", day: 12 },
+  ];
 
-  log("Reservations: 50+ created (dense calendar with Ana, Carlos, Laura)");
+  const allParking = [...anaParking, ...otherParking];
 
-  // Ana reservation for demo day (today)
-  const todaySpot = centralParkingFree[0]!;
-  await db
-    .insert(schema.reservations)
-    .values({
-      spotId: todaySpot.id,
-      userId: employeeId,
-      date: dstr(t),
+  for (const r of allParking) {
+    const userId =
+      r.user === "manager"
+        ? managerId
+        : r.user === "hr"
+          ? hrId
+          : r.user === "employee"
+            ? employeeId
+            : employee2Id;
+    await db.insert(schema.reservations).values({
+      spotId: spotByLabel(r.spot).id,
+      userId,
+      date: dstr(addDays(t, r.day)),
       status: "confirmed",
       startTime: "09:00",
       endTime: "18:00",
-    })
-    .onConflictDoNothing();
-
-  // ─── Cessions ──────────────────────────────────────────────────────────
-  // Carlos cedes P01 on several days, some get reserved by Ana
-
-  const managerSpotP01 = allSpots.find(
-    (s) => s.label === "SC-P01" && s.entityId === UUIDS.entities.central
-  )!;
-
-  const cessionDays = [
-    { offset: -2, status: "reserved" as const }, // past, was reserved
-    { offset: 0, status: "available" as const }, // today, still available
-    { offset: 2, status: "available" as const }, // future, available
-    { offset: 5, status: "available" as const }, // future, available
-    { offset: 7, status: "available" as const }, // future, available
-  ];
-
-  for (const cd of cessionDays) {
-    const dateStr = dstr(addDays(t, cd.offset));
-    await db
-      .insert(schema.cessions)
-      .values({
-        spotId: managerSpotP01.id,
-        userId: managerProfileId,
-        date: dateStr,
-        status: cd.status,
-      })
-      .onConflictDoNothing();
+    });
   }
-
-  // Ana reserved the past cession
-  await db
-    .insert(schema.reservations)
-    .values({
-      spotId: managerSpotP01.id,
-      userId: employeeId,
-      date: dstr(addDays(t, -2)),
-      status: "confirmed",
-    })
-    .onConflictDoNothing();
-
-  // Carlos also cedes P02 on some days
-  const managerSpotP02 = allSpots.find(
-    (s) => s.label === "SC-P02" && s.entityId === UUIDS.entities.central
-  )!;
-
-  const p02CessionDays = [
-    { offset: 0, status: "available" as const },
-    { offset: 3, status: "available" as const },
-    { offset: 6, status: "available" as const },
-    { offset: 9, status: "available" as const },
-    { offset: 12, status: "available" as const },
-  ];
-
-  for (const cd of p02CessionDays) {
-    await db
-      .insert(schema.cessions)
-      .values({
-        spotId: managerSpotP02.id,
-        userId: managerProfileId,
-        date: dstr(addDays(t, cd.offset)),
-        status: cd.status,
-      })
-      .onConflictDoNothing();
-  }
-
-  log("Cessions: 10 from Carlos (P01: 5, P02: 5) — diverse availability");
-
-  // ─── Visitor reservation ───────────────────────────────────────────────
-
-  const visitorSpot = allSpots.find(
-    (s) => s.label === "SC-P10" && s.resourceType === "parking"
-  )!;
-  await db
-    .insert(schema.visitorReservations)
-    .values({
-      spotId: visitorSpot.id,
-      reservedBy: employeeId,
-      date: dstr(addDays(t, 11)),
-      visitorName: "María Sánchez",
-      visitorCompany: "Proveedora del Norte S.L.",
-      visitorEmail: "maria.sanchez@proveedora.com",
-      status: "confirmed",
-      notificationSent: false,
-    })
-    .onConflictDoNothing();
-  // Additional visitor reservations
-  const extraVisitors = [
-    {
-      spotId: visitorSpot.id,
-      reservedBy: UUIDS.users.manager,
-      date: dstr(addDays(t, 8)),
-      visitorName: "Pedro Gómez",
-      visitorCompany: "Transportes Gómez S.A.",
-      visitorEmail: "pedro.gomez@transgomez.com",
-      status: "confirmed" as const,
-      notificationSent: false,
-    },
-    {
-      spotId: allSpots.find(
-        (s) => s.label === "SC-P09" && s.resourceType === "parking"
-      )!.id,
-      reservedBy: UUIDS.users.hr,
-      date: dstr(addDays(t, 14)),
-      visitorName: "Elena Torres",
-      visitorCompany: "Consultora Torres & Asociados",
-      visitorEmail: "elena@torresconsultores.es",
-      status: "confirmed" as const,
-      notificationSent: false,
-    },
-    {
-      spotId: visitorSpot.id,
-      reservedBy: employeeId,
-      date: dstr(t),
-      visitorName: "Javier Ruiz",
-      visitorCompany: "TechSolutions Iberia S.L.",
-      visitorEmail: "j.ruiz@techsolutions.es",
-      status: "confirmed" as const,
-      notificationSent: false,
-    },
-  ];
-
-  for (const v of extraVisitors) {
-    await db.insert(schema.visitorReservations).values(v).onConflictDoNothing();
-  }
-  log("Visitors: 4 reservations created (includes today)");
+  log(`Parking reservations: ${allParking.length} created`);
 
   // ─── Office reservations ────────────────────────────────────────────────
+  //
+  // Free office desks: SC-D02 to SC-D06 (5 desks)
+  // Ana, Carlos, Laura, Miguel reserve in varied pattern
 
-  const centralOfficeSpots = allSpots.filter(
-    (s) => s.resourceType === "office" && s.entityId === UUIDS.entities.central
-  );
+  type OfficeRes = { user: string; spot: string; day: number };
 
-  const officeDense: { day: number; spots: number }[] = [
-    { day: 1, spots: 2 },
-    { day: 2, spots: 3 },
-    { day: 3, spots: 1 },
-    { day: 4, spots: 2 },
-    { day: 5, spots: 3 },
-    { day: 6, spots: 1 },
-    { day: 7, spots: 2 },
-    { day: 8, spots: 3 },
-    { day: 9, spots: 2 },
-    { day: 10, spots: 1 },
+  const officeReservations: OfficeRes[] = [
+    // Ana — regular office presence (~3 days/week)
+    { user: "employee", spot: "SC-D02", day: 0 },
+    { user: "employee", spot: "SC-D02", day: 1 },
+    { user: "employee", spot: "SC-D02", day: 5 },
+    { user: "employee", spot: "SC-D02", day: 7 },
+    { user: "employee", spot: "SC-D02", day: 8 },
+    { user: "employee", spot: "SC-D02", day: 9 },
+    { user: "employee", spot: "SC-D02", day: 12 },
+    { user: "employee", spot: "SC-D02", day: 14 },
+    { user: "employee", spot: "SC-D02", day: 15 },
+    // Carlos — 2-3 days/week in office
+    { user: "manager", spot: "SC-D03", day: 0 },
+    { user: "manager", spot: "SC-D03", day: 2 },
+    { user: "manager", spot: "SC-D03", day: 5 },
+    { user: "manager", spot: "SC-D03", day: 8 },
+    { user: "manager", spot: "SC-D03", day: 13 },
+    { user: "manager", spot: "SC-D03", day: 12 },
+    // Laura — 2-3 days/week
+    { user: "hr", spot: "SC-D04", day: 1 },
+    { user: "hr", spot: "SC-D04", day: 5 },
+    { user: "hr", spot: "SC-D04", day: 7 },
+    { user: "hr", spot: "SC-D04", day: 9 },
+    { user: "hr", spot: "SC-D04", day: 14 },
+    // Miguel — some days (has D01 assigned for his regular days)
+    { user: "employee2", spot: "SC-D05", day: 0 },
+    { user: "employee2", spot: "SC-D05", day: 2 },
+    { user: "employee2", spot: "SC-D05", day: 6 },
+    { user: "employee2", spot: "SC-D05", day: 13 },
   ];
 
-  for (const { day, spots: count } of officeDense) {
-    const dateStr = dstr(addDays(t, day));
-    const taken = new Set<string>();
-    for (let j = 0; j < count; j++) {
-      const spot = centralOfficeSpots[j % centralOfficeSpots.length]!;
-      const user = userIds[j % userIds.length]!;
-      const key = `${spot.id}-${dateStr}-${user}`;
-      if (taken.has(key)) continue;
-      taken.add(key);
-      await db
-        .insert(schema.reservations)
-        .values({
-          spotId: spot.id,
-          userId: user,
-          date: dateStr,
-          status: "confirmed",
-        })
-        .onConflictDoNothing();
-    }
-    taken.clear();
+  for (const r of officeReservations) {
+    const userId =
+      r.user === "manager"
+        ? managerId
+        : r.user === "hr"
+          ? hrId
+          : r.user === "employee"
+            ? employeeId
+            : employee2Id;
+    await db.insert(schema.reservations).values({
+      spotId: spotByLabel(r.spot).id,
+      userId,
+      date: dstr(addDays(t, r.day)),
+      status: "confirmed",
+    });
+  }
+  log(`Office reservations: ${officeReservations.length} created`);
+
+  // ─── Cessions ──────────────────────────────────────────────────────────
+  //
+  // Carlos cedes SC-P01 on days he won't come
+  // Miguel cedes SC-P02 on days he won't come
+
+  const managerSpotP01 = spotByLabel("SC-P01");
+  const employee2SpotP02 = spotByLabel("SC-P02");
+
+  // Carlos cedes P01
+  const p01Cessions: { offset: number; status: "available" | "reserved" }[] = [
+    { offset: -2, status: "reserved" }, // past — Ana took it
+    { offset: 0, status: "available" }, // today — still free
+    { offset: 2, status: "available" }, // Fri — up for grabs
+    { offset: 5, status: "reserved" }, // Mon — Ana took it
+    { offset: 7, status: "available" }, // Wed — up for grabs
+    { offset: 9, status: "available" }, // Fri — up for grabs
+  ];
+
+  for (const cd of p01Cessions) {
+    await db.insert(schema.cessions).values({
+      spotId: managerSpotP01.id,
+      userId: managerId,
+      date: dstr(addDays(t, cd.offset)),
+      status: cd.status,
+    });
   }
 
-  log("Office reservations: varied density across days");
+  // Miguel cedes P02
+  const p02Cessions: { offset: number; status: "available" | "reserved" }[] = [
+    { offset: -1, status: "reserved" }, // Jun 16 (Tue) — Ana took it
+    { offset: 1, status: "reserved" }, // Jun 18 (Thu) — Laura took it
+    { offset: 6, status: "available" }, // Jun 23 (Tue) — up for grabs
+    { offset: 8, status: "available" }, // Jun 25 (Thu) — up for grabs
+    { offset: 13, status: "available" }, // Jun 30 (Tue) — up for grabs
+  ];
+
+  for (const cd of p02Cessions) {
+    await db.insert(schema.cessions).values({
+      spotId: employee2SpotP02.id,
+      userId: employee2Id,
+      date: dstr(addDays(t, cd.offset)),
+      status: cd.status,
+    });
+  }
+
+  // Reservations for ceded spots
+  // Ana reserved past cessions
+  await db.insert(schema.reservations).values({
+    spotId: managerSpotP01.id,
+    userId: employeeId,
+    date: dstr(addDays(t, -2)),
+    status: "confirmed",
+    startTime: "09:00",
+    endTime: "18:00",
+  });
+  await db.insert(schema.reservations).values({
+    spotId: employee2SpotP02.id,
+    userId: employeeId,
+    date: dstr(addDays(t, -1)),
+    status: "confirmed",
+    startTime: "09:00",
+    endTime: "18:00",
+  });
+  // Ana reserves Carlos's ceded P01 on t+5 (Mon)
+  await db.insert(schema.reservations).values({
+    spotId: managerSpotP01.id,
+    userId: employeeId,
+    date: dstr(addDays(t, 5)),
+    status: "confirmed",
+    startTime: "09:00",
+    endTime: "18:00",
+  });
+  // Laura reserves Miguel's ceded P02 on t+1 (Thu)
+  await db.insert(schema.reservations).values({
+    spotId: employee2SpotP02.id,
+    userId: hrId,
+    date: dstr(addDays(t, 1)),
+    status: "confirmed",
+    startTime: "09:00",
+    endTime: "18:00",
+  });
+  log("Cessions: 11 from Carlos (P01) and Miguel (P02)");
+
+  // ─── Visitor reservations ───────────────────────────────────────────────
+
+  const visitorSpotP08 = spotByLabel("SC-P08");
+
+  await db.insert(schema.visitorReservations).values({
+    spotId: visitorSpotP08.id,
+    reservedBy: employeeId,
+    date: dstr(addDays(t, 5)),
+    visitorName: "María Sánchez",
+    visitorCompany: "Proveedora del Norte S.L.",
+    visitorEmail: "maria.sanchez@proveedora.com",
+    status: "confirmed",
+    notificationSent: false,
+  });
+  await db.insert(schema.visitorReservations).values({
+    spotId: visitorSpotP08.id,
+    reservedBy: managerId,
+    date: dstr(addDays(t, 9)),
+    visitorName: "Pedro Gómez",
+    visitorCompany: "Transportes Gómez S.A.",
+    visitorEmail: "pedro.gomez@transgomez.com",
+    status: "confirmed",
+    notificationSent: false,
+  });
+  await db.insert(schema.visitorReservations).values({
+    spotId: visitorSpotP08.id,
+    reservedBy: hrId,
+    date: dstr(addDays(t, 13)),
+    visitorName: "Elena Torres",
+    visitorCompany: "Consultora Torres & Asociados",
+    visitorEmail: "elena@torresconsultores.es",
+    status: "confirmed",
+    notificationSent: false,
+  });
+
+  log("Visitors: 3 reservations created");
 
   // ─── Leave requests ────────────────────────────────────────────────────
 
@@ -613,8 +670,8 @@ async function seed() {
       id: UUIDS.leaves.summer,
       employeeId,
       leaveType: "vacation" as const,
-      startDate: dstr(new Date(2026, 6, 14)), // July 14, 2026
-      endDate: dstr(new Date(2026, 6, 28)), // July 28, 2026
+      startDate: dstr(new Date(2026, 6, 14)), // Jul 14
+      endDate: dstr(new Date(2026, 6, 28)), // Jul 28
       status: "pending" as const,
       reason: "Vacaciones de verano",
       workingDays: 11,
@@ -623,135 +680,134 @@ async function seed() {
       id: UUIDS.leaves.family,
       employeeId,
       leaveType: "vacation" as const,
-      startDate: dstr(new Date(2026, 7, 14)), // Aug 14, 2026
-      endDate: dstr(new Date(2026, 7, 22)), // Aug 22, 2026
+      startDate: dstr(new Date(2026, 7, 14)), // Aug 14
+      endDate: dstr(new Date(2026, 7, 22)), // Aug 22
       status: "approved" as const,
       reason: "Viaje familiar",
-      reviewerId: managerProfileId,
+      reviewerId: managerId,
       reviewedAt: now,
       reviewerNotes: "Aprobado sin incidencias",
       workingDays: 7,
     },
     {
-      id: UUIDS.leaves.personal,
+      id: UUIDS.leaves.medical,
       employeeId,
       leaveType: "personal" as const,
-      startDate: dstr(addDays(t, 5)),
-      endDate: dstr(addDays(t, 5)),
+      startDate: dstr(addDays(t, 2)), // Jun 19 (Fri)
+      endDate: dstr(addDays(t, 2)),
       status: "pending" as const,
-      reason: "Asunto personal",
+      reason: "Cita médica",
       workingDays: 1,
     },
     {
-      id: UUIDS.leaves.puente,
+      id: UUIDS.leaves.rejectedPersonal,
       employeeId,
-      leaveType: "vacation" as const,
-      startDate: dstr(addDays(t, -90)),
-      endDate: dstr(addDays(t, -88)),
-      status: "approved" as const,
-      reason: "Puente de marzo",
-      reviewerId: UUIDS.users.hr,
-      reviewedAt: addDays(t, -92),
-      workingDays: 3,
+      leaveType: "personal" as const,
+      startDate: dstr(addDays(t, 5)), // Jun 22 (Mon)
+      endDate: dstr(addDays(t, 5)),
+      status: "rejected" as const,
+      reason: "Asunto personal",
+      reviewerId: managerId,
+      reviewedAt: now,
+      reviewerNotes: "Día con mucha carga de trabajo, solicitar otra fecha",
+      workingDays: 1,
     },
-  ];
-
-  for (const lr of leaveRequests) {
-    await db.insert(schema.leaveRequests).values(lr).onConflictDoNothing();
-  }
-  // Additional pending requests for a populated bandeja
-  const extraLeaveRequests = [
     {
       id: UUIDS.leaves.carlos,
-      employeeId: UUIDS.users.manager,
+      employeeId: managerId,
       leaveType: "vacation" as const,
-      startDate: dstr(addDays(t, 22)),
-      endDate: dstr(addDays(t, 26)),
+      startDate: dstr(addDays(t, 20)), // Jul 7 (Mon)
+      endDate: dstr(addDays(t, 24)), // Jul 11 (Fri)
       status: "pending" as const,
       reason: "Asuntos personales",
       workingDays: 5,
     },
     {
       id: UUIDS.leaves.laura,
-      employeeId: UUIDS.users.hr,
+      employeeId: hrId,
       leaveType: "vacation" as const,
-      startDate: dstr(new Date(2026, 8, 1)),
-      endDate: dstr(new Date(2026, 8, 15)),
+      startDate: dstr(new Date(2026, 8, 1)), // Sep 1
+      endDate: dstr(new Date(2026, 8, 15)), // Sep 15
       status: "pending" as const,
       reason: "Vacaciones de septiembre",
       workingDays: 11,
     },
     {
       id: UUIDS.leaves.sanjuan,
-      employeeId,
+      employeeId: employee2Id,
       leaveType: "vacation" as const,
-      startDate: dstr(new Date(2026, 5, 22)),
-      endDate: dstr(new Date(2026, 5, 24)),
-      status: "pending" as const,
+      startDate: dstr(addDays(t, 5)), // Jun 22 (Mon)
+      endDate: dstr(addDays(t, 7)), // Jun 24 (Wed)
+      status: "approved" as const,
       reason: "Puente de San Juan",
-      workingDays: 2,
+      reviewerId: hrId,
+      reviewedAt: addDays(t, -1),
+      reviewerNotes: "Aprobado. Buen viaje.",
+      workingDays: 3,
     },
     {
-      id: UUIDS.leaves.cita,
+      id: UUIDS.leaves.sanjose,
       employeeId,
-      leaveType: "personal" as const,
-      startDate: dstr(addDays(t, 2)),
-      endDate: dstr(addDays(t, 2)),
-      status: "rejected" as const,
-      reason: "Cita médica",
-      reviewerId: managerProfileId,
-      reviewedAt: new Date(),
-      reviewerNotes: "Día con mucha carga de trabajo, solicitar otra fecha",
-      workingDays: 1,
+      leaveType: "vacation" as const,
+      startDate: dstr(new Date(2026, 2, 19)), // Mar 19
+      endDate: dstr(new Date(2026, 2, 21)), // Mar 21
+      status: "approved" as const,
+      reason: "Puente de San José",
+      reviewerId: hrId,
+      reviewedAt: new Date(2026, 2, 10),
+      workingDays: 2,
     },
   ];
 
-  for (const lr of extraLeaveRequests) {
-    await db.insert(schema.leaveRequests).values(lr).onConflictDoNothing();
+  for (const lr of leaveRequests) {
+    await db.insert(schema.leaveRequests).values(lr);
   }
-  log("Leave requests: 8 total (pending, approved, rejected, personal)");
+  log("Leave requests: 8 total (pending, approved, rejected)");
 
   // ─── Announcements ─────────────────────────────────────────────────────
 
-  const announcementRows = [
-    {
-      id: UUIDS.announcements.welcome,
-      title: "Bienvenidos a Seven Suite",
-      body: "Nos complace presentar el nuevo portal del empleado de GRUPOSIETE. Desde aquí podrás gestionar tus reservas de parking y oficina, solicitar vacaciones, consultar el directorio de compañeros y estar al día de las comunicaciones internas. Si tienes cualquier duda, contacta con el equipo de RRHH.",
-      entityId: UUIDS.entities.central,
-      publishedAt: addDays(t, -10),
-      createdBy: UUIDS.users.hr,
-    },
-    {
-      id: UUIDS.announcements.protocol,
-      title: "Nuevo protocolo de reserva de plazas",
-      body: "Recordamos a todos los empleados el procedimiento para la reserva de plazas de parking:\n\n1. Las plazas asignadas a directores pueden ser cedidas cuando no estén en la oficina.\n2. Las reservas pueden hacerse con hasta 30 días de antelación.\n3. Las cancelaciones deben realizarse con al menos 2 horas de antelación para liberar la plaza.\n4. Los visitantes deben ser registrados por el empleado anfitrión.\n\nCualquier incidencia puede reportarse a través de la sección de Ajustes.",
-      entityId: UUIDS.entities.central,
-      publishedAt: addDays(t, -5),
-      createdBy: UUIDS.users.hr,
-    },
-    {
-      id: UUIDS.announcements.nominas,
-      title: "Próximo cierre de nóminas — Junio 2026",
-      body: "Informamos que el cierre de nóminas del mes de junio se realizará el día 27. Rogamos que todas las incidencias (horas extra, bajas, ausencias) estén registradas antes del día 25 a las 14:00.\n\nPara cualquier consulta relacionada con la nómina, podéis contactar con Laura Martínez (rrhh@gruposiete.es).",
-      entityId: UUIDS.entities.central,
-      publishedAt: addDays(t, -2),
-      createdBy: UUIDS.users.hr,
-    },
-    {
-      id: UUIDS.announcements.holidays,
-      title: "Calendario de festivos 2026",
-      body: "Ya está disponible el calendario de festivos para el año 2026. Los días no laborables se reflejan automáticamente en el sistema de reservas. Podéis consultar los festivos nacionales, autonómicos y locales en el calendario de vuestra sede.",
-      entityId: null, // global
-      publishedAt: addDays(t, -15),
-      createdBy: UUIDS.users.hr,
-    },
-  ];
+  await db.insert(schema.announcements).values({
+    id: UUIDS.announcements.welcome,
+    title: "Bienvenidos a Seven Suite",
+    body: "Nos complace presentar el nuevo portal del empleado de GRUPOSIETE. Desde aquí podrás gestionar tus reservas de parking y oficina, solicitar vacaciones, consultar el directorio de compañeros y estar al día de las comunicaciones internas. Si tienes cualquier duda, contacta con el equipo de RRHH.",
+    entityId: centralId,
+    publishedAt: addDays(t, -10),
+    createdBy: hrId,
+  });
+  await db.insert(schema.announcements).values({
+    id: UUIDS.announcements.protocol,
+    title: "Nuevo protocolo de reserva de plazas",
+    body: "Recordamos a todos los empleados el procedimiento para la reserva de plazas de parking:\n\n1. Las plazas asignadas a directores pueden ser cedidas cuando no estén en la oficina.\n2. Las reservas pueden hacerse con hasta 30 días de antelación.\n3. Las cancelaciones deben realizarse con al menos 2 horas de antelación para liberar la plaza.\n4. Los visitantes deben ser registrados por el empleado anfitrión.\n\nCualquier incidencia puede reportarse a través de la sección de Ajustes.",
+    entityId: centralId,
+    publishedAt: addDays(t, -5),
+    createdBy: hrId,
+  });
+  await db.insert(schema.announcements).values({
+    id: UUIDS.announcements.nominas,
+    title: "Próximo cierre de nóminas — Junio 2026",
+    body: "Informamos que el cierre de nóminas del mes de junio se realizará el día 27. Rogamos que todas las incidencias (horas extra, bajas, ausencias) estén registradas antes del día 25 a las 14:00.\n\nPara cualquier consulta relacionada con la nómina, podéis contactar con Laura Martínez (rrhh@gruposiete.es).",
+    entityId: centralId,
+    publishedAt: addDays(t, -2),
+    createdBy: hrId,
+  });
+  await db.insert(schema.announcements).values({
+    id: UUIDS.announcements.holidays,
+    title: "Calendario de festivos 2026",
+    body: "Ya está disponible el calendario de festivos para el año 2026. Los días no laborables se reflejan automáticamente en el sistema de reservas. Podéis consultar los festivos nacionales, autonómicos y locales en el calendario de vuestra sede.",
+    entityId: null,
+    publishedAt: addDays(t, -15),
+    createdBy: hrId,
+  });
+  await db.insert(schema.announcements).values({
+    id: UUIDS.announcements.newhire,
+    title: "Nuevo fichaje en el equipo de IT",
+    body: "Damos la bienvenida a Miguel Ángel Sánchez Gil, que se incorpora al equipo de IT como Desarrollador Senior. Miguel aporta más de 8 años de experiencia en desarrollo de software y trabajará desde nuestra Sede Central en Alcobendas.\n\n¡Bienvenido al equipo, Miguel!",
+    entityId: centralId,
+    publishedAt: addDays(t, -1),
+    createdBy: hrId,
+  });
 
-  for (const a of announcementRows) {
-    await db.insert(schema.announcements).values(a).onConflictDoNothing();
-  }
-  log("Announcements: 4 published");
+  log("Announcements: 5 published");
 
   // ─── Holiday calendar ──────────────────────────────────────────────────
 
@@ -811,11 +867,7 @@ async function seed() {
   }
 
   // Link calendar to all entities
-  for (const eid of [
-    UUIDS.entities.central,
-    UUIDS.entities.norte,
-    UUIDS.entities.levante,
-  ]) {
+  for (const eid of seedEntityIds) {
     await db
       .insert(schema.entityHolidayCalendars)
       .values({
@@ -833,10 +885,11 @@ async function seed() {
   log("───────────────");
   log("Dev login: http://localhost:3000/dev-login");
   log("───────────────");
-  log("  admin@gruposiete.es      — Administrador");
-  log("  manager@gruposiete.es    — Manager (spots P01, P02 asignados)");
-  log("  rrhh@gruposiete.es       — RRHH");
-  log("  empleado@gruposiete.es   — Empleado");
+  log("  admin@gruposiete.es      — Administrador (Alejandro)");
+  log("  manager@gruposiete.es    — Manager (Carlos) — P01 asignada");
+  log("  rrhh@gruposiete.es       — RRHH (Laura)");
+  log("  empleado@gruposiete.es   — Empleado 1 (Ana) — sin plazas asignadas");
+  log("  empleado2@gruposiete.es  — Empleado 2 (Miguel) — P02 + D01 asignadas");
 
   await client.end();
 }

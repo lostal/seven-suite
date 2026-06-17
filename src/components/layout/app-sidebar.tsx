@@ -23,6 +23,7 @@ import { NavGroup } from "./nav-group";
 import { NavUser } from "./nav-user";
 import type { UserRole } from "@/lib/db/types";
 import type { Entity } from "@/lib/queries/entities";
+import { ROUTES } from "@/lib/constants";
 
 interface AppSidebarProps {
   role: UserRole;
@@ -81,6 +82,16 @@ export function AppSidebar({
     unreadAnnouncementsCount,
   ]);
 
+  const firstNavUrl = useMemo(() => {
+    const firstGroup = filteredNavGroups[0];
+    if (!firstGroup) return ROUTES.DASHBOARD;
+    const firstItem = firstGroup.items[0];
+    if (!firstItem) return ROUTES.DASHBOARD;
+    if (firstItem.url) return firstItem.url;
+    if (firstItem.items?.[0]?.url) return firstItem.items[0].url;
+    return ROUTES.DASHBOARD;
+  }, [filteredNavGroups]);
+
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
@@ -91,7 +102,7 @@ export function AppSidebar({
             entityIdPersisted={entityIdPersisted}
           />
         ) : (
-          <AppTitle entityName={entityName} />
+          <AppTitle entityName={entityName} firstNavUrl={firstNavUrl} />
         )}
       </SidebarHeader>
       <SidebarContent>
