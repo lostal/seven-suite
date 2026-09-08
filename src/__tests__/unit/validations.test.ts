@@ -745,14 +745,21 @@ describe("createOfficeReservationSchema", () => {
     expect(r.success).toBe(true);
   });
 
-  it("acepta reserva con horario válido", () => {
+  it("rechaza reserva con horario porque solo admite día completo", () => {
     const r = createOfficeReservationSchema.safeParse({
       spot_id: UUID,
       date: DATE,
       start_time: "09:00",
       end_time: "11:00",
     });
-    expect(r.success).toBe(true);
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues).toContainEqual(
+        expect.objectContaining({
+          message: "Las reservas de oficina son únicamente de día completo",
+        })
+      );
+    }
   });
 
   it("rechaza start_time sin end_time", () => {
@@ -762,7 +769,13 @@ describe("createOfficeReservationSchema", () => {
       start_time: "09:00",
     });
     expect(r.success).toBe(false);
-    expect(errorPaths(r)).toContain("end_time");
+    if (!r.success) {
+      expect(r.error.issues).toContainEqual(
+        expect.objectContaining({
+          message: "Las reservas de oficina son únicamente de día completo",
+        })
+      );
+    }
   });
 
   it("rechaza end_time sin start_time", () => {
@@ -772,7 +785,13 @@ describe("createOfficeReservationSchema", () => {
       end_time: "11:00",
     });
     expect(r.success).toBe(false);
-    expect(errorPaths(r)).toContain("end_time");
+    if (!r.success) {
+      expect(r.error.issues).toContainEqual(
+        expect.objectContaining({
+          message: "Las reservas de oficina son únicamente de día completo",
+        })
+      );
+    }
   });
 
   it("rechaza end_time <= start_time", () => {
@@ -783,7 +802,13 @@ describe("createOfficeReservationSchema", () => {
       end_time: "09:00",
     });
     expect(r.success).toBe(false);
-    expect(errorPaths(r)).toContain("end_time");
+    if (!r.success) {
+      expect(r.error.issues).toContainEqual(
+        expect.objectContaining({
+          message: "Las reservas de oficina son únicamente de día completo",
+        })
+      );
+    }
   });
 
   it("rechaza end_time igual a start_time", () => {
@@ -794,7 +819,13 @@ describe("createOfficeReservationSchema", () => {
       end_time: "10:00",
     });
     expect(r.success).toBe(false);
-    expect(errorPaths(r)).toContain("end_time");
+    if (!r.success) {
+      expect(r.error.issues).toContainEqual(
+        expect.objectContaining({
+          message: "Las reservas de oficina son únicamente de día completo",
+        })
+      );
+    }
   });
 
   it("rechaza horario con formato incorrecto", () => {

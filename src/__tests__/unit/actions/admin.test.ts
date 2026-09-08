@@ -111,6 +111,28 @@ function setupAdminUserForAdminAction() {
   });
 }
 
+function setupManagerUser(entityId = "ent-1") {
+  vi.mocked(requireManagerOrAbove).mockResolvedValue({
+    id: UUID,
+    email: "manager@test.com",
+    profile: {
+      id: UUID,
+      email: "manager@test.com",
+      role: "manager" as const,
+      fullName: "Manager",
+      avatarUrl: null,
+      entityId,
+      managerId: null,
+      jobTitle: null,
+      createdAt: new Date("2025-01-01T00:00:00Z"),
+      updatedAt: new Date("2025-01-01T00:00:00Z"),
+      dni: null,
+      location: null,
+      phone: null,
+    },
+  });
+}
+
 // ─── createSpot ───────────────────────────────────────────────────────────────
 
 describe("createSpot", () => {
@@ -202,7 +224,8 @@ describe("createSpot", () => {
     });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toBe("No autorizado");
+    if (!result.success)
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
   });
 });
 
@@ -340,6 +363,7 @@ describe("updateUserRole", () => {
   });
 
   it("actualiza el rol con éxito", async () => {
+    setupSelectMock([{ id: UUID }]);
     // update profiles
     setupUpdateMock([]);
 
@@ -350,6 +374,7 @@ describe("updateUserRole", () => {
   });
 
   it("falla si la BD devuelve error", async () => {
+    setupSelectMock([{ id: UUID }]);
     mockDb.update.mockImplementationOnce(() => {
       throw new Error("No se pudo actualizar");
     });
@@ -376,13 +401,15 @@ describe("updateUserRole", () => {
 describe("assignSpotToUser", () => {
   beforeEach(() => {
     resetDbMocks();
-    setupAdminUser();
+    setupManagerUser();
   });
 
   it("desasigna la plaza cuando spot_id es null", async () => {
-    // 1. select current spot (for audit)
+    // 1. select target profile
+    setupSelectMock([{ id: UUID, entityId: "ent-1" }]);
+    // 2. select current spot (for audit)
     setupSelectMock([]);
-    // 2. update spots (clear assignment)
+    // 3. update spots (clear assignment)
     setupUpdateMock([]);
 
     const result = await assignSpotToUser({
@@ -403,12 +430,14 @@ describe("assignSpotToUser", () => {
         type: "standard",
         resourceType: "parking",
         assignedTo: null,
-        entityId: null,
+        entityId: "ent-1",
       },
     ]);
-    // 2. update spot (assign)
-    setupUpdateMock([]);
-    // 3. update spots (clear previous)
+    // 2. select target profile
+    setupSelectMock([{ entityId: "ent-1" }]);
+    // 3. update spot (assign)
+    setupUpdateMock([{ id: UUID2 }]);
+    // 4. update spots (clear previous)
     setupUpdateMock([]);
 
     const result = await assignSpotToUser({
@@ -500,11 +529,13 @@ describe("assignSpotToUser", () => {
 describe("assignUserToSpot", () => {
   beforeEach(() => {
     resetDbMocks();
-    setupAdminUser();
+    setupManagerUser();
   });
 
   it("falla si la transacción de asignación devuelve error", async () => {
     // La transacción falla en el segundo update (cleanup)
+    setupSelectMock([{ entityId: "ent-1", resourceType: "parking" }]);
+    setupSelectMock([{ entityId: "ent-1" }]);
     mockDb.update
       .mockImplementationOnce(() => {
         // First update (assign) inside transaction succeeds
@@ -518,8 +549,7 @@ describe("assignUserToSpot", () => {
               | ((value: MockDbResult) => TResult1 | PromiseLike<TResult1>)
               | null,
             onrejected?:
-              | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
-              | null
+              ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
           ): PromiseLike<TResult1 | TResult2> {
             return Promise.resolve(data).then(onfulfilled, onrejected);
           },
@@ -544,9 +574,9 @@ describe("assignUserToSpot", () => {
     vi.mocked(getActiveEntityId).mockResolvedValueOnce("ent-1");
 
     // 1. select spot (entityId = ent-1, same as active)
-    setupSelectMock([{ entityId: "ent-1" }]);
+    setupSelectMock([{ entityId: "ent-1", resourceType: "office" }]);
     // 2. select profile (entityId = ent-2, different)
-    setupSelectMock([{ entityId: "ent-2" }]);
+    setupSelectMock([{ entityId: "ent-2", resourceType: "parking" }]);
 
     const result = await assignUserToSpot({
       spot_id: UUID2,
@@ -556,9 +586,7 @@ describe("assignUserToSpot", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain(
-        "Este usuario no pertenece a la sede activa"
-      );
+      expect(result.error).toContain("Este usuario no pertenece a tu sede");
     }
   });
 
@@ -566,7 +594,7 @@ describe("assignUserToSpot", () => {
     vi.mocked(getActiveEntityId).mockResolvedValueOnce("ent-1");
 
     // select spot (entityId = ent-2, different from active)
-    setupSelectMock([{ entityId: "ent-2" }]);
+    setupSelectMock([{ entityId: "ent-2", resourceType: "parking" }]);
 
     const result = await assignUserToSpot({
       spot_id: UUID2,
@@ -576,9 +604,7 @@ describe("assignUserToSpot", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain(
-        "Esta plaza no pertenece a la sede activa"
-      );
+      expect(result.error).toContain("Esta plaza no pertenece a tu sede");
     }
     // Should not proceed to the second select (profile)
     expect(mockDb.select).toHaveBeenCalledTimes(1);
@@ -587,7 +613,7 @@ describe("assignUserToSpot", () => {
   it("permite asignación cuando spot y usuario comparten sede", async () => {
     vi.mocked(getActiveEntityId).mockResolvedValueOnce("ent-1");
 
-    setupSelectMock([{ entityId: "ent-1" }]);
+    setupSelectMock([{ entityId: "ent-1", resourceType: "parking" }]);
     setupSelectMock([{ entityId: "ent-1" }]);
     // Transaction: 2 updates
     setupUpdateMock([{ id: UUID2 }]);
@@ -641,7 +667,8 @@ describe("deleteUser", () => {
     const result = await deleteUser({ user_id: UUID });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("User not found");
+    if (!result.success)
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
   });
 
   it("rechaza user_id no UUID sin llamar al admin client", async () => {
@@ -651,27 +678,8 @@ describe("deleteUser", () => {
     expect(mockDb.delete).not.toHaveBeenCalled();
   });
 
-  it("rechaza eliminar usuario de otra sede cuando hay activeEntityId", async () => {
+  it("es global para admin aunque haya activeEntityId", async () => {
     vi.mocked(getActiveEntityId).mockResolvedValueOnce("ent-1");
-
-    // Target user belongs to ent-2, not ent-1
-    setupSelectMock([{ entityId: "ent-2" }]);
-
-    const result = await deleteUser({ user_id: UUID });
-
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error).toContain(
-        "No tienes permisos para eliminar este usuario"
-      );
-    }
-    expect(mockDb.delete).not.toHaveBeenCalled();
-  });
-
-  it("permite eliminar usuario de la misma sede cuando hay activeEntityId", async () => {
-    vi.mocked(getActiveEntityId).mockResolvedValueOnce("ent-1");
-
-    setupSelectMock([{ entityId: "ent-1" }]);
     setupDeleteMock([{ id: UUID }]);
 
     const result = await deleteUser({ user_id: UUID });

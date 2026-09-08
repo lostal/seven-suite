@@ -73,11 +73,10 @@ export const createEntity = actionClient
       revalidatePath("/administracion/entidades");
       return { id: entity.id };
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
       if (isUniqueViolation(err)) {
         throw new Error("Ya existe una sede con ese nombre o código");
       }
-      console.error("[entities] createEntity DB error:", msg);
+      console.error("[entities] createEntity DB error:", err);
       throw new Error("Error al crear la sede");
     }
   });
@@ -100,11 +99,10 @@ export const updateEntity = actionClient
     try {
       await db.update(entities).set(updateValues).where(eq(entities.id, id));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
       if (isUniqueViolation(err)) {
         throw new Error("Ya existe una sede con ese nombre o código");
       }
-      console.error("[entities] updateEntity DB error:", msg);
+      console.error("[entities] updateEntity DB error:", err);
       throw new Error("Error al actualizar la sede");
     }
 

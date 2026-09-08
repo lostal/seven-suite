@@ -84,11 +84,16 @@ async function getManageableLeaveRequest(
 
   if (!request) throw new Error("Solicitud no encontrada");
 
-  const activeEntityId = await getEffectiveEntityId();
   const isAdmin = user.profile?.role === "admin";
-  const expectedEntityId = isAdmin ? activeEntityId : user.profile?.entityId;
+  const expectedEntityId = isAdmin ? null : user.profile?.entityId;
 
-  if (expectedEntityId && request.employeeEntityId !== expectedEntityId) {
+  if (!isAdmin && !expectedEntityId) {
+    throw new Error("Tu usuario no tiene una sede asignada");
+  }
+  if (
+    expectedEntityId !== null &&
+    request.employeeEntityId !== expectedEntityId
+  ) {
     throw new Error("Sin permisos para gestionar esta solicitud");
   }
 
@@ -107,9 +112,7 @@ export async function getMyLeaveRequests(): Promise<
     return success(requests);
   } catch (err) {
     console.error("[vacaciones] getMyLeaveRequests error:", err);
-    return error(
-      err instanceof Error ? err.message : "Error al obtener solicitudes"
-    );
+    return error("Error al obtener solicitudes");
   }
 }
 
@@ -127,14 +130,19 @@ export async function getEntityLeaveRequests(): Promise<
       return error("Sin permisos");
     }
     const entityId = await getEffectiveEntityId();
+    if (
+      user.profile?.role !== "admin" &&
+      (user.profile?.role === "manager" || user.profile?.role === "hr") &&
+      !entityId
+    ) {
+      throw new Error("Tu usuario no tiene una sede asignada");
+    }
     if (!entityId) return error("No hay sede activa");
     const requests = await getLeaveRequestsByEntity(entityId);
     return success(requests);
   } catch (err) {
     console.error("[vacaciones] getEntityLeaveRequests error:", err);
-    return error(
-      err instanceof Error ? err.message : "Error al obtener solicitudes"
-    );
+    return error("Error al obtener solicitudes");
   }
 }
 
@@ -156,6 +164,12 @@ export const createLeaveRequest = actionClient
     }
 
     const entityId = await getEffectiveEntityId();
+    if (
+      (user.profile?.role === "manager" || user.profile?.role === "hr") &&
+      !entityId
+    ) {
+      throw new Error("Tu usuario no tiene una sede asignada");
+    }
     await assertModuleEnabled("vacaciones", entityId);
     const workingDays = await calcWorkingDays(
       parsedInput.start_date,
@@ -199,6 +213,12 @@ export const updateLeaveRequest = actionClient
     if (!user) throw new Error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
+    if (
+      (user.profile?.role === "manager" || user.profile?.role === "hr") &&
+      !entityId
+    ) {
+      throw new Error("Tu usuario no tiene una sede asignada");
+    }
     await assertModuleEnabled("vacaciones", entityId);
     const workingDays = await calcWorkingDays(
       parsedInput.start_date,
@@ -218,7 +238,7 @@ export const updateLeaveRequest = actionClient
         endDate: parsedInput.end_date,
         reason: parsedInput.reason ?? null,
         workingDays,
-        status: "pending",
+        status: parsedInput.leave_type === "sick" ? "approved" : "pending",
         reviewerId: null,
         reviewedAt: null,
         reviewerNotes: null,
@@ -253,29 +273,31 @@ export const cancelLeaveRequest = actionClient
     if (!user) throw new Error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
+    if (
+      (user.profile?.role === "manager" || user.profile?.role === "hr") &&
+      !entityId
+    ) {
+      throw new Error("Tu usuario no tiene una sede asignada");
+    }
     await assertModuleEnabled("vacaciones", entityId);
 
-    const [current] = await db
-      .select({
-        status: leaveRequests.status,
-        employeeId: leaveRequests.employeeId,
-      })
-      .from(leaveRequests)
-      .where(eq(leaveRequests.id, parsedInput.id))
-      .limit(1);
-
-    if (!current) throw new Error("Solicitud no encontrada");
-    if (current.employeeId !== user.id) throw new Error("Sin permisos");
-    if (current.status !== "pending") {
-      throw new Error(
-        `No se puede cancelar una solicitud en estado "${current.status}"`
-      );
-    }
-
-    await db
+    const cancelled = await db
       .update(leaveRequests)
       .set({ status: "cancelled", updatedAt: new Date() })
-      .where(eq(leaveRequests.id, parsedInput.id));
+      .where(
+        and(
+          eq(leaveRequests.id, parsedInput.id),
+          eq(leaveRequests.employeeId, user.id),
+          eq(leaveRequests.status, "pending")
+        )
+      )
+      .returning({ id: leaveRequests.id });
+
+    if (cancelled.length === 0) {
+      throw new Error(
+        "Solicitud no encontrada, sin permisos o no está pendiente"
+      );
+    }
 
     revalidatePath("/vacaciones/mis-solicitudes");
     return { cancelled: true };
@@ -298,6 +320,9 @@ export const approveLeaveRequest = actionClient
     }
 
     const entityId = await getEffectiveEntityId();
+    if ((role === "manager" || role === "hr") && !entityId) {
+      throw new Error("Tu usuario no tiene una sede asignada");
+    }
     await assertModuleEnabled("vacaciones", entityId);
 
     const now = new Date();
@@ -309,7 +334,7 @@ export const approveLeaveRequest = actionClient
       );
     }
 
-    await db
+    const updated = await db
       .update(leaveRequests)
       .set({
         status: "approved",
@@ -323,7 +348,12 @@ export const approveLeaveRequest = actionClient
           eq(leaveRequests.id, parsedInput.id),
           eq(leaveRequests.status, current.status)
         )
-      );
+      )
+      .returning({ id: leaveRequests.id });
+
+    if (updated.length === 0) {
+      throw new Error("La solicitud ya no está pendiente");
+    }
 
     revalidatePath("/vacaciones/gestionar");
     return { approved: true, newStatus: "approved" as const };
@@ -345,6 +375,9 @@ export const rejectLeaveRequest = actionClient
     }
 
     const entityId = await getEffectiveEntityId();
+    if ((role === "manager" || role === "hr") && !entityId) {
+      throw new Error("Tu usuario no tiene una sede asignada");
+    }
     await assertModuleEnabled("vacaciones", entityId);
 
     const current = await getManageableLeaveRequest(parsedInput.id, user);

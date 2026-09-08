@@ -37,11 +37,7 @@ export type {
  * Derived at query time, not stored in DB.
  */
 export type SpotStatus =
-  | "free"
-  | "occupied"
-  | "reserved"
-  | "ceded"
-  | "visitor-blocked";
+  "free" | "occupied" | "reserved" | "ceded" | "visitor-blocked";
 
 /**
  * Spot with its computed status for a specific date.

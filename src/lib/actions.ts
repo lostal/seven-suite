@@ -36,6 +36,47 @@ export type ActionError = {
 
 export type ActionResult<T> = ActionSuccess<T> | ActionError;
 
+const SAFE_ERROR_PREFIXES = [
+  "No autenticado",
+  "Sin permisos",
+  "No tienes",
+  "No puedes",
+  "Ya ",
+  "Esta ",
+  "Este ",
+  "La ",
+  "El ",
+  "Las ",
+  "Solo puedes",
+  "Tu usuario",
+  "Usuario ",
+  "Solicitud ",
+  "Reserva ",
+  "Plaza ",
+  "Puesto ",
+  "Cesión ",
+  "Error al obtener",
+  "No se puede",
+  "No se pudo",
+  "Selecciona ",
+  "No hay ",
+  "La fecha ",
+  "El rango ",
+  "No existe",
+  "No encontrada",
+  "No disponible",
+  "Error al",
+  "Esa ",
+  "No es ",
+];
+
+function isSafeActionMessage(message: string): boolean {
+  const normalizedMessage = message.toLowerCase();
+  return SAFE_ERROR_PREFIXES.some((prefix) =>
+    normalizedMessage.startsWith(prefix.toLowerCase())
+  );
+}
+
 // ─── Constructores auxiliares ────────────────────────────────
 
 export function success<T>(data: T): ActionSuccess<T> {
@@ -116,7 +157,7 @@ export const actionClient: ActionBuilder = {
               console.error("[action] error inesperado no estándar");
             }
             return error(
-              err instanceof Error
+              err instanceof Error && isSafeActionMessage(err.message)
                 ? err.message
                 : "Ha ocurrido un error inesperado"
             );

@@ -50,8 +50,7 @@ describe("logAuditEvent", () => {
     const builder = vi.mocked(mockDb.insert).mock.results[0]?.value;
     expect(builder.values).toHaveBeenCalled();
     const valuesArg = vi.mocked(builder.values).mock.calls[0]?.[0] as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     expect(valuesArg).toBeDefined();
     expect(valuesArg!.actorId).toBe(
       "user-00000000-0000-0000-0000-000000000001"
@@ -97,8 +96,7 @@ describe("logAuditEvent", () => {
     const builder = vi.mocked(mockDb.insert).mock.results[0]?.value;
     expect(builder.values).toHaveBeenCalled();
     const valuesArg = vi.mocked(builder.values).mock.calls[0]?.[0] as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     expect(valuesArg!.entityId).toBeUndefined();
   });
 
@@ -111,8 +109,7 @@ describe("logAuditEvent", () => {
     const builder = vi.mocked(mockDb.insert).mock.results[0]?.value;
     expect(builder.values).toHaveBeenCalled();
     const valuesArg = vi.mocked(builder.values).mock.calls[0]?.[0] as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     expect(valuesArg!.metadata).toEqual({});
   });
 

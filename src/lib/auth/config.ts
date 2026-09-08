@@ -9,12 +9,13 @@
  */
 
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
 import { db } from "@/lib/db";
+import { encryptToken } from "@/lib/auth/token-crypto";
 import {
   accounts,
   profiles,
@@ -24,6 +25,12 @@ import {
   users,
   verificationTokens,
 } from "@/lib/db/schema";
+
+const ALLOWED_EMAIL_PATTERN = /^[^@\s]+@gruposiete\.es$/i;
+
+function isAllowedEmail(email: string | null | undefined): boolean {
+  return email ? ALLOWED_EMAIL_PATTERN.test(email.trim()) : false;
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -41,6 +48,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: process.env.MICROSOFT_CLIENT_ID!,
       clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
       issuer: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID}/v2.0`,
+      authorization: {
+        params: {
+          scope:
+            "openid profile email offline_access User.Read Calendars.Read Chat.Create",
+        },
+      },
     }),
     ...(process.env.NODE_ENV !== "production"
       ? [
@@ -51,8 +64,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               email: { label: "Email", type: "email" },
             },
             async authorize(credentials) {
-              const email = credentials.email as string;
-              if (!email) return null;
+              const email = (credentials.email as string | undefined)?.trim();
+              if (!email || !isAllowedEmail(email)) return null;
 
               const [user] = await db
                 .select()
@@ -60,7 +73,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 .where(eq(users.email, email))
                 .limit(1);
 
-              if (!user) return null;
+              if (!user || !isAllowedEmail(user.email)) return null;
               return { id: user.id, email: user.email, name: user.name };
             },
           }),
@@ -68,19 +81,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       : []),
   ],
   callbacks: {
-    async signIn({ account }) {
+    async signIn({ account, user }) {
       if (account?.provider === "microsoft-entra-id") {
-        return true;
+        return isAllowedEmail(user.email);
       }
-      return true;
+      return isAllowedEmail(user.email);
     },
     async jwt({ token, user, account, trigger }) {
       if (account && account.access_token) {
-        token.accessToken = account.access_token;
-        token.refreshToken = account.refresh_token;
-        token.accessTokenExpires = account.expires_at
-          ? account.expires_at * 1000
-          : undefined;
+        // OAuth credentials stay server-side in userMicrosoftTokens. Never put
+        // access or refresh tokens into the Auth.js session JWT.
         token.scope = account.scope;
       }
 
@@ -116,12 +126,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       if (!user.id || !account?.access_token) return;
 
+      const [storedTokens] = await db
+        .select({ refreshToken: userMicrosoftTokens.refreshToken })
+        .from(userMicrosoftTokens)
+        .where(eq(userMicrosoftTokens.userId, user.id))
+        .limit(1);
+      const refreshToken = encryptToken(
+        account.refresh_token ?? storedTokens?.refreshToken ?? ""
+      );
+
       await db
         .insert(userMicrosoftTokens)
         .values({
           userId: user.id,
-          accessToken: account.access_token,
-          refreshToken: account.refresh_token ?? "",
+          accessToken: encryptToken(account.access_token),
+          refreshToken,
           tokenExpiresAt: account.expires_at
             ? new Date(account.expires_at * 1000)
             : new Date(Date.now() + 3600 * 1000),
@@ -132,8 +151,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         .onConflictDoUpdate({
           target: userMicrosoftTokens.userId,
           set: {
-            accessToken: account.access_token,
-            refreshToken: account.refresh_token ?? "",
+            accessToken: encryptToken(account.access_token),
+            refreshToken,
             tokenExpiresAt: account.expires_at
               ? new Date(account.expires_at * 1000)
               : new Date(Date.now() + 3600 * 1000),
@@ -141,6 +160,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             updatedAt: new Date(),
           },
         });
+
+      // The custom table is the only application-owned token store. The
+      // adapter's account row must not retain a second plaintext copy.
+      if (account.providerAccountId) {
+        await db
+          .update(accounts)
+          .set({ access_token: null, refresh_token: null })
+          .where(
+            and(
+              eq(accounts.provider, account.provider),
+              eq(accounts.providerAccountId, account.providerAccountId)
+            )
+          );
+      }
     },
     async createUser({ user }) {
       if (!user.id) return;

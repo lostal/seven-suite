@@ -21,7 +21,7 @@ import {
   type CessionWithDetails,
 } from "@/lib/queries/cessions";
 import { isUniqueViolation } from "@/lib/db/helpers";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray, ne } from "drizzle-orm";
 
 type ResourceType = "parking" | "office";
 
@@ -51,64 +51,107 @@ export function buildCessionActions(cfg: CessionConfig) {
         );
       }
 
-      const [spot] = await db
-        .select({
-          id: spots.id,
-          assignedTo: spots.assignedTo,
-          resourceType: spots.resourceType,
-          entityId: spots.entityId,
-        })
-        .from(spots)
-        .where(eq(spots.id, parsedInput.spot_id))
-        .limit(1);
+      try {
+        const inserted = await db.transaction(async (tx) => {
+          const [spot] = await tx
+            .select({
+              id: spots.id,
+              assignedTo: spots.assignedTo,
+              resourceType: spots.resourceType,
+              entityId: spots.entityId,
+              isActive: spots.isActive,
+            })
+            .from(spots)
+            .where(eq(spots.id, parsedInput.spot_id))
+            .for("update")
+            .limit(1);
 
-      if (!spot)
-        throw new Error(
-          `${cfg.noun.charAt(0).toUpperCase() + cfg.noun.slice(1)} no encontrad${cfg.noun === "plaza" ? "a" : "o"}`
-        );
-      if (spot.resourceType !== cfg.resourceType) {
-        throw new Error(
-          `Este${cfg.noun === "plaza" ? "a" : ""} ${cfg.noun} no es un espacio de ${cfg.resourceType === "parking" ? "parking" : "oficina"}`
-        );
-      }
-      if (spot.assignedTo !== user.id) {
-        throw new Error(
-          `Solo puedes ceder tu propi${cfg.noun === "plaza" ? "a" : "o"} ${cfg.noun}`
-        );
-      }
-      if (entityId && spot.entityId !== null && spot.entityId !== entityId) {
-        throw new Error(
-          `${cfg.noun.charAt(0).toUpperCase() + cfg.noun.slice(1)} no pertenece a la sede activa`
-        );
-      }
-
-      if (config.cession_min_advance_hours > 0) {
-        for (const dateStr of parsedInput.dates) {
-          if (isTooSoonForCession(dateStr, config.cession_min_advance_hours)) {
+          if (!spot || spot.isActive === false)
             throw new Error(
-              `La fecha ${dateStr} no cumple la antelación mínima de ${config.cession_min_advance_hours} horas`
+              `${cfg.noun.charAt(0).toUpperCase() + cfg.noun.slice(1)} no encontrad${cfg.noun === "plaza" ? "a" : "o"}`
+            );
+          if (spot.resourceType !== cfg.resourceType) {
+            throw new Error(
+              `Este ${cfg.noun} no es un espacio de ${cfg.resourceType === "parking" ? "parking" : "oficina"}`
             );
           }
-        }
-      }
+          if (spot.assignedTo !== user.id) {
+            throw new Error(
+              `Solo puedes ceder tu propi${cfg.noun === "plaza" ? "a" : "o"} ${cfg.noun}`
+            );
+          }
+          if (
+            entityId &&
+            spot.entityId !== null &&
+            spot.entityId !== entityId
+          ) {
+            throw new Error(
+              `${cfg.noun.charAt(0).toUpperCase() + cfg.noun.slice(1)} no pertenece a la sede activa`
+            );
+          }
 
-      const rows = parsedInput.dates.map((date) => ({
-        spotId: parsedInput.spot_id,
-        userId: user.id,
-        date,
-      }));
+          if (config.cession_min_advance_hours > 0) {
+            for (const dateStr of parsedInput.dates) {
+              if (
+                isTooSoonForCession(dateStr, config.cession_min_advance_hours)
+              ) {
+                throw new Error(
+                  `La fecha ${dateStr} no cumple la antelación mínima de ${config.cession_min_advance_hours} horas`
+                );
+              }
+            }
+          }
 
-      try {
-        const inserted = await db
-          .insert(cessions)
-          .values(rows)
-          .returning({ id: cessions.id });
+          const [reserved, existingCessions] = await Promise.all([
+            tx
+              .select({ id: reservations.id, date: reservations.date })
+              .from(reservations)
+              .where(
+                and(
+                  eq(reservations.spotId, parsedInput.spot_id),
+                  inArray(reservations.date, parsedInput.dates),
+                  eq(reservations.status, "confirmed")
+                )
+              ),
+            tx
+              .select({ date: cessions.date })
+              .from(cessions)
+              .where(
+                and(
+                  eq(cessions.spotId, parsedInput.spot_id),
+                  inArray(cessions.date, parsedInput.dates),
+                  ne(cessions.status, "cancelled")
+                )
+              ),
+          ]);
+
+          if (reserved.length > 0) {
+            throw new Error(
+              `No se puede ceder ${cfg.noun}: ya existe una reserva en uno de los días seleccionados`
+            );
+          }
+          if (existingCessions.length > 0) {
+            throw new Error(
+              `Ya existe una cesión para est${cfg.noun === "plaza" ? "a" : "e"} ${cfg.noun} en uno de los días seleccionados`
+            );
+          }
+
+          return tx
+            .insert(cessions)
+            .values(
+              parsedInput.dates.map((date) => ({
+                spotId: parsedInput.spot_id,
+                userId: user.id,
+                date,
+              }))
+            )
+            .returning({ id: cessions.id });
+        });
 
         revalidatePath(cfg.basePath);
         revalidatePath(`${cfg.basePath}/cesiones`);
         return { count: inserted.length };
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "";
         if (isUniqueViolation(err)) {
           throw new Error(
             `Ya existe una cesión para est${cfg.noun === "plaza" ? "a" : "e"} ${cfg.noun} en uno de los días seleccionados`
@@ -118,9 +161,21 @@ export function buildCessionActions(cfg: CessionConfig) {
           userId: user.id,
           spotId: parsedInput.spot_id,
           dates: parsedInput.dates,
-          error: msg,
+          error: err,
         });
-        throw new Error(`Error al crear cesión: ${msg}`);
+        if (
+          err instanceof Error &&
+          (err.message.includes("no encontrad") ||
+            err.message.includes("no es un espacio") ||
+            err.message.includes("Solo puedes ceder") ||
+            err.message.includes("no pertenece a la sede activa") ||
+            err.message.includes("no cumple la antelación mínima") ||
+            err.message.includes("No se puede ceder") ||
+            err.message.includes("Ya existe una cesión"))
+        ) {
+          throw err;
+        }
+        throw new Error("Error al crear cesión");
       }
     });
 
@@ -186,8 +241,11 @@ export function buildCessionActions(cfg: CessionConfig) {
               .where(eq(cessions.id, parsedInput.id));
           });
         } catch (err) {
-          const msg = err instanceof Error ? err.message : "";
-          throw new Error(`No se pudo cancelar la cesión: ${msg}`);
+          console.error(
+            `${cfg.logPrefix} cancelCession transaction error:`,
+            err
+          );
+          throw new Error("No se pudo cancelar la cesión");
         }
       } else {
         try {
@@ -196,13 +254,12 @@ export function buildCessionActions(cfg: CessionConfig) {
             .set({ status: "cancelled" })
             .where(eq(cessions.id, parsedInput.id));
         } catch (err) {
-          const msg = err instanceof Error ? err.message : "";
           console.error(`${cfg.logPrefix} cancelCession DB error:`, {
             userId: user.id,
             cessionId: parsedInput.id,
-            error: msg,
+            error: err,
           });
-          throw new Error(`Error al cancelar cesión: ${msg}`);
+          throw new Error("Error al cancelar cesión");
         }
       }
 
@@ -225,9 +282,7 @@ export function buildCessionActions(cfg: CessionConfig) {
       return success(userCessions);
     } catch (err) {
       console.error(`${cfg.logPrefix} getMyCessions error:`, err);
-      return error(
-        err instanceof Error ? err.message : "Error al obtener cesiones"
-      );
+      return error("Error al obtener cesiones");
     }
   }
 

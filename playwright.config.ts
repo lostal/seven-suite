@@ -54,6 +54,24 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
+    {
+      name: "manager-security",
+      testMatch: /security\/manager\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/manager.json",
+      },
+      dependencies: ["setup"],
+    },
+    {
+      name: "employee-security",
+      testMatch: /security\/employee\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/employee.json",
+      },
+      dependencies: ["setup"],
+    },
   ],
   webServer: {
     command: "pnpm dev",

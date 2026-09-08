@@ -11,7 +11,7 @@ import { revalidatePath } from "next/cache";
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { db } from "@/lib/db";
 import { isUniqueViolation, isExclusionViolation } from "@/lib/db/helpers";
-import { spots, reservations } from "@/lib/db/schema";
+import { spots, reservations, cessions } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   createOfficeReservationSchema,
@@ -28,7 +28,7 @@ import {
 } from "@/lib/queries/offices";
 import { getDayOfWeek } from "@/lib/utils";
 import { validateBookingDate } from "@/lib/booking-validation";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 
 // ─── Queries ──────────────────────────────────────────────────
 
@@ -63,9 +63,7 @@ export async function getOfficeSpotsForDate(
     return success(officeSpots);
   } catch (err) {
     console.error("[oficinas] getOfficeSpotsForDate error:", err);
-    return error(
-      err instanceof Error ? err.message : "Error al obtener disponibilidad"
-    );
+    return error("Error al obtener disponibilidad");
   }
 }
 
@@ -108,9 +106,7 @@ export async function getOfficeTimeSlotsForSpot(
     return success(slots);
   } catch (err) {
     console.error("[oficinas] getOfficeTimeSlotsForSpot error:", err);
-    return error(
-      err instanceof Error ? err.message : "Error al obtener franjas"
-    );
+    return error("Error al obtener franjas");
   }
 }
 
@@ -128,9 +124,7 @@ export async function getMyOfficeReservations(): Promise<
     return success(officeReservations);
   } catch (err) {
     console.error("[oficinas] getMyOfficeReservations error:", err);
-    return error(
-      err instanceof Error ? err.message : "Error al obtener tus reservas"
-    );
+    return error("Error al obtener tus reservas");
   }
 }
 
@@ -174,65 +168,75 @@ export const createOfficeReservation = actionClient
     // Comprobar día permitido, fechas pasadas y antelación máxima
     validateBookingDate(parsedInput.date, config);
 
-    // Si las franjas están habilitadas, las horas son obligatorias y deben estar dentro del horario del día
-    if (config.time_slots_enabled) {
-      if (!parsedInput.start_time || !parsedInput.end_time) {
-        throw new Error(
-          "Debes seleccionar una franja horaria para reservar este puesto"
-        );
-      }
-      const toMinutes = (t: string): number => {
-        const parts = t.split(":");
-        const h = parseInt(parts[0] ?? "", 10);
-        const m = parseInt(parts[1] ?? "0", 10);
-        if (isNaN(h) || isNaN(m)) {
-          throw new Error(`Formato de hora inválido: ${t}`);
-        }
-        return h * 60 + m;
-      };
-      const startMins = toMinutes(parsedInput.start_time);
-      const endMins = toMinutes(parsedInput.end_time);
-      const dayStart = config.day_start_hour ?? 0;
-      const dayEnd = config.day_end_hour ?? 24;
-      if (startMins < dayStart * 60 || endMins > dayEnd * 60) {
-        throw new Error(
-          `La franja horaria debe estar entre las ${dayStart}:00 y las ${dayEnd}:00`
-        );
-      }
-    }
-
-    // Verificar que el spot es de tipo oficina
-    const [spot] = await db
-      .select({
-        id: spots.id,
-        resourceType: spots.resourceType,
-        entityId: spots.entityId,
-      })
-      .from(spots)
-      .where(eq(spots.id, parsedInput.spot_id))
-      .limit(1);
-
-    if (!spot) throw new Error("Puesto no encontrado");
-    if (spot.resourceType !== "office") {
-      throw new Error("Este puesto no es un espacio de oficina");
-    }
-    if (entityId && spot.entityId !== null && spot.entityId !== entityId) {
-      throw new Error("El puesto seleccionado no pertenece a la sede activa");
-    }
-
-    // Insertar reserva
     try {
-      const [inserted] = await db
-        .insert(reservations)
-        .values({
-          spotId: parsedInput.spot_id,
-          userId: user.id,
-          date: parsedInput.date,
-          startTime: parsedInput.start_time ?? null,
-          endTime: parsedInput.end_time ?? null,
-          notes: parsedInput.notes ?? null,
-        })
-        .returning({ id: reservations.id });
+      const inserted = await db.transaction(async (tx) => {
+        const [spot] = await tx
+          .select({
+            id: spots.id,
+            resourceType: spots.resourceType,
+            entityId: spots.entityId,
+            isActive: spots.isActive,
+            assignedTo: spots.assignedTo,
+          })
+          .from(spots)
+          .where(eq(spots.id, parsedInput.spot_id))
+          .for("update")
+          .limit(1);
+
+        if (!spot || spot.isActive === false)
+          throw new Error("Puesto no encontrado");
+        if (spot.resourceType !== "office") {
+          throw new Error("Este puesto no es un espacio de oficina");
+        }
+        if (entityId && spot.entityId !== null && spot.entityId !== entityId) {
+          throw new Error(
+            "El puesto seleccionado no pertenece a la sede activa"
+          );
+        }
+
+        const [occupiedRows, cessionRows] = await Promise.all([
+          tx
+            .select({ id: reservations.id })
+            .from(reservations)
+            .where(
+              and(
+                eq(reservations.spotId, parsedInput.spot_id),
+                eq(reservations.date, parsedInput.date),
+                eq(reservations.status, "confirmed")
+              )
+            )
+            .limit(1),
+          tx
+            .select({ status: cessions.status })
+            .from(cessions)
+            .where(
+              and(
+                eq(cessions.spotId, parsedInput.spot_id),
+                eq(cessions.date, parsedInput.date),
+                ne(cessions.status, "cancelled")
+              )
+            )
+            .limit(1),
+        ]);
+
+        if (occupiedRows[0]) {
+          throw new Error("Este puesto ya está reservado para este día");
+        }
+        if (spot.assignedTo && cessionRows[0]?.status !== "available") {
+          throw new Error("Este puesto no está cedido para este día");
+        }
+
+        const [row] = await tx
+          .insert(reservations)
+          .values({
+            spotId: parsedInput.spot_id,
+            userId: user.id,
+            date: parsedInput.date,
+            notes: parsedInput.notes ?? null,
+          })
+          .returning({ id: reservations.id });
+        return row;
+      });
 
       if (!inserted) throw new Error("No se pudo crear la reserva");
 
@@ -240,14 +244,23 @@ export const createOfficeReservation = actionClient
       revalidatePath("/oficinas/reservas");
       return { id: inserted.id };
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      // Handle unique and exclusion constraint violations (solapamiento de franjas)
       if (isUniqueViolation(err) || isExclusionViolation(err)) {
-        throw new Error(
-          "Esta franja horaria ya está reservada para este puesto"
-        );
+        throw new Error("Este puesto ya está reservado para este día");
       }
-      console.error("[oficinas] createOfficeReservation insert error", msg);
+      if (
+        err instanceof Error &&
+        [
+          "Puesto no encontrado",
+          "Este puesto no es un espacio de oficina",
+          "El puesto seleccionado no pertenece a la sede activa",
+          "Este puesto ya está reservado para este día",
+          "Este puesto no está cedido para este día",
+          "No se pudo crear la reserva",
+        ].includes(err.message)
+      ) {
+        throw err;
+      }
+      console.error("[oficinas] createOfficeReservation insert error", err);
       throw new Error("No se pudo crear la reserva");
     }
   });

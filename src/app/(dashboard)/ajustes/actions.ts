@@ -28,7 +28,7 @@ import {
   invalidateConfigCache,
   invalidateEntityConfigCache,
 } from "@/lib/config";
-import { getActiveEntityId } from "@/lib/queries/active-entity";
+import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   updateGlobalConfigSchema,
@@ -42,6 +42,7 @@ import {
 } from "@/lib/validations";
 import { ALL_RESOURCE_CONFIG_KEYS } from "@/lib/config-types";
 import { syncAllHolidays, type SyncHolidaysResult } from "@/lib/holidays-sync";
+import { getMicrosoftAccessToken } from "@/lib/microsoft/graph";
 
 // ─── Helper interno ───────────────────────────────────────────
 
@@ -143,7 +144,7 @@ export const updateParkingConfig = actionClient
   .schema(updateResourceConfigSchema)
   .action(async ({ parsedInput }) => {
     const currentUser = await requireManagerOrAbove();
-    const entityId = await getActiveEntityId();
+    const entityId = await getEffectiveEntityId();
 
     const entries = resourceConfigToEntries("parking", parsedInput);
 
@@ -179,9 +180,7 @@ export async function syncHolidaysAction(): Promise<
     return success(result);
   } catch (err) {
     console.error("[config] syncHolidaysAction error:", err);
-    return error(
-      err instanceof Error ? err.message : "Error al sincronizar festivos"
-    );
+    return error("Error al sincronizar festivos");
   }
 }
 
@@ -191,7 +190,7 @@ export const updateOfficeConfig = actionClient
   .schema(updateResourceConfigSchema)
   .action(async ({ parsedInput }) => {
     const currentUser = await requireManagerOrAbove();
-    const entityId = await getActiveEntityId();
+    const entityId = await getEffectiveEntityId();
 
     const entries = resourceConfigToEntries("office", parsedInput);
 
@@ -215,7 +214,7 @@ export const restoreParkingDefaults = actionClient
   .schema(z.object({}))
   .action(async () => {
     await requireManagerOrAbove();
-    const entityId = await getActiveEntityId();
+    const entityId = await getEffectiveEntityId();
 
     if (!entityId) {
       throw new Error("No hay una sede activa seleccionada");
@@ -244,7 +243,7 @@ export const restoreOfficeDefaults = actionClient
   .schema(z.object({}))
   .action(async () => {
     await requireManagerOrAbove();
-    const entityId = await getActiveEntityId();
+    const entityId = await getEffectiveEntityId();
 
     if (!entityId) {
       throw new Error("No hay una sede activa seleccionada");
@@ -386,21 +385,13 @@ export const syncMicrosoftPhoto = actionClient
   .action(async () => {
     const user = await requireAuth();
 
-    const [token] = await db
-      .select({ accessToken: userMicrosoftTokens.accessToken })
-      .from(userMicrosoftTokens)
-      .where(eq(userMicrosoftTokens.userId, user.id))
-      .limit(1);
-
-    if (!token) {
-      throw new Error(
-        "No hay tokens de Microsoft. Conecta tu cuenta en Ajustes > Microsoft."
-      );
-    }
+    const accessToken = await getMicrosoftAccessToken(user.id);
 
     const response = await fetch(
       "https://graph.microsoft.com/v1.0/me/photo/$value",
-      { headers: { Authorization: `Bearer ${token.accessToken}` } }
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
     );
 
     if (!response.ok) {
@@ -430,22 +421,12 @@ export const testTeamsNotification = actionClient
   .action(async () => {
     const user = await requireAuth();
 
-    const [token] = await db
-      .select({ accessToken: userMicrosoftTokens.accessToken })
-      .from(userMicrosoftTokens)
-      .where(eq(userMicrosoftTokens.userId, user.id))
-      .limit(1);
-
-    if (!token) {
-      throw new Error(
-        "No hay tokens de Microsoft. Conecta tu cuenta en Ajustes > Microsoft."
-      );
-    }
+    const accessToken = await getMicrosoftAccessToken(user.id);
 
     const response = await fetch("https://graph.microsoft.com/v1.0/me/chats", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token.accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -476,20 +457,7 @@ export const forceCalendarSync = actionClient
   .action(async () => {
     const user = await requireAuth();
 
-    const [token] = await db
-      .select({
-        accessToken: userMicrosoftTokens.accessToken,
-        outlookCalendarId: userMicrosoftTokens.outlookCalendarId,
-      })
-      .from(userMicrosoftTokens)
-      .where(eq(userMicrosoftTokens.userId, user.id))
-      .limit(1);
-
-    if (!token) {
-      throw new Error(
-        "No hay tokens de Microsoft. Conecta tu cuenta en Ajustes > Microsoft."
-      );
-    }
+    const accessToken = await getMicrosoftAccessToken(user.id);
 
     const startDate = new Date().toISOString();
     const endDate = new Date(
@@ -499,7 +467,7 @@ export const forceCalendarSync = actionClient
     const response = await fetch(
       `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${startDate}&endDateTime=${endDate}`,
       {
-        headers: { Authorization: `Bearer ${token.accessToken}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       }
     );
 

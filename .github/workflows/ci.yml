@@ -19,7 +19,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.15.0
 
       - uses: actions/setup-node@v4
         with:
@@ -45,3 +45,48 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/seven_suite_ci
           AUTH_SECRET: ci-placeholder-secret-for-build-only
+          MICROSOFT_CLIENT_ID: ci-placeholder-client-id
+          MICROSOFT_CLIENT_SECRET: ci-placeholder-client-secret
+          MICROSOFT_TENANT_ID: ci-placeholder-tenant-id
+
+      - name: Production dependency audit
+        run: pnpm audit --prod
+
+  integration:
+    name: PostgreSQL Integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: seven_suite
+          POSTGRES_PASSWORD: seven_suite_dev
+          POSTGRES_DB: seven_suite_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U seven_suite -d seven_suite_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: postgresql://seven_suite:seven_suite_dev@localhost:5432/seven_suite_test
+
+      - name: Integration tests
+        run: pnpm test:integration

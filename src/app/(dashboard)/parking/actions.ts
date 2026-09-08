@@ -150,9 +150,7 @@ export async function getAvailableSpotsForDate(
     return success(available);
   } catch (err) {
     console.error("[parking] getAvailableSpotsForDate error:", err);
-    return error(
-      err instanceof Error ? err.message : "Error al obtener plazas disponibles"
-    );
+    return error("Error al obtener plazas disponibles");
   }
 }
 
@@ -170,9 +168,7 @@ export async function getMyParkingReservations(): Promise<
     return success(reservationList);
   } catch (err) {
     console.error("[parking] getMyParkingReservations error:", err);
-    return error(
-      err instanceof Error ? err.message : "Error al obtener tus reservas"
-    );
+    return error("Error al obtener tus reservas");
   }
 }
 
@@ -205,52 +201,104 @@ export const createReservation = actionClient
 
     validateBookingDate(parsedInput.date, config);
 
-    // Verificar que el spot es de tipo parking
-    const [spot] = await db
-      .select({
-        id: spots.id,
-        resourceType: spots.resourceType,
-        entityId: spots.entityId,
-      })
-      .from(spots)
-      .where(eq(spots.id, parsedInput.spot_id))
-      .limit(1);
-
-    if (!spot) throw new Error("Plaza no encontrada");
-    if (spot.resourceType !== "parking") {
-      throw new Error("Esta plaza no es un espacio de parking");
-    }
-    if (entityId && spot.entityId !== null && spot.entityId !== entityId) {
-      throw new Error("La plaza seleccionada no pertenece a la sede activa");
-    }
-
-    // Check if user already has a reservation for this date
-    const [existing] = await db
-      .select({ id: reservations.id })
-      .from(reservations)
-      .where(
-        and(
-          eq(reservations.userId, user.id),
-          eq(reservations.date, parsedInput.date),
-          eq(reservations.status, "confirmed")
-        )
-      )
-      .limit(1);
-
-    if (existing) {
-      throw new Error("Ya tienes una reserva para este día");
-    }
-
     try {
-      const [inserted] = await db
-        .insert(reservations)
-        .values({
-          spotId: parsedInput.spot_id,
-          userId: user.id,
-          date: parsedInput.date,
-          notes: parsedInput.notes ?? null,
-        })
-        .returning({ id: reservations.id });
+      const inserted = await db.transaction(async (tx) => {
+        const [spot] = await tx
+          .select({
+            id: spots.id,
+            resourceType: spots.resourceType,
+            entityId: spots.entityId,
+            isActive: spots.isActive,
+            assignedTo: spots.assignedTo,
+          })
+          .from(spots)
+          .where(eq(spots.id, parsedInput.spot_id))
+          .for("update")
+          .limit(1);
+
+        if (!spot || spot.isActive === false)
+          throw new Error("Plaza no encontrada");
+        if (spot.resourceType !== "parking") {
+          throw new Error("Esta plaza no es un espacio de parking");
+        }
+        if (entityId && spot.entityId !== null && spot.entityId !== entityId) {
+          throw new Error(
+            "La plaza seleccionada no pertenece a la sede activa"
+          );
+        }
+
+        const [existingRows, occupiedRows, visitorRows, cessionRows] =
+          await Promise.all([
+            tx
+              .select({ id: reservations.id })
+              .from(reservations)
+              .where(
+                and(
+                  eq(reservations.userId, user.id),
+                  eq(reservations.date, parsedInput.date),
+                  eq(reservations.status, "confirmed")
+                )
+              )
+              .limit(1),
+            tx
+              .select({ id: reservations.id })
+              .from(reservations)
+              .where(
+                and(
+                  eq(reservations.spotId, parsedInput.spot_id),
+                  eq(reservations.date, parsedInput.date),
+                  eq(reservations.status, "confirmed")
+                )
+              )
+              .limit(1),
+            tx
+              .select({ id: visitorReservations.id })
+              .from(visitorReservations)
+              .where(
+                and(
+                  eq(visitorReservations.spotId, parsedInput.spot_id),
+                  eq(visitorReservations.date, parsedInput.date),
+                  eq(visitorReservations.status, "confirmed")
+                )
+              )
+              .limit(1),
+            tx
+              .select({ status: cessions.status })
+              .from(cessions)
+              .where(
+                and(
+                  eq(cessions.spotId, parsedInput.spot_id),
+                  eq(cessions.date, parsedInput.date),
+                  ne(cessions.status, "cancelled")
+                )
+              )
+              .limit(1),
+          ]);
+
+        const existing = existingRows[0];
+        const occupied = occupiedRows[0];
+        const visitorOccupied = visitorRows[0];
+        const cession = cessionRows[0];
+
+        if (existing) throw new Error("Ya tienes una reserva para este día");
+        if (occupied || visitorOccupied || (spot.assignedTo && !cession)) {
+          throw new Error("Esta plaza ya está reservada para este día");
+        }
+        if (spot.assignedTo && cession?.status !== "available") {
+          throw new Error("Esta plaza no está cedida para este día");
+        }
+
+        const [row] = await tx
+          .insert(reservations)
+          .values({
+            spotId: parsedInput.spot_id,
+            userId: user.id,
+            date: parsedInput.date,
+            notes: parsedInput.notes ?? null,
+          })
+          .returning({ id: reservations.id });
+        return row;
+      });
 
       if (!inserted) throw new Error("No se pudo crear la reserva");
 
@@ -258,7 +306,6 @@ export const createReservation = actionClient
       revalidatePath("/parking/reservas");
       return { id: inserted.id };
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
       if (isUniqueViolation(err)) {
         // Check if it's a user duplicate
         const [userDuplicate] = await db
@@ -278,7 +325,21 @@ export const createReservation = actionClient
         }
         throw new Error("Esta plaza ya está reservada para este día");
       }
-      console.error("[parking] createReservation insert error", msg);
+      if (
+        err instanceof Error &&
+        [
+          "Plaza no encontrada",
+          "Esta plaza no es un espacio de parking",
+          "La plaza seleccionada no pertenece a la sede activa",
+          "Ya tienes una reserva para este día",
+          "Esta plaza ya está reservada para este día",
+          "Esta plaza no está cedida para este día",
+          "No se pudo crear la reserva",
+        ].includes(err.message)
+      ) {
+        throw err;
+      }
+      console.error("[parking] createReservation insert error", err);
       throw new Error("No se pudo crear la reserva");
     }
   });

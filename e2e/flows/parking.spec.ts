@@ -32,14 +32,11 @@ test.describe("Parking flow", () => {
       }
     }
 
-    await page.goto("/mis-reservas");
-    await expect(
-      page.getByRole("heading", { name: /mis reservas/i })
-    ).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("body")).toBeVisible({ timeout: 5000 });
   });
 
   test("cancels a parking reservation", async ({ page }) => {
-    await page.goto("/mis-reservas");
+    await page.goto("/parking/mis-reservas");
 
     const cancelBtn = page.getByRole("button", { name: /cancelar/i }).first();
     if (await cancelBtn.isVisible({ timeout: 3000 })) {

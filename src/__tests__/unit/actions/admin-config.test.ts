@@ -163,7 +163,8 @@ describe("updateGlobalConfig", () => {
     });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toBeDefined();
+    if (!result.success)
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
   });
 
   it("NO invalida el cache si la BD falla", async () => {
@@ -192,7 +193,8 @@ describe("updateGlobalConfig", () => {
     });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toBe("Acceso no autorizado");
+    if (!result.success)
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
   });
 });
 
@@ -234,7 +236,8 @@ describe("updateParkingConfig", () => {
     const result = await updateParkingConfig(validResourceConfig);
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toBeDefined();
+    if (!result.success)
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
   });
 });
 
@@ -275,7 +278,8 @@ describe("updateOfficeConfig", () => {
     const result = await updateOfficeConfig(validResourceConfig);
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toBeDefined();
+    if (!result.success)
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
   });
 
   it("invalida el cache solo una vez aunque haya múltiples claves", async () => {

@@ -6,9 +6,14 @@ vi.mock("next/headers", () => ({
 vi.mock("@/lib/auth/helpers", () => ({
   getCurrentUser: vi.fn(),
 }));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
 
 import { cookies } from "next/headers";
 import { getCurrentUser } from "@/lib/auth/helpers";
+import { setupSelectMock } from "../../mocks/db";
 import {
   getActiveEntityId,
   getEffectiveEntityId,
@@ -78,6 +83,7 @@ describe("getEffectiveEntityId", () => {
       profile: { role: "admin", entityId: null } as never,
     });
     vi.mocked(cookies).mockResolvedValue(mockCookieStore("entity-456"));
+    setupSelectMock([{ id: "entity-456" }]);
 
     const result = await getEffectiveEntityId();
     expect(result).toBe("entity-456");

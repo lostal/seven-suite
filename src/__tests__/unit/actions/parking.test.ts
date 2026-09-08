@@ -145,25 +145,25 @@ describe("getAvailableSpotsForDate", () => {
   // ── Fines de semana ────────────────────────────────────────────────────────
 
   it("devuelve success([]) el sábado sin consultar BD", async () => {
-    // 2025-01-11 es sábado
-    const result = await getAvailableSpotsForDate("2025-01-11");
+    // 2027-01-09 es sábado
+    const result = await getAvailableSpotsForDate("2027-01-09");
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual([]);
     expect(mockDb.select).not.toHaveBeenCalled();
   });
 
   it("devuelve success([]) el domingo sin consultar BD", async () => {
-    // 2025-01-12 es domingo
-    const result = await getAvailableSpotsForDate("2025-01-12");
+    // 2027-01-10 es domingo
+    const result = await getAvailableSpotsForDate("2027-01-10");
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual([]);
   });
 
   it("procesa normalmente el lunes", async () => {
-    // 2025-01-13 es lunes
+    // 2027-01-11 es lunes
     const spot = createMockSpot({ id: "s1", type: "standard" });
     setupGetAvailableSpotsMocks({ spots: [spot] });
-    const result = await getAvailableSpotsForDate("2025-01-13");
+    const result = await getAvailableSpotsForDate("2027-01-11");
     expect(result.success).toBe(true);
   });
 
@@ -171,7 +171,7 @@ describe("getAvailableSpotsForDate", () => {
 
   it("devuelve error 'No autenticado' si getCurrentUser devuelve null", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(null);
-    const result = await getAvailableSpotsForDate("2025-03-17"); // lunes
+    const result = await getAvailableSpotsForDate("2027-03-17"); // lunes
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBe("No autenticado");
   });
@@ -182,7 +182,7 @@ describe("getAvailableSpotsForDate", () => {
     mockDb.select.mockImplementationOnce(() => {
       throw new Error("Error de conexión");
     });
-    const result = await getAvailableSpotsForDate("2025-03-17");
+    const result = await getAvailableSpotsForDate("2027-03-17");
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBeDefined();
   });
@@ -194,7 +194,7 @@ describe("getAvailableSpotsForDate", () => {
       throw new Error("fallo");
     });
 
-    const result = await getAvailableSpotsForDate("2025-03-17");
+    const result = await getAvailableSpotsForDate("2027-03-17");
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBeDefined();
@@ -207,7 +207,7 @@ describe("getAvailableSpotsForDate", () => {
     const spot = createMockSpot({ id: "s1", type: "standard" });
     setupGetAvailableSpotsMocks({ spots: [spot] });
 
-    const result = await getAvailableSpotsForDate("2025-03-17");
+    const result = await getAvailableSpotsForDate("2027-03-17");
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toHaveLength(0);
@@ -220,7 +220,7 @@ describe("getAvailableSpotsForDate", () => {
       reservations: [{ id: "r1", spotId: "s1" }],
     });
 
-    const result = await getAvailableSpotsForDate("2025-03-17");
+    const result = await getAvailableSpotsForDate("2027-03-17");
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toHaveLength(0);
@@ -233,7 +233,7 @@ describe("getAvailableSpotsForDate", () => {
       visitorReservations: [{ id: "v1", spotId: "s1" }],
     });
 
-    const result = await getAvailableSpotsForDate("2025-03-17");
+    const result = await getAvailableSpotsForDate("2027-03-17");
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toHaveLength(0);
@@ -249,7 +249,7 @@ describe("getAvailableSpotsForDate", () => {
     });
     setupGetAvailableSpotsMocks({ spots: [spot] });
 
-    const result = await getAvailableSpotsForDate("2025-03-17");
+    const result = await getAvailableSpotsForDate("2027-03-17");
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toHaveLength(0);
@@ -266,7 +266,7 @@ describe("getAvailableSpotsForDate", () => {
       cessions: [{ id: "c1", spotId: "sm", status: "available" }],
     });
 
-    const result = await getAvailableSpotsForDate("2025-03-17");
+    const result = await getAvailableSpotsForDate("2027-03-17");
 
     expect(result.success).toBe(true);
     if (result.success) {
@@ -286,7 +286,7 @@ describe("getAvailableSpotsForDate", () => {
       cessions: [{ id: "c1", spotId: "sm", status: "reserved" }],
     });
 
-    const result = await getAvailableSpotsForDate("2025-03-17");
+    const result = await getAvailableSpotsForDate("2027-03-17");
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toHaveLength(0);
@@ -298,7 +298,7 @@ describe("getAvailableSpotsForDate", () => {
     const spot = createMockSpot({ id: "v1", type: "visitor" });
     setupGetAvailableSpotsMocks({ spots: [spot] });
 
-    const result = await getAvailableSpotsForDate("2025-03-17");
+    const result = await getAvailableSpotsForDate("2027-03-17");
 
     expect(result.success).toBe(true);
     if (result.success) {
@@ -314,7 +314,7 @@ describe("getAvailableSpotsForDate", () => {
       reservations: [{ id: "r1", spotId: "v1" }],
     });
 
-    const result = await getAvailableSpotsForDate("2025-03-17");
+    const result = await getAvailableSpotsForDate("2027-03-17");
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toHaveLength(0);
@@ -338,9 +338,9 @@ describe("getAvailableSpotsForDate", () => {
 
 describe("createReservation", () => {
   beforeAll(() => {
-    // Mock del tiempo para que "2025-03-17" sea fecha futura
+    // Mock del tiempo para que "2027-03-17" sea fecha futura
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2025-01-01T00:00:00Z"));
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
   });
 
   afterAll(() => {
@@ -365,7 +365,7 @@ describe("createReservation", () => {
 
     const result = await createReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(true);
@@ -377,7 +377,7 @@ describe("createReservation", () => {
 
     const result = await createReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
@@ -393,7 +393,7 @@ describe("createReservation", () => {
 
     const result = await createReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
@@ -416,7 +416,7 @@ describe("createReservation", () => {
 
     const result = await createReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
@@ -428,7 +428,10 @@ describe("createReservation", () => {
   it("si hay carrera concurrente y termina existiendo reserva del usuario, devuelve mensaje de duplicado de usuario", async () => {
     setupSelectMock([]);
     setupSelectMock([{ id: UUID, resourceType: "parking", entityId: null }]);
-    // 2. select existing reservation → none (pre-insert check)
+    // 2. transaction checks: user, spot, visitor and cession are empty
+    setupSelectMock([]);
+    setupSelectMock([]);
+    setupSelectMock([]);
     setupSelectMock([]);
     // 3. insert throws 23505
     mockDb.insert.mockImplementationOnce(() => {
@@ -439,7 +442,7 @@ describe("createReservation", () => {
 
     const result = await createReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
@@ -451,7 +454,10 @@ describe("createReservation", () => {
   it("falla con error genérico de BD si el código no es 23505", async () => {
     setupSelectMock([]);
     setupSelectMock([{ id: UUID, resourceType: "parking", entityId: null }]);
-    // 2. select existing reservation → none
+    // 2. transaction checks: user, spot, visitor and cession are empty
+    setupSelectMock([]);
+    setupSelectMock([]);
+    setupSelectMock([]);
     setupSelectMock([]);
     // 3. insert throws generic error
     mockDb.insert.mockImplementationOnce(() => {
@@ -460,7 +466,7 @@ describe("createReservation", () => {
 
     const result = await createReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
@@ -479,17 +485,37 @@ describe("createReservation", () => {
 
     const result = await createReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toContain("sede activa");
   });
 
+  it("rechaza reservar una plaza inactiva", async () => {
+    setupSelectMock([]);
+    setupSelectMock([
+      {
+        id: UUID,
+        resourceType: "parking",
+        entityId: null,
+        isActive: false,
+      },
+    ]);
+
+    const result = await createReservation({
+      spot_id: UUID,
+      date: "2027-03-17",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain("no encontrada");
+  });
+
   it("rechaza spot_id inválido sin llamar a BD (validación Zod)", async () => {
     const result = await createReservation({
       spot_id: "no-es-uuid",
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);

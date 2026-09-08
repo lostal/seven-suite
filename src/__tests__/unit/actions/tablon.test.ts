@@ -162,7 +162,8 @@ describe("updateAnnouncement", () => {
     });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("no encontrado");
+    if (!result.success)
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
   });
 
   it("rejects when user is not the creator and not admin", async () => {
@@ -235,7 +236,8 @@ describe("publishAnnouncement", () => {
     const result = await publishAnnouncement({ id: ANNOUNCEMENT_ID });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("no encontrado");
+    if (!result.success)
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
   });
 
   it("rejects when user is not the creator", async () => {
@@ -285,7 +287,8 @@ describe("deleteAnnouncement", () => {
     const result = await deleteAnnouncement({ id: ANNOUNCEMENT_ID });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("no encontrado");
+    if (!result.success)
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
   });
 
   it("rejects when user is not the creator", async () => {

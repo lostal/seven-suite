@@ -331,20 +331,18 @@ export async function getUserOfficeReservations(
 
   return rows
     .filter((r) => r.spot_resource_type === "office")
-    .map(
-      (r): ReservationWithDetails => ({
-        id: r.id,
-        spot_id: r.spot_id,
-        spot_label: r.spot_label,
-        resource_type: "office",
-        user_id: r.user_id,
-        user_name: r.user_name ?? "",
-        date: r.date,
-        status: r.status,
-        notes: r.notes,
-        start_time: r.start_time,
-        end_time: r.end_time,
-        created_at: r.created_at.toISOString(),
-      })
-    );
+    .map((r): ReservationWithDetails => ({
+      id: r.id,
+      spot_id: r.spot_id,
+      spot_label: r.spot_label,
+      resource_type: "office",
+      user_id: r.user_id,
+      user_name: r.user_name ?? "",
+      date: r.date,
+      status: r.status,
+      notes: r.notes,
+      start_time: r.start_time,
+      end_time: r.end_time,
+      created_at: r.created_at.toISOString(),
+    }));
 }

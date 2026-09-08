@@ -149,7 +149,8 @@ describe("getEntityLeaveRequests", () => {
     const result = await getEntityLeaveRequests();
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toBe("No hay sede activa");
+    if (!result.success)
+      expect(result.error).toBe("Error al obtener solicitudes");
   });
 
   it("returns leave requests for entity (manager)", async () => {
@@ -194,21 +195,21 @@ describe("createLeaveRequest", () => {
 
     const result = await createLeaveRequest({
       leave_type: "vacation",
-      start_date: "2026-07-01",
-      end_date: "2026-07-03",
+      start_date: "2027-07-01",
+      end_date: "2027-07-03",
     });
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual({ id: "lr-new" });
   });
 
-  it("auto-approves sick leave to hr_approved", async () => {
+  it("auto-approves sick leave to approved", async () => {
     setupInsertMock([{ id: "lr-sick" }]);
 
     const result = await createLeaveRequest({
       leave_type: "sick",
-      start_date: "2026-07-01",
-      end_date: "2026-07-01",
+      start_date: "2027-07-01",
+      end_date: "2027-07-01",
     });
 
     expect(result.success).toBe(true);
@@ -246,8 +247,8 @@ describe("createLeaveRequest", () => {
 
     const result = await createLeaveRequest({
       leave_type: "vacation",
-      start_date: "2026-07-04",
-      end_date: "2026-07-05", // Sat-Sun (both weekend)
+      start_date: "2027-07-03",
+      end_date: "2027-07-04", // Sat-Sun (both weekend)
     });
 
     expect(result.success).toBe(false);
@@ -261,8 +262,8 @@ describe("createLeaveRequest", () => {
 
     const result = await createLeaveRequest({
       leave_type: "personal",
-      start_date: "2026-07-01",
-      end_date: "2026-07-01",
+      start_date: "2027-07-01",
+      end_date: "2027-07-01",
     });
 
     expect(result.success).toBe(false);
@@ -289,8 +290,8 @@ describe("updateLeaveRequest", () => {
     const result = await updateLeaveRequest({
       id: REQUEST_ID,
       leave_type: "vacation",
-      start_date: "2026-07-10",
-      end_date: "2026-07-14",
+      start_date: "2027-07-10",
+      end_date: "2027-07-14",
     });
 
     expect(result.success).toBe(true);
@@ -301,8 +302,8 @@ describe("updateLeaveRequest", () => {
     const result = await updateLeaveRequest({
       id: REQUEST_ID,
       leave_type: "vacation",
-      start_date: "2026-07-04",
-      end_date: "2026-07-05",
+      start_date: "2027-07-03",
+      end_date: "2027-07-04",
     });
 
     expect(result.success).toBe(false);
@@ -318,8 +319,8 @@ describe("updateLeaveRequest", () => {
     const result = await updateLeaveRequest({
       id: REQUEST_ID,
       leave_type: "vacation",
-      start_date: "2026-07-10",
-      end_date: "2026-07-14",
+      start_date: "2027-07-10",
+      end_date: "2027-07-14",
     });
 
     expect(result.success).toBe(false);
@@ -334,8 +335,8 @@ describe("updateLeaveRequest", () => {
     const result = await updateLeaveRequest({
       id: "someone-elses-request",
       leave_type: "vacation",
-      start_date: "2026-07-10",
-      end_date: "2026-07-14",
+      start_date: "2027-07-10",
+      end_date: "2027-07-14",
     });
 
     expect(result.success).toBe(false);
@@ -352,9 +353,7 @@ describe("cancelLeaveRequest", () => {
   });
 
   it("cancels a pending request", async () => {
-    setupSelectMock([]);
-    setupSelectMock([{ status: "pending", employeeId: "employee-1" }]);
-    setupUpdateMock([]);
+    setupUpdateMock([{ id: REQUEST_ID }]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
 
@@ -363,18 +362,16 @@ describe("cancelLeaveRequest", () => {
   });
 
   it("returns error when trying to cancel approved request", async () => {
-    setupSelectMock([]);
-    setupSelectMock([{ status: "approved", employeeId: "employee-1" }]);
+    setupUpdateMock([]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("approved");
+    if (!result.success) expect(result.error).toContain("no está pendiente");
   });
 
   it("returns error when request not found", async () => {
-    setupSelectMock([]);
-    setupSelectMock([]);
+    setupUpdateMock([]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
 
@@ -383,36 +380,33 @@ describe("cancelLeaveRequest", () => {
   });
 
   it("returns error when trying to cancel someone elses request", async () => {
-    setupSelectMock([]);
-    setupSelectMock([{ status: "pending", employeeId: "other-user" }]);
+    setupUpdateMock([]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("Sin permisos");
+    if (!result.success) expect(result.error).toContain("sin permisos");
   });
 
-  it("returns error for hr_approved requests", async () => {
-    setupSelectMock([]);
-    setupSelectMock([{ status: "approved", employeeId: "employee-1" }]);
+  it("returns error for approved requests", async () => {
+    setupUpdateMock([]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain("approved");
+      expect(result.error).toContain("no está pendiente");
     }
   });
 
   it("returns error for rejected requests", async () => {
-    setupSelectMock([]);
-    setupSelectMock([{ status: "rejected", employeeId: "employee-1" }]);
+    setupUpdateMock([]);
 
     const result = await cancelLeaveRequest({ id: REQUEST_ID });
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain("rejected");
+      expect(result.error).toContain("no está pendiente");
     }
   });
 });
@@ -444,11 +438,11 @@ describe("approveLeaveRequest", () => {
     if (!result.success) expect(result.error).toContain("Sin permisos");
   });
 
-  it("manager approves pending → manager_approved", async () => {
+  it("manager approves pending → approved", async () => {
     setManager();
     setupSelectMock([]);
     setupSelectMock([{ status: "pending", employeeEntityId: "entity-A" }]);
-    setupUpdateMock([]);
+    setupUpdateMock([{ id: REQUEST_ID }]);
 
     const result = await approveLeaveRequest({ id: REQUEST_ID, notes: null });
 
@@ -461,7 +455,7 @@ describe("approveLeaveRequest", () => {
     }
   });
 
-  it("manager cannot approve already manager_approved", async () => {
+  it("manager cannot approve already approved", async () => {
     setManager();
     setupSelectMock([]);
     setupSelectMock([{ status: "approved", employeeEntityId: "entity-A" }]);
@@ -498,11 +492,11 @@ describe("approveLeaveRequest", () => {
     if (!result.success) expect(result.error).toContain("Sin permisos");
   });
 
-  it("admin approves pending → hr_approved", async () => {
+  it("admin approves pending → approved", async () => {
     setAdmin();
     setupSelectMock([]);
     setupSelectMock([{ status: "pending", employeeEntityId: "entity-A" }]);
-    setupUpdateMock([]);
+    setupUpdateMock([{ id: REQUEST_ID }]);
 
     const result = await approveLeaveRequest({ id: REQUEST_ID, notes: null });
 
@@ -561,7 +555,7 @@ describe("rejectLeaveRequest", () => {
     if (result.success) expect(result.data).toEqual({ rejected: true });
   });
 
-  it("manager cannot reject manager_approved request", async () => {
+  it("manager cannot reject approved request", async () => {
     setManager();
     setupSelectMock([]);
     setupSelectMock([{ status: "approved", employeeEntityId: "entity-A" }]);

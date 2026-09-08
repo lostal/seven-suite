@@ -41,6 +41,12 @@ vi.mock("@/lib/queries/visitor-reservations", () => ({
 
 vi.mock("@/lib/config", () => ({
   getResourceConfig: vi.fn().mockResolvedValue(true),
+  getAllResourceConfigs: vi.fn().mockResolvedValue({
+    allowed_days: [1, 2, 3, 4, 5],
+    max_advance_days: 365,
+    booking_enabled: true,
+    visitor_booking_enabled: true,
+  }),
 }));
 
 vi.mock("@/lib/email", () => ({
@@ -79,7 +85,7 @@ const DEFAULT_VISITOR_ROW = {
   visitorEmail: "visitor@test.com",
   visitorName: "Visitante Test",
   visitorCompany: "Test Corp",
-  date: "2026-04-15",
+  date: "2027-04-15",
   spotId: SPOT_ID,
 };
 
@@ -142,7 +148,7 @@ describe("getVisitorReservationsAction", () => {
 describe("createVisitorReservation", () => {
   const validInput = {
     spot_id: SPOT_ID,
-    date: "2026-06-15",
+    date: "2027-06-15",
     visitor_name: "Juan Visitante",
     visitor_company: "Empresa SA",
     visitor_email: "juan@empresa.com",
@@ -193,7 +199,8 @@ describe("createVisitorReservation", () => {
     const result = await createVisitorReservation(validInput);
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("ya tiene una reserva");
+    if (!result.success)
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
   });
 
   it("rechaza crear si el spot no es de tipo visitor", async () => {
@@ -211,6 +218,23 @@ describe("createVisitorReservation", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toContain("plaza de visitantes");
+  });
+
+  it("rechaza crear si la plaza está inactiva", async () => {
+    setupSelectMock([
+      {
+        label: "V-01",
+        entityId: null,
+        type: "visitor",
+        resourceType: "parking",
+        isActive: false,
+      },
+    ]);
+
+    const result = await createVisitorReservation(validInput);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain("no existe");
   });
 
   it("devuelve error si el usuario no está autenticado", async () => {
@@ -286,7 +310,7 @@ describe("updateVisitorReservation", () => {
   const validInput = {
     id: VISITOR_ID,
     spot_id: SPOT_ID,
-    date: "2026-06-15",
+    date: "2027-06-07",
     visitor_name: "Juan Visitante",
     visitor_company: "Empresa SA",
     visitor_email: "juan@empresa.com",
@@ -308,6 +332,18 @@ describe("updateVisitorReservation", () => {
         resourceType: "parking",
       },
     ]);
+    // 2. transaction lock and occupancy checks
+    setupSelectMock([
+      {
+        id: SPOT_ID,
+        isActive: true,
+        type: "visitor",
+        resourceType: "parking",
+        entityId: null,
+      },
+    ]);
+    setupSelectMock([]);
+    setupSelectMock([]);
     // 2. update visitor reservation
     setupUpdateMock([{ id: VISITOR_ID }]);
     // 3. update notificationSent (non-blocking)

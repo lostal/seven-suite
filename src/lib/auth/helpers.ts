@@ -51,7 +51,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 export async function requireAuth(): Promise<AuthUser> {
   const user = await getCurrentUser();
 
-  if (!user) {
+  if (!user || !user.profile) {
     redirect(ROUTES.LOGIN);
   }
 

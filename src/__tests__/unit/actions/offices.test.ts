@@ -94,7 +94,7 @@ const UUID = "550e8400-e29b-41d4-a716-446655440000";
 describe("createOfficeReservation", () => {
   beforeAll(() => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2025-01-01T00:00:00Z"));
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
   });
 
   afterAll(() => {
@@ -115,7 +115,7 @@ describe("createOfficeReservation", () => {
 
     const result = await createOfficeReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(true);
@@ -127,7 +127,7 @@ describe("createOfficeReservation", () => {
 
     const result = await createOfficeReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
@@ -148,7 +148,7 @@ describe("createOfficeReservation", () => {
 
     const result = await createOfficeReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
@@ -165,7 +165,7 @@ describe("createOfficeReservation", () => {
 
     const result = await createOfficeReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
@@ -184,7 +184,7 @@ describe("createOfficeReservation", () => {
 
     const result = await createOfficeReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
@@ -196,7 +196,7 @@ describe("createOfficeReservation", () => {
   it("rechaza spot_id inválido sin llamar a BD (validación Zod)", async () => {
     const result = await createOfficeReservation({
       spot_id: "no-es-uuid",
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
@@ -223,11 +223,31 @@ describe("createOfficeReservation", () => {
 
     const result = await createOfficeReservation({
       spot_id: UUID,
-      date: "2025-03-17",
+      date: "2027-03-17",
     });
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toContain("sede activa");
+  });
+
+  it("rechaza reservar un puesto inactivo", async () => {
+    setupSelectMock([]);
+    setupSelectMock([
+      {
+        id: UUID,
+        resourceType: "office",
+        entityId: null,
+        isActive: false,
+      },
+    ]);
+
+    const result = await createOfficeReservation({
+      spot_id: UUID,
+      date: "2027-03-17",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain("no encontrado");
   });
 });
 
@@ -276,7 +296,8 @@ describe("cancelOfficeReservation", () => {
     const result = await cancelOfficeReservation({ id: UUID });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("DB error");
+    if (!result.success)
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
   });
 
   it("rechaza id no UUID sin llamar a BD (validación Zod)", async () => {
@@ -317,8 +338,8 @@ describe("getOfficeSpotsForDate", () => {
       allowed_days: [1, 2, 3, 4, 5],
     } as never);
 
-    // 2025-01-13 es lunes
-    const result = await getOfficeSpotsForDate("2025-01-13");
+    // 2027-01-11 es lunes
+    const result = await getOfficeSpotsForDate("2027-01-11");
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual([]);
@@ -326,8 +347,8 @@ describe("getOfficeSpotsForDate", () => {
   });
 
   it("devuelve lista vacía si la fecha es sábado (día no permitido)", async () => {
-    // 2025-01-11 es sábado
-    const result = await getOfficeSpotsForDate("2025-01-11");
+    // 2027-01-09 es sábado
+    const result = await getOfficeSpotsForDate("2027-01-09");
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual([]);
@@ -335,8 +356,8 @@ describe("getOfficeSpotsForDate", () => {
   });
 
   it("devuelve lista vacía si la fecha es domingo (día no permitido)", async () => {
-    // 2025-01-12 es domingo
-    const result = await getOfficeSpotsForDate("2025-01-12");
+    // 2027-01-10 es domingo
+    const result = await getOfficeSpotsForDate("2027-01-10");
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual([]);
@@ -348,13 +369,13 @@ describe("getOfficeSpotsForDate", () => {
       mockSpots as never
     );
 
-    // 2025-01-13 es lunes
-    const result = await getOfficeSpotsForDate("2025-01-13");
+    // 2027-01-11 es lunes
+    const result = await getOfficeSpotsForDate("2027-01-11");
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual(mockSpots);
     expect(getOfficeAvailabilityForDate).toHaveBeenCalledWith(
-      "2025-01-13",
+      "2027-01-11",
       undefined,
       undefined,
       null
@@ -364,20 +385,29 @@ describe("getOfficeSpotsForDate", () => {
   it("pasa startTime y endTime a getOfficeAvailabilityForDate", async () => {
     vi.mocked(getOfficeAvailabilityForDate).mockResolvedValue([]);
 
-    await getOfficeSpotsForDate("2025-01-13", "09:00", "11:00");
+    await getOfficeSpotsForDate("2027-01-11", "09:00", "11:00");
 
     expect(getOfficeAvailabilityForDate).toHaveBeenCalledWith(
-      "2025-01-13",
+      "2027-01-11",
       "09:00",
       "11:00",
       null
     );
   });
 
+  it("rechaza una franja horaria no disponible", async () => {
+    vi.mocked(getOfficeAvailabilityForDate).mockResolvedValue([]);
+
+    const result = await getOfficeSpotsForDate("2027-01-11", "17:00", "19:00");
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual([]);
+  });
+
   it("falla si el usuario no está autenticado", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(null);
 
-    const result = await getOfficeSpotsForDate("2025-01-13");
+    const result = await getOfficeSpotsForDate("2027-01-11");
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBe("No autenticado");
@@ -406,7 +436,7 @@ describe("getOfficeTimeSlotsForSpot", () => {
   it("falla si el usuario no está autenticado", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(null);
 
-    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2025-01-13");
+    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2027-01-11");
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBe("No autenticado");
@@ -417,7 +447,7 @@ describe("getOfficeTimeSlotsForSpot", () => {
       time_slots_enabled: false,
     } as never);
 
-    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2025-01-13");
+    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2027-01-11");
 
     expect(result.success).toBe(false);
     if (!result.success)
@@ -432,7 +462,7 @@ describe("getOfficeTimeSlotsForSpot", () => {
       day_end_hour: null,
     } as never);
 
-    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2025-01-13");
+    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2027-01-11");
 
     expect(result.success).toBe(false);
     if (!result.success)
@@ -448,13 +478,13 @@ describe("getOfficeTimeSlotsForSpot", () => {
     ];
     vi.mocked(getAvailableTimeSlots).mockResolvedValue(mockSlots as never);
 
-    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2025-01-13");
+    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2027-01-11");
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual(mockSlots);
     expect(getAvailableTimeSlots).toHaveBeenCalledWith(
       SPOT_UUID,
-      "2025-01-13",
+      "2027-01-11",
       8,
       18,
       60

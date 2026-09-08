@@ -15,6 +15,11 @@ const envSchema = z.object({
 
   // Auth.js
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
+  // Optional; AUTH_SECRET is used as the documented fallback.
+  MICROSOFT_TOKEN_ENCRYPTION_KEY: z
+    .string()
+    .min(32, "MICROSOFT_TOKEN_ENCRYPTION_KEY must be at least 32 characters")
+    .optional(),
 
   // Microsoft Entra ID (SSO obligatorio)
   MICROSOFT_CLIENT_ID: z.string().min(1),
@@ -35,8 +40,8 @@ export type Env = z.infer<typeof envSchema>;
  * Validate environment variables.
  * Call this in instrumentation.ts or root layout to fail fast.
  */
-export function validateEnv(): Env {
-  const parsed = envSchema.safeParse(process.env);
+export function validateEnv(source: NodeJS.ProcessEnv = process.env): Env {
+  const parsed = envSchema.safeParse(source);
 
   if (!parsed.success) {
     console.error(

@@ -26,6 +26,7 @@ import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { assertModuleEnabled } from "@/lib/module-guard";
 import { getAllEntities } from "@/lib/queries/entities";
 import { eq, and } from "drizzle-orm";
+import { sanitizeAnnouncementHtml } from "@/lib/content/sanitize-html";
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ export const createAnnouncement = actionClient
 
     await db.insert(announcements).values({
       title,
-      body,
+      body: sanitizeAnnouncementHtml(body),
       entityId: effectiveEntityId,
       publishedAt: publish ? new Date() : null,
       createdBy: user.id,
@@ -88,7 +89,7 @@ export const updateAnnouncement = actionClient
 
     const updateValues: Partial<typeof announcements.$inferInsert> = {};
     if (title !== undefined) updateValues.title = title;
-    if (body !== undefined) updateValues.body = body;
+    if (body !== undefined) updateValues.body = sanitizeAnnouncementHtml(body);
     if (user.profile?.role === "admin" && entity_id !== undefined) {
       updateValues.entityId = entity_id ?? null;
     }
@@ -178,9 +179,13 @@ export async function getManageEntities(): Promise<
     name: string;
   }[]
 > {
-  await requireHROrAbove();
+  const user = await requireHROrAbove();
   const rows = await getAllEntities();
-  return rows.map((e) => ({ id: e.id, name: e.name }));
+  const visibleRows =
+    user.profile?.role === "admin"
+      ? rows
+      : rows.filter((entity) => entity.id === user.profile?.entityId);
+  return visibleRows.map((e) => ({ id: e.id, name: e.name }));
 }
 
 // ─── Query wrappers ───────────────────────────────────────────────────────────

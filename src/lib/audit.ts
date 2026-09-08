@@ -28,11 +28,7 @@ export type AuditEventType =
   | "spot.unassigned";
 
 export type AuditEntityType =
-  | "document"
-  | "leave_request"
-  | "profile"
-  | "user"
-  | "spot";
+  "document" | "leave_request" | "profile" | "user" | "spot";
 
 /**
  * Registra un evento de auditoría.

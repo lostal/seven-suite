@@ -83,23 +83,21 @@ export async function getReservationsByDate(
     .where(and(...conditions))
     .orderBy(desc(reservationsTable.createdAt));
 
-  return rows.map(
-    (r): ReservationRow => ({
-      id: r.id,
-      spot_id: r.spot_id,
-      user_id: r.user_id,
-      date: r.date,
-      status: r.status,
-      notes: r.notes,
-      start_time: r.start_time,
-      end_time: r.end_time,
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-      spot_label: r.spot_label,
-      user_name: r.user_name ?? "",
-      resource_type: r.spot_resource_type as ResourceType,
-    })
-  );
+  return rows.map((r): ReservationRow => ({
+    id: r.id,
+    spot_id: r.spot_id,
+    user_id: r.user_id,
+    date: r.date,
+    status: r.status,
+    notes: r.notes,
+    start_time: r.start_time,
+    end_time: r.end_time,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    spot_label: r.spot_label,
+    user_name: r.user_name ?? "",
+    resource_type: r.spot_resource_type as ResourceType,
+  }));
 }
 
 /**
@@ -153,23 +151,21 @@ export async function getUserReservations(
     .where(and(...conditions))
     .orderBy(asc(reservationsTable.date));
 
-  return rows.map(
-    (r): ReservationRow => ({
-      id: r.id,
-      spot_id: r.spot_id,
-      user_id: r.user_id,
-      date: r.date,
-      status: r.status,
-      notes: r.notes,
-      start_time: r.start_time,
-      end_time: r.end_time,
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-      spot_label: r.spot_label,
-      user_name: r.user_name ?? "",
-      resource_type: r.spot_resource_type as ResourceType,
-    })
-  );
+  return rows.map((r): ReservationRow => ({
+    id: r.id,
+    spot_id: r.spot_id,
+    user_id: r.user_id,
+    date: r.date,
+    status: r.status,
+    notes: r.notes,
+    start_time: r.start_time,
+    end_time: r.end_time,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    spot_label: r.spot_label,
+    user_name: r.user_name ?? "",
+    resource_type: r.spot_resource_type as ResourceType,
+  }));
 }
 
 /**

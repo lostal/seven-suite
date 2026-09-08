@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { announcements, announcementReads, profiles } from "@/lib/db/schema";
 import { eq, and, or, isNull, lte, gte, notExists, desc } from "drizzle-orm";
+import { sanitizeAnnouncementHtml } from "@/lib/content/sanitize-html";
 
 export type AnnouncementWithAuthor = {
   id: string;
@@ -41,7 +42,11 @@ function toRow(r: {
   updatedAt: Date;
   authorName: string | null;
 }): AnnouncementWithAuthor {
-  return { ...r, authorName: r.authorName ?? "" };
+  return {
+    ...r,
+    body: sanitizeAnnouncementHtml(r.body),
+    authorName: r.authorName ?? "",
+  };
 }
 
 /**

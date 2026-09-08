@@ -23,8 +23,13 @@ async function assertEntityInAdminScope(entityId?: string | null) {
   try {
     activeEntityId = await getActiveEntityId();
   } catch (err) {
-    const message = err instanceof Error ? err.message : "";
-    if (!message.includes("outside a request scope")) throw err;
+    if (
+      !(err instanceof Error) ||
+      !err.message.includes("outside a request scope")
+    ) {
+      console.error("[directorio] getActiveEntityId error:", err);
+      throw new Error("No se pudo determinar la sede activa");
+    }
   }
 
   if (activeEntityId && entityId && entityId !== activeEntityId) {

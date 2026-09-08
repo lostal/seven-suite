@@ -88,6 +88,7 @@ function createQueryBuilder(
     offset: vi.fn().mockReturnThis(),
     groupBy: vi.fn().mockReturnThis(),
     having: vi.fn().mockReturnThis(),
+    for: vi.fn().mockReturnThis(),
     // Para select con columnas específicas
     columns: vi.fn().mockReturnThis(),
     // Para insert
@@ -103,11 +104,9 @@ function createQueryBuilder(
     // Hace el builder thenable (soporta await)
     then<TResult1 = MockDbResult, TResult2 = never>(
       onfulfilled?:
-        | ((value: MockDbResult) => TResult1 | PromiseLike<TResult1>)
-        | null,
+        ((value: MockDbResult) => TResult1 | PromiseLike<TResult1>) | null,
       onrejected?:
-        | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
-        | null
+        ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
     ): Promise<TResult1 | TResult2> {
       return Promise.resolve(data).then(onfulfilled, onrejected);
     },
@@ -123,6 +122,7 @@ function createQueryBuilder(
   (builder.offset as ReturnType<typeof vi.fn>).mockReturnValue(builder);
   (builder.groupBy as ReturnType<typeof vi.fn>).mockReturnValue(builder);
   (builder.having as ReturnType<typeof vi.fn>).mockReturnValue(builder);
+  (builder.for as ReturnType<typeof vi.fn>).mockReturnValue(builder);
   (builder.columns as ReturnType<typeof vi.fn>).mockReturnValue(builder);
   (builder.values as ReturnType<typeof vi.fn>).mockReturnValue(builder);
   (builder.onConflictDoNothing as ReturnType<typeof vi.fn>).mockReturnValue(

@@ -44,7 +44,7 @@ describe("actionClient", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toBe("DB connection failed");
+      expect(result.error).toBe("Ha ocurrido un error inesperado");
     }
   });
 });

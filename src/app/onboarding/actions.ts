@@ -24,6 +24,11 @@ export const completeOnboarding = actionClient
   .action(async ({ parsedInput }) => {
     const user = await requireAuth();
 
+    // A profile is provisioned at sign-in; onboarding only completes it.
+    if (!user.profile) {
+      redirect(ROUTES.LOGIN);
+    }
+
     await db
       .update(profiles)
       .set({

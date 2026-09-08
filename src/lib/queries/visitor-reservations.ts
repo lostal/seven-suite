@@ -86,24 +86,22 @@ export async function getUpcomingVisitorReservations(
       )
     : rows;
 
-  return filtered.map(
-    (r): VisitorReservationWithDetails => ({
-      id: r.id,
-      spot_id: r.spotId,
-      reserved_by: r.reservedBy,
-      date: r.date,
-      visitor_name: r.visitorName,
-      visitor_company: r.visitorCompany,
-      visitor_email: r.visitorEmail,
-      status: r.status,
-      notification_sent: r.notificationSent,
-      notes: r.notes,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-      spot_label: r.spot_label,
-      reserved_by_name: r.reserved_by_name ?? "",
-    })
-  );
+  return filtered.map((r): VisitorReservationWithDetails => ({
+    id: r.id,
+    spot_id: r.spotId,
+    reserved_by: r.reservedBy,
+    date: r.date,
+    visitor_name: r.visitorName,
+    visitor_company: r.visitorCompany,
+    visitor_email: r.visitorEmail,
+    status: r.status,
+    notification_sent: r.notificationSent,
+    notes: r.notes,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    spot_label: r.spot_label,
+    reserved_by_name: r.reserved_by_name ?? "",
+  }));
 }
 
 /**

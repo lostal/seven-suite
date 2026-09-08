@@ -26,6 +26,31 @@ import { getActiveEntityId } from "@/lib/queries/active-entity";
 import { isUniqueViolation } from "@/lib/db/helpers";
 import { eq, and, ne } from "drizzle-orm";
 
+type ManagementScope = Awaited<ReturnType<typeof requireManagerOrAbove>> & {
+  entityId: string | null;
+};
+
+async function getManagementScope(): Promise<ManagementScope> {
+  const user = await requireManagerOrAbove();
+  if (user.profile?.role === "admin") {
+    return { ...user, entityId: await getActiveEntityId() };
+  }
+  if (!user.profile?.entityId) {
+    throw new Error("Tu usuario no tiene una sede asignada");
+  }
+  return { ...user, entityId: user.profile.entityId };
+}
+
+function assertEntityAccess(
+  entityId: string | null,
+  scope: ManagementScope,
+  message: string
+) {
+  if (scope.profile?.role !== "admin" && entityId !== scope.entityId) {
+    throw new Error(message);
+  }
+}
+
 // ─── Spot CRUD ───────────────────────────────────────────────
 
 /**
@@ -34,8 +59,25 @@ import { eq, and, ne } from "drizzle-orm";
 export const createSpot = actionClient
   .schema(createSpotSchema)
   .action(async ({ parsedInput }) => {
-    await requireManagerOrAbove();
-    const entityId = await getActiveEntityId();
+    const scope = await getManagementScope();
+    const entityId = scope.entityId;
+
+    if (parsedInput.assigned_to) {
+      if (parsedInput.type === "visitor") {
+        throw new Error("Las plazas de visitas no se pueden asignar");
+      }
+      const [target] = await db
+        .select({ entityId: profiles.entityId })
+        .from(profiles)
+        .where(eq(profiles.id, parsedInput.assigned_to))
+        .limit(1);
+      if (!target) throw new Error("Usuario no encontrado");
+      assertEntityAccess(
+        target.entityId,
+        scope,
+        "Este usuario no pertenece a tu sede"
+      );
+    }
 
     try {
       const [spot] = await db
@@ -75,8 +117,7 @@ export const createSpot = actionClient
 export const updateSpot = actionClient
   .schema(updateSpotSchema)
   .action(async ({ parsedInput }) => {
-    await requireManagerOrAbove();
-    const activeEntityId = await getActiveEntityId();
+    const scope = await getManagementScope();
 
     const { id, ...updates } = parsedInput;
 
@@ -88,15 +129,11 @@ export const updateSpot = actionClient
 
     if (!currentSpot) throw new Error("Plaza no encontrada");
 
-    // Verificar que el spot pertenece a la sede activa (o es global)
-    if (activeEntityId) {
-      if (
-        currentSpot.entityId !== null &&
-        currentSpot.entityId !== activeEntityId
-      ) {
-        throw new Error("No tienes permisos para modificar esta plaza");
-      }
-    }
+    assertEntityAccess(
+      currentSpot.entityId,
+      scope,
+      "No tienes permisos para modificar esta plaza"
+    );
 
     // Map snake_case input keys to camelCase schema columns
     const updateValues: Partial<typeof spots.$inferInsert> = {};
@@ -141,8 +178,7 @@ export const updateSpot = actionClient
 export const deleteSpot = actionClient
   .schema(deleteSpotSchema)
   .action(async ({ parsedInput }) => {
-    await requireManagerOrAbove();
-    const activeEntityId = await getActiveEntityId();
+    const scope = await getManagementScope();
 
     const [currentSpot] = await db
       .select({ id: spots.id, entityId: spots.entityId })
@@ -152,15 +188,11 @@ export const deleteSpot = actionClient
 
     if (!currentSpot) throw new Error("Plaza no encontrada");
 
-    // Verificar que el spot pertenece a la sede activa (o es global)
-    if (activeEntityId) {
-      if (
-        currentSpot.entityId !== null &&
-        currentSpot.entityId !== activeEntityId
-      ) {
-        throw new Error("No tienes permisos para eliminar esta plaza");
-      }
-    }
+    assertEntityAccess(
+      currentSpot.entityId,
+      scope,
+      "No tienes permisos para eliminar esta plaza"
+    );
 
     const deletedRows = await db
       .delete(spots)
@@ -188,23 +220,12 @@ export const updateUserRole = actionClient
   .schema(updateUserRoleSchema)
   .action(async ({ parsedInput }) => {
     const adminUser = await requireAdmin();
-    const activeEntityId = await getActiveEntityId();
-
-    // Verificar que el usuario objetivo pertenece a la sede activa
-    if (activeEntityId) {
-      const [targetProfile] = await db
-        .select({ entityId: profiles.entityId })
-        .from(profiles)
-        .where(eq(profiles.id, parsedInput.user_id))
-        .limit(1);
-      if (
-        targetProfile &&
-        targetProfile.entityId !== null &&
-        targetProfile.entityId !== activeEntityId
-      ) {
-        throw new Error("No tienes permisos para modificar este usuario");
-      }
-    }
+    const [targetProfile] = await db
+      .select({ id: profiles.id })
+      .from(profiles)
+      .where(eq(profiles.id, parsedInput.user_id))
+      .limit(1);
+    if (!targetProfile) throw new Error("Usuario no encontrado");
 
     await db
       .update(profiles)
@@ -227,33 +248,41 @@ export const updateUserRole = actionClient
 export const assignSpotToUser = actionClient
   .schema(assignSpotToUserSchema)
   .action(async ({ parsedInput }) => {
-    await requireManagerOrAbove();
+    const scope = await getManagementScope();
 
     const { user_id, spot_id, resource_type } = parsedInput;
 
     // 1. If unassigning: clear only the spot of the given resource_type for this user
     if (!spot_id) {
       // Find current spot before clearing, for audit log
+      const [targetProfile] = await db
+        .select({ id: profiles.id, entityId: profiles.entityId })
+        .from(profiles)
+        .where(eq(profiles.id, user_id))
+        .limit(1);
+      if (!targetProfile) throw new Error("Usuario no encontrado");
+      assertEntityAccess(
+        targetProfile.entityId,
+        scope,
+        "Este usuario no pertenece a tu sede"
+      );
+      const conditions = [
+        eq(spots.assignedTo, user_id),
+        eq(spots.resourceType, resource_type),
+        ...(scope.profile?.role === "admin"
+          ? []
+          : [eq(spots.entityId, scope.entityId!)]),
+      ];
       const [currentSpot] = await db
         .select({ id: spots.id })
         .from(spots)
-        .where(
-          and(
-            eq(spots.assignedTo, user_id),
-            eq(spots.resourceType, resource_type)
-          )
-        )
+        .where(and(...conditions))
         .limit(1);
 
       await db
         .update(spots)
         .set({ assignedTo: null })
-        .where(
-          and(
-            eq(spots.assignedTo, user_id),
-            eq(spots.resourceType, resource_type)
-          )
-        );
+        .where(and(...conditions));
 
       if (currentSpot?.id) {
         await logAuditEvent("spot.unassigned", "spot", currentSpot.id, {
@@ -280,42 +309,49 @@ export const assignSpotToUser = actionClient
     if (spot.type === "visitor") {
       throw new Error("No se pueden asignar plazas de visitas a usuarios");
     }
+    if (spot.resourceType !== resource_type) {
+      throw new Error("El tipo de recurso no coincide con la plaza");
+    }
     if (spot.assignedTo && spot.assignedTo !== user_id) {
       throw new Error("Esa plaza ya está asignada a otro usuario");
     }
 
-    // Verificar que el spot pertenece a la sede activa
-    const activeEntityId = await getActiveEntityId();
-    if (
-      activeEntityId &&
-      spot.entityId !== null &&
-      spot.entityId !== activeEntityId
-    ) {
-      throw new Error("Esta plaza no pertenece a la sede activa");
-    }
-
-    // Verificar que el usuario objetivo pertenece a la sede activa
-    if (activeEntityId) {
-      const [targetProfile] = await db
-        .select({ entityId: profiles.entityId })
-        .from(profiles)
-        .where(eq(profiles.id, user_id))
-        .limit(1);
-      if (
-        targetProfile &&
-        targetProfile.entityId !== null &&
-        targetProfile.entityId !== activeEntityId
-      ) {
-        throw new Error("Este usuario no pertenece a la sede activa");
-      }
-    }
+    assertEntityAccess(
+      spot.entityId,
+      scope,
+      "Esta plaza no pertenece a tu sede"
+    );
+    const [targetProfile] = await db
+      .select({ entityId: profiles.entityId })
+      .from(profiles)
+      .where(eq(profiles.id, user_id))
+      .limit(1);
+    if (!targetProfile) throw new Error("Usuario no encontrado");
+    assertEntityAccess(
+      targetProfile.entityId,
+      scope,
+      "Este usuario no pertenece a tu sede"
+    );
 
     // 3 & 4. Asignar nueva plaza y limpiar la anterior atómicamente
     await db.transaction(async (tx) => {
-      await tx
+      const assigned = await tx
         .update(spots)
         .set({ assignedTo: user_id })
-        .where(eq(spots.id, spot_id));
+        .where(
+          and(
+            eq(spots.id, spot_id),
+            ...(scope.profile?.role === "admin"
+              ? []
+              : [eq(spots.entityId, scope.entityId!)]),
+            // Do not overwrite a concurrent assignment.
+            ...(spot.assignedTo ? [eq(spots.assignedTo, user_id)] : [])
+          )
+        )
+        .returning({ id: spots.id });
+      if (assigned.length === 0) {
+        throw new Error("La plaza ya no está disponible");
+      }
 
       await tx
         .update(spots)
@@ -349,55 +385,93 @@ export const assignUserToSpot = actionClient
   .schema(assignUserToSpotSchema)
   .action(async ({ parsedInput }) => {
     const { spot_id, user_id, resource_type } = parsedInput;
-    await requireManagerOrAbove();
+    const scope = await getManagementScope();
 
     if (!user_id) {
-      await db
+      const [spot] = await db
+        .select({ entityId: spots.entityId, resourceType: spots.resourceType })
+        .from(spots)
+        .where(eq(spots.id, spot_id))
+        .limit(1);
+      if (!spot) throw new Error("Plaza no encontrada");
+      if (spot.resourceType !== resource_type)
+        throw new Error("El tipo de recurso no coincide con la plaza");
+      assertEntityAccess(
+        spot.entityId,
+        scope,
+        "Esta plaza no pertenece a tu sede"
+      );
+      const cleared = await db
         .update(spots)
         .set({ assignedTo: null })
-        .where(eq(spots.id, spot_id));
+        .where(
+          and(
+            eq(spots.id, spot_id),
+            ...(scope.profile?.role === "admin"
+              ? []
+              : [eq(spots.entityId, scope.entityId!)]),
+            eq(spots.resourceType, resource_type)
+          )
+        )
+        .returning({ id: spots.id });
+      if (cleared.length === 0)
+        throw new Error("La plaza no se pudo desasignar");
       revalidatePath("/parking/asignaciones");
       revalidatePath("/oficinas/asignaciones");
       return { assigned: false };
     }
 
-    // Verificar que el spot pertenece a la sede activa
-    const activeEntityId = await getActiveEntityId();
-    if (activeEntityId) {
-      const [spotRow] = await db
-        .select({ entityId: spots.entityId })
-        .from(spots)
-        .where(eq(spots.id, spot_id))
-        .limit(1);
-      if (
-        spotRow &&
-        spotRow.entityId !== null &&
-        spotRow.entityId !== activeEntityId
-      ) {
-        throw new Error("Esta plaza no pertenece a la sede activa");
-      }
-
-      const [targetProfile] = await db
-        .select({ entityId: profiles.entityId })
-        .from(profiles)
-        .where(eq(profiles.id, user_id))
-        .limit(1);
-
-      if (
-        targetProfile &&
-        targetProfile.entityId !== null &&
-        targetProfile.entityId !== activeEntityId
-      ) {
-        throw new Error("Este usuario no pertenece a la sede activa");
-      }
+    const [spotRow] = await db
+      .select({
+        entityId: spots.entityId,
+        resourceType: spots.resourceType,
+        assignedTo: spots.assignedTo,
+      })
+      .from(spots)
+      .where(eq(spots.id, spot_id))
+      .limit(1);
+    if (!spotRow) throw new Error("Plaza no encontrada");
+    if (spotRow.resourceType !== resource_type)
+      throw new Error("El tipo de recurso no coincide con la plaza");
+    if (spotRow.assignedTo && spotRow.assignedTo !== user_id) {
+      throw new Error("Esa plaza ya está asignada a otro usuario");
     }
+    assertEntityAccess(
+      spotRow.entityId,
+      scope,
+      "Esta plaza no pertenece a tu sede"
+    );
+    const [targetProfile] = await db
+      .select({ entityId: profiles.entityId })
+      .from(profiles)
+      .where(eq(profiles.id, user_id))
+      .limit(1);
+
+    if (!targetProfile) throw new Error("Usuario no encontrado");
+    assertEntityAccess(
+      targetProfile.entityId,
+      scope,
+      "Este usuario no pertenece a tu sede"
+    );
 
     // 1 & 2. Asignar usuario a esta plaza y limpiar la anterior atómicamente
     await db.transaction(async (tx) => {
-      await tx
+      const assigned = await tx
         .update(spots)
         .set({ assignedTo: user_id })
-        .where(eq(spots.id, spot_id));
+        .where(
+          and(
+            eq(spots.id, spot_id),
+            eq(spots.resourceType, resource_type),
+            ...(scope.profile?.role === "admin"
+              ? []
+              : [eq(spots.entityId, scope.entityId!)]),
+            ...(spotRow.assignedTo ? [eq(spots.assignedTo, user_id)] : [])
+          )
+        )
+        .returning({ id: spots.id });
+      if (assigned.length === 0)
+        throw new Error("La plaza ya no está disponible");
 
       await tx
         .update(spots)
@@ -424,24 +498,7 @@ export const assignUserToSpot = actionClient
 export const deleteUser = actionClient
   .schema(deleteUserSchema)
   .action(async ({ parsedInput }) => {
-    const adminUser = await requireManagerOrAbove();
-    const activeEntityId = await getActiveEntityId();
-
-    // Verificar que el usuario objetivo pertenece a la sede activa
-    if (activeEntityId) {
-      const [targetProfile] = await db
-        .select({ entityId: profiles.entityId })
-        .from(profiles)
-        .where(eq(profiles.id, parsedInput.user_id))
-        .limit(1);
-      if (
-        targetProfile &&
-        targetProfile.entityId !== null &&
-        targetProfile.entityId !== activeEntityId
-      ) {
-        throw new Error("No tienes permisos para eliminar este usuario");
-      }
-    }
+    const adminUser = await requireAdmin();
 
     // Delete the user — cascade will remove profile and all related data
     const deleted = await db

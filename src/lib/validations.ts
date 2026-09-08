@@ -297,6 +297,7 @@ export const createOfficeReservationSchema = z
   .object({
     spot_id: uuidString(),
     date: z.iso.date(),
+    // Kept in the input type for existing forms, but full-day bookings reject them.
     start_time: z
       .string()
       .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Formato HH:MM")
@@ -307,22 +308,10 @@ export const createOfficeReservationSchema = z
       .optional(),
     notes: z.string().max(500).optional(),
   })
-  .refine(
-    (data) => (data.start_time === undefined) === (data.end_time === undefined),
-    {
-      message:
-        "Si se especifica hora de inicio, la hora de fin es obligatoria y viceversa",
-      path: ["end_time"],
-    }
-  )
-  .refine(
-    (data) =>
-      !data.start_time || !data.end_time || data.end_time > data.start_time,
-    {
-      message: "La hora de fin debe ser posterior a la hora de inicio",
-      path: ["end_time"],
-    }
-  );
+  .refine((data) => !data.start_time && !data.end_time, {
+    message: "Las reservas de oficina son únicamente de día completo",
+    path: ["start_time"],
+  });
 
 export type CreateOfficeReservationInput = z.infer<
   typeof createOfficeReservationSchema

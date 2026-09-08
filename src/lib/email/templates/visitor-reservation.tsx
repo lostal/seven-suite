@@ -25,7 +25,7 @@ import {
   Row,
   Section,
   Text,
-} from "@react-email/components";
+} from "@/lib/email/components";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://sevensuite.app";
 

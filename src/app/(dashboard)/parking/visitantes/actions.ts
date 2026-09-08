@@ -15,7 +15,7 @@ import { es } from "date-fns/locale";
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { db } from "@/lib/db";
 import { isUniqueViolation } from "@/lib/db/helpers";
-import { spots, visitorReservations } from "@/lib/db/schema";
+import { spots, reservations, visitorReservations } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   createVisitorReservationSchema,
@@ -37,9 +37,10 @@ import {
   getAvailableVisitorSpotsForDate,
   type VisitorReservationWithDetails,
 } from "@/lib/queries/visitor-reservations";
-import { getResourceConfig } from "@/lib/config";
+import { getAllResourceConfigs, getResourceConfig } from "@/lib/config";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
+import { validateBookingDate } from "@/lib/booking-validation";
 
 // ─── Funciones de consulta ────────────────────────────────────
 
@@ -62,9 +63,7 @@ export async function getVisitorReservationsAction(): Promise<
     return success(reservations);
   } catch (err) {
     console.error("[visitantes] getVisitorReservations error:", err);
-    return error(
-      err instanceof Error ? err.message : "Error al obtener las reservas"
-    );
+    return error("Error al obtener las reservas");
   }
 }
 
@@ -89,9 +88,7 @@ export async function getAvailableVisitorSpotsAction(
     return success(availableSpots);
   } catch (err) {
     console.error("[visitantes] getAvailableVisitorSpots error:", err);
-    return error(
-      err instanceof Error ? err.message : "Error al obtener plazas disponibles"
-    );
+    return error("Error al obtener plazas disponibles");
   }
 }
 
@@ -156,6 +153,7 @@ export const createVisitorReservation = actionClient
     if (!user) throw new Error("No autenticado");
 
     const entityId = await getEffectiveEntityId();
+    const parkingConfig = await getAllResourceConfigs("parking", entityId);
     const [bookingEnabled, visitorEnabled] = await Promise.all([
       getResourceConfig("parking", "booking_enabled", entityId),
       getResourceConfig("parking", "visitor_booking_enabled", entityId),
@@ -171,39 +169,68 @@ export const createVisitorReservation = actionClient
       );
     }
 
-    const [spotData] = await db
-      .select({
-        label: spots.label,
-        entityId: spots.entityId,
-        type: spots.type,
-        resourceType: spots.resourceType,
-      })
-      .from(spots)
-      .where(eq(spots.id, parsedInput.spot_id))
-      .limit(1);
+    validateBookingDate(parsedInput.date, parkingConfig);
 
-    if (!spotData) {
-      throw new Error("La plaza seleccionada no existe");
-    }
-    if (spotData.type !== "visitor" || spotData.resourceType !== "parking") {
-      throw new Error("La plaza seleccionada no es una plaza de visitantes");
-    }
+    const result = await db.transaction(async (tx) => {
+      const [spotData] = await tx
+        .select({
+          label: spots.label,
+          entityId: spots.entityId,
+          type: spots.type,
+          resourceType: spots.resourceType,
+          isActive: spots.isActive,
+        })
+        .from(spots)
+        .where(eq(spots.id, parsedInput.spot_id))
+        .for("update")
+        .limit(1);
 
-    // Verificar que la plaza pertenece a la sede activa
-    if (
-      entityId &&
-      spotData.entityId !== null &&
-      spotData.entityId !== entityId
-    ) {
-      throw new Error("La plaza seleccionada no pertenece a la sede activa");
-    }
+      if (!spotData || spotData.isActive === false) {
+        throw new Error("La plaza seleccionada no existe");
+      }
+      if (spotData.type !== "visitor" || spotData.resourceType !== "parking") {
+        throw new Error("La plaza seleccionada no es una plaza de visitantes");
+      }
 
-    const spotLabel = spotData.label;
-    const reservedByName = user.profile?.fullName ?? user.email;
+      if (
+        entityId &&
+        spotData.entityId !== null &&
+        spotData.entityId !== entityId
+      ) {
+        throw new Error("La plaza seleccionada no pertenece a la sede activa");
+      }
 
-    let reservationId: string;
-    try {
-      const [inserted] = await db
+      const [employeeReservation, visitorReservation] = await Promise.all([
+        tx
+          .select({ id: reservations.id })
+          .from(reservations)
+          .where(
+            and(
+              eq(reservations.spotId, parsedInput.spot_id),
+              eq(reservations.date, parsedInput.date),
+              eq(reservations.status, "confirmed")
+            )
+          )
+          .limit(1),
+        tx
+          .select({ id: visitorReservations.id })
+          .from(visitorReservations)
+          .where(
+            and(
+              eq(visitorReservations.spotId, parsedInput.spot_id),
+              eq(visitorReservations.date, parsedInput.date),
+              eq(visitorReservations.status, "confirmed")
+            )
+          )
+          .limit(1),
+      ]);
+      if (employeeReservation[0] || visitorReservation[0]) {
+        throw new Error(
+          "Esta plaza ya tiene una reserva de visitante para este día"
+        );
+      }
+
+      const [inserted] = await tx
         .insert(visitorReservations)
         .values({
           spotId: parsedInput.spot_id,
@@ -215,20 +242,14 @@ export const createVisitorReservation = actionClient
           notes: parsedInput.notes ?? null,
         })
         .returning({ id: visitorReservations.id });
-
       if (!inserted)
         throw new Error("No se pudo crear la reserva de visitante");
-      reservationId = inserted.id;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      if (isUniqueViolation(err)) {
-        throw new Error(
-          "Esta plaza ya tiene una reserva de visitante para este día"
-        );
-      }
-      console.error("[visitantes] createVisitorReservation insert error", msg);
-      throw new Error(`Error al crear reserva de visitante: ${msg}`);
-    }
+      return { id: inserted.id, spotLabel: spotData.label };
+    });
+
+    const reservationId = result.id;
+    const spotLabel = result.spotLabel;
+    const reservedByName = user.profile?.fullName ?? user.email;
 
     try {
       await sendConfirmationEmail({
@@ -297,12 +318,18 @@ export const updateVisitorReservation = actionClient
         entityId: spots.entityId,
         type: spots.type,
         resourceType: spots.resourceType,
+        isActive: spots.isActive,
       })
       .from(spots)
       .where(eq(spots.id, parsedInput.spot_id))
       .limit(1);
 
-    if (!spotData) {
+    validateBookingDate(
+      parsedInput.date,
+      await getAllResourceConfigs("parking", entityId)
+    );
+
+    if (!spotData || spotData.isActive === false) {
       throw new Error("La plaza seleccionada no existe");
     }
     if (spotData.type !== "visitor" || spotData.resourceType !== "parking") {
@@ -334,28 +361,92 @@ export const updateVisitorReservation = actionClient
 
     let updatedRows: { id: string }[];
     try {
-      updatedRows = await db
-        .update(visitorReservations)
-        .set({
-          spotId: parsedInput.spot_id,
-          date: parsedInput.date,
-          visitorName: parsedInput.visitor_name,
-          visitorCompany: parsedInput.visitor_company,
-          visitorEmail: parsedInput.visitor_email,
-          notes: parsedInput.notes ?? null,
-          notificationSent: false,
-        })
-        .where(whereConditions)
-        .returning({ id: visitorReservations.id });
+      updatedRows = await db.transaction(async (tx) => {
+        const [lockedSpot] = await tx
+          .select({
+            id: spots.id,
+            isActive: spots.isActive,
+            type: spots.type,
+            resourceType: spots.resourceType,
+            entityId: spots.entityId,
+          })
+          .from(spots)
+          .where(eq(spots.id, parsedInput.spot_id))
+          .for("update")
+          .limit(1);
+
+        if (
+          !lockedSpot ||
+          lockedSpot.isActive === false ||
+          lockedSpot.type !== "visitor" ||
+          lockedSpot.resourceType !== "parking" ||
+          (entityId &&
+            lockedSpot.entityId !== null &&
+            lockedSpot.entityId !== entityId)
+        ) {
+          throw new Error("La plaza seleccionada no está disponible");
+        }
+
+        const [employeeReservation, visitorReservation] = await Promise.all([
+          tx
+            .select({ id: reservations.id })
+            .from(reservations)
+            .where(
+              and(
+                eq(reservations.spotId, parsedInput.spot_id),
+                eq(reservations.date, parsedInput.date),
+                eq(reservations.status, "confirmed")
+              )
+            )
+            .limit(1),
+          tx
+            .select({ id: visitorReservations.id })
+            .from(visitorReservations)
+            .where(
+              and(
+                eq(visitorReservations.spotId, parsedInput.spot_id),
+                eq(visitorReservations.date, parsedInput.date),
+                eq(visitorReservations.status, "confirmed"),
+                ne(visitorReservations.id, parsedInput.id)
+              )
+            )
+            .limit(1),
+        ]);
+        if (employeeReservation[0] || visitorReservation[0]) {
+          throw new Error("La plaza ya está reservada para ese día");
+        }
+
+        return tx
+          .update(visitorReservations)
+          .set({
+            spotId: parsedInput.spot_id,
+            date: parsedInput.date,
+            visitorName: parsedInput.visitor_name,
+            visitorCompany: parsedInput.visitor_company,
+            visitorEmail: parsedInput.visitor_email,
+            notes: parsedInput.notes ?? null,
+            notificationSent: false,
+          })
+          .where(whereConditions)
+          .returning({ id: visitorReservations.id });
+      });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
       if (isUniqueViolation(err)) {
         throw new Error(
           "Esta plaza ya tiene una reserva de visitante para ese día"
         );
       }
-      console.error("[visitantes] updateVisitorReservation update error", msg);
-      throw new Error(`Error al actualizar reserva de visitante: ${msg}`);
+      if (
+        err instanceof Error &&
+        [
+          "La plaza seleccionada no está disponible",
+          "La plaza ya está reservada para ese día",
+        ].includes(err.message)
+      ) {
+        throw err;
+      }
+      console.error("[visitantes] updateVisitorReservation update error", err);
+      throw new Error("Error al actualizar reserva de visitante");
     }
 
     if (!updatedRows || updatedRows.length === 0) {
@@ -481,11 +572,7 @@ export const cancelVisitorReservation = actionClient
         .returning({ id: visitorReservations.id });
     } catch (err) {
       console.error("[visitantes] cancelVisitorReservation update error", err);
-      throw new Error(
-        err instanceof Error
-          ? `Error al cancelar reserva de visitante: ${err.message}`
-          : "Error al cancelar reserva de visitante"
-      );
+      throw new Error("Error al cancelar reserva de visitante");
     }
 
     if (!updatedRows || updatedRows.length === 0) {
