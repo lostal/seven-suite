@@ -51,6 +51,7 @@ import {
 import { useEntidades } from "./entidades-provider";
 import { entidadFormSchema, type EntidadForm } from "./entidades-schema";
 import type { EntityModuleKey } from "@/lib/validations";
+import { ResourceMapsDialog } from "./resource-maps-dialog";
 
 // ─── Module configuration ─────────────────────────────────────
 
@@ -526,6 +527,7 @@ export function EntidadesDialogs() {
       <EditEntidadDialog />
       <DeleteEntidadDialog />
       <EntidadModulesDialog />
+      <ResourceMapsDialog />
     </>
   );
 }

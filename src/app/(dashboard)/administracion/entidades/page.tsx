@@ -1,5 +1,6 @@
-import { requireAdmin } from "@/lib/auth/helpers";
+import { requireManagerOrAbove } from "@/lib/auth/helpers";
 import { getAllEntities } from "@/lib/queries/entities";
+import { getResourceMapSummaries } from "@/lib/queries/resource-maps";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -16,19 +17,26 @@ export const metadata = {
 };
 
 export default async function EntidadesPage() {
-  await requireAdmin();
+  const user = await requireManagerOrAbove();
 
   let entidades: Entidad[] = [];
   let tableError: string | null = null;
 
   try {
     const rows = await getAllEntities();
-    entidades = rows.map((entity) => ({
+    const mapSummaries = await Promise.all(
+      rows.map((entity) => getResourceMapSummaries(entity.id))
+    );
+    entidades = rows.map((entity, index) => ({
       id: entity.id,
       name: entity.name,
       is_active: entity.isActive,
       autonomous_community: entity.autonomousCommunity ?? null,
       created_at: entity.createdAt.toISOString(),
+      maps: {
+        parking: Boolean(mapSummaries[index]?.parking),
+        office: Boolean(mapSummaries[index]?.office),
+      },
     }));
   } catch {
     tableError =
@@ -36,7 +44,7 @@ export default async function EntidadesPage() {
   }
 
   return (
-    <EntidadesProvider>
+    <EntidadesProvider canManageEntities={user.profile?.role === "admin"}>
       <Header fixed>
         <Search />
         <div className="ms-auto flex items-center space-x-4">

@@ -11,18 +11,26 @@ import {
 import useDialogState from "@/hooks/use-dialog-state";
 import type { Entidad } from "./entidades-schema";
 
-export type EntidadesDialogType = "add" | "edit" | "delete" | "modules";
+export type EntidadesDialogType =
+  "add" | "edit" | "delete" | "modules" | "maps";
 
 type EntidadesContextType = {
   open: EntidadesDialogType | null;
   setOpen: (type: EntidadesDialogType | null) => void;
   currentRow: Entidad | null;
   setCurrentRow: Dispatch<SetStateAction<Entidad | null>>;
+  canManageEntities: boolean;
 };
 
 const EntidadesContext = createContext<EntidadesContextType | null>(null);
 
-export function EntidadesProvider({ children }: { children: ReactNode }) {
+export function EntidadesProvider({
+  children,
+  canManageEntities,
+}: {
+  children: ReactNode;
+  canManageEntities: boolean;
+}) {
   const [open, setOpen] = useDialogState<EntidadesDialogType>(null);
   const [currentRow, setCurrentRow] = useState<Entidad | null>(null);
 
@@ -33,6 +41,7 @@ export function EntidadesProvider({ children }: { children: ReactNode }) {
         setOpen,
         currentRow,
         setCurrentRow,
+        canManageEntities,
       }}
     >
       {children}

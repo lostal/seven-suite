@@ -16,11 +16,15 @@ import { ManagementCessionSheet } from "./management-cession-sheet";
 interface ParkingCalendarViewProps {
   hasAssignedSpot: boolean;
   assignedSpot?: Spot | null;
+  mapMimeType: string | null;
+  mapUrl: string | null;
 }
 
 export function ParkingCalendarView({
   hasAssignedSpot,
   assignedSpot,
+  mapMimeType,
+  mapUrl,
 }: ParkingCalendarViewProps) {
   const spot = assignedSpot
     ? { id: assignedSpot.id, label: assignedSpot.label }
@@ -41,6 +45,8 @@ export function ParkingCalendarView({
           availableCount={data?.availableCount}
           onClose={onClose}
           onActionSuccess={onSuccess}
+          mapMimeType={mapMimeType}
+          mapUrl={mapUrl}
         />
       )}
       renderCessionSheet={({

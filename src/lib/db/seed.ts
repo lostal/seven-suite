@@ -479,10 +479,9 @@ async function seed() {
     await db.insert(schema.reservations).values({
       spotId: spotByLabel(r.spot).id,
       userId,
+      resourceType: "parking",
       date: dstr(addDays(t, r.day)),
       status: "confirmed",
-      startTime: "09:00",
-      endTime: "18:00",
     });
   }
   log(`Parking reservations: ${allParking.length} created`);
@@ -537,6 +536,7 @@ async function seed() {
     await db.insert(schema.reservations).values({
       spotId: spotByLabel(r.spot).id,
       userId,
+      resourceType: "office",
       date: dstr(addDays(t, r.day)),
       status: "confirmed",
     });
@@ -593,36 +593,32 @@ async function seed() {
   await db.insert(schema.reservations).values({
     spotId: managerSpotP01.id,
     userId: employeeId,
+    resourceType: "parking",
     date: dstr(addDays(t, -2)),
     status: "confirmed",
-    startTime: "09:00",
-    endTime: "18:00",
   });
   await db.insert(schema.reservations).values({
     spotId: employee2SpotP02.id,
     userId: employeeId,
+    resourceType: "parking",
     date: dstr(addDays(t, -1)),
     status: "confirmed",
-    startTime: "09:00",
-    endTime: "18:00",
   });
   // Ana reserves Carlos's ceded P01 on t+5 (Mon)
   await db.insert(schema.reservations).values({
     spotId: managerSpotP01.id,
     userId: employeeId,
+    resourceType: "parking",
     date: dstr(addDays(t, 5)),
     status: "confirmed",
-    startTime: "09:00",
-    endTime: "18:00",
   });
   // Laura reserves Miguel's ceded P02 on t+1 (Thu)
   await db.insert(schema.reservations).values({
     spotId: employee2SpotP02.id,
     userId: hrId,
+    resourceType: "parking",
     date: dstr(addDays(t, 1)),
     status: "confirmed",
-    startTime: "09:00",
-    endTime: "18:00",
   });
   log("Cessions: 11 from Carlos (P01) and Miguel (P02)");
 

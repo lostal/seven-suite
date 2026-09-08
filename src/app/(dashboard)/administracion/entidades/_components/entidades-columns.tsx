@@ -7,6 +7,7 @@ import {
   Pencil,
   LayoutGrid,
   Trash2,
+  Map,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,46 +19,64 @@ import { AUTONOMOUS_COMMUNITIES } from "@/lib/constants";
 // ─── Row Actions ──────────────────────────────────────────────
 
 function EntidadRowActions({ entidad }: { entidad: Entidad }) {
-  const { setOpen, setCurrentRow } = useEntidades();
+  const { setOpen, setCurrentRow, canManageEntities } = useEntidades();
 
   return (
     <div className="flex items-center gap-2">
+      {canManageEntities && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5"
+          onClick={() => {
+            setCurrentRow(entidad);
+            setOpen("edit");
+          }}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          Editar
+        </Button>
+      )}
       <Button
         variant="outline"
         size="sm"
         className="h-8 gap-1.5"
         onClick={() => {
           setCurrentRow(entidad);
-          setOpen("edit");
+          setOpen("maps");
         }}
       >
-        <Pencil className="h-3.5 w-3.5" />
-        Editar
+        <Map className="h-3.5 w-3.5" />
+        Planos
       </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-8 gap-1.5"
-        onClick={() => {
-          setCurrentRow(entidad);
-          setOpen("modules");
-        }}
-      >
-        <LayoutGrid className="h-3.5 w-3.5" />
-        Módulos
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        className="text-destructive hover:text-destructive h-8 gap-1.5"
-        onClick={() => {
-          setCurrentRow(entidad);
-          setOpen("delete");
-        }}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-        Eliminar
-      </Button>
+      {canManageEntities && (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5"
+            onClick={() => {
+              setCurrentRow(entidad);
+              setOpen("modules");
+            }}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Módulos
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:text-destructive h-8 gap-1.5"
+            onClick={() => {
+              setCurrentRow(entidad);
+              setOpen("delete");
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Eliminar
+          </Button>
+        </>
+      )}
     </div>
   );
 }

@@ -72,6 +72,55 @@ END
 $$;
 --> statement-breakpoint
 
+-- Legacy slot reservations are converted to full-day reservations because
+-- the current booking model no longer supports time ranges. Keep the history
+-- of slots that collide with an existing booking, but no longer mark them as
+-- confirmed so the current full-day uniqueness rules remain valid.
+WITH legacy AS (
+  SELECT id, user_id, spot_id, date, created_at
+  FROM reservations
+  WHERE status = 'confirmed'
+    AND start_time IS NOT NULL
+), conflicts AS (
+  SELECT legacy.id
+  FROM legacy
+  WHERE EXISTS (
+    SELECT 1
+    FROM reservations existing
+    WHERE existing.status = 'confirmed'
+      AND existing.start_time IS NULL
+      AND existing.user_id = legacy.user_id
+      AND existing.date = legacy.date
+  )
+  OR EXISTS (
+    SELECT 1
+    FROM reservations existing
+    WHERE existing.status = 'confirmed'
+      AND existing.start_time IS NULL
+      AND existing.spot_id = legacy.spot_id
+      AND existing.date = legacy.date
+  )
+  OR EXISTS (
+    SELECT 1
+    FROM legacy previous
+    WHERE (
+      (previous.user_id = legacy.user_id AND previous.date = legacy.date)
+      OR (previous.spot_id = legacy.spot_id AND previous.date = legacy.date)
+    )
+      AND (previous.created_at, previous.id) < (legacy.created_at, legacy.id)
+  )
+)
+UPDATE reservations
+SET status = 'cancelled'
+WHERE id IN (SELECT id FROM conflicts);
+--> statement-breakpoint
+
+UPDATE reservations
+SET start_time = NULL,
+    end_time = NULL
+WHERE start_time IS NOT NULL OR end_time IS NOT NULL;
+--> statement-breakpoint
+
 DO $$
 BEGIN
   IF EXISTS (
@@ -80,13 +129,6 @@ BEGIN
        OR (start_time IS NOT NULL AND end_time <= start_time)
   ) THEN
     RAISE EXCEPTION 'Existing reservations contain invalid time ranges';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM reservations
-    WHERE start_time IS NOT NULL OR end_time IS NOT NULL
-  ) THEN
-    RAISE EXCEPTION 'Existing time-slot reservations require explicit migration before day-only mode';
   END IF;
 
   IF EXISTS (

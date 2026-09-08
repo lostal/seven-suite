@@ -19,6 +19,8 @@ interface OfficeCalendarViewProps {
   assignedSpot?: { id: string; label: string } | null;
   /** Leído en el Server Component padre para evitar llamadas server-only desde cliente */
   timeSlotsEnabled: boolean;
+  mapMimeType: string | null;
+  mapUrl: string | null;
 }
 
 // ─── Componente ──────────────────────────────────────────────
@@ -27,6 +29,8 @@ export function OfficeCalendarView({
   hasAssignedSpot,
   assignedSpot,
   timeSlotsEnabled,
+  mapMimeType,
+  mapUrl,
 }: OfficeCalendarViewProps) {
   return (
     <ResourceCalendarView
@@ -46,6 +50,8 @@ export function OfficeCalendarView({
           timeSlotsEnabled={timeSlotsEnabled}
           onClose={onClose}
           onActionSuccess={onSuccess}
+          mapMimeType={mapMimeType}
+          mapUrl={mapUrl}
         />
       )}
       renderCessionSheet={({

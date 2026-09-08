@@ -236,6 +236,7 @@ export const createReservation = actionClient
                 and(
                   eq(reservations.userId, user.id),
                   eq(reservations.date, parsedInput.date),
+                  eq(reservations.resourceType, "parking"),
                   eq(reservations.status, "confirmed")
                 )
               )
@@ -293,6 +294,7 @@ export const createReservation = actionClient
           .values({
             spotId: parsedInput.spot_id,
             userId: user.id,
+            resourceType: "parking",
             date: parsedInput.date,
             notes: parsedInput.notes ?? null,
           })
@@ -315,6 +317,7 @@ export const createReservation = actionClient
             and(
               eq(reservations.userId, user.id),
               eq(reservations.date, parsedInput.date),
+              eq(reservations.resourceType, "parking"),
               eq(reservations.status, "confirmed")
             )
           )

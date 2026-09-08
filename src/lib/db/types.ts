@@ -25,6 +25,7 @@ export type Entity = typeof schema.entities.$inferSelect;
 export type EntityModule = typeof schema.entityModules.$inferSelect;
 export type EntityConfig = typeof schema.entityConfig.$inferSelect;
 export type Document = typeof schema.documents.$inferSelect;
+export type ResourceMap = typeof schema.resourceMaps.$inferSelect;
 export type LeaveRequest = typeof schema.leaveRequests.$inferSelect;
 export type Announcement = typeof schema.announcements.$inferSelect;
 export type AnnouncementRead = typeof schema.announcementReads.$inferSelect;
@@ -41,6 +42,7 @@ export type ReservationInsert = typeof schema.reservations.$inferInsert;
 export type CessionInsert = typeof schema.cessions.$inferInsert;
 export type VisitorReservationInsert =
   typeof schema.visitorReservations.$inferInsert;
+export type ResourceMapInsert = typeof schema.resourceMaps.$inferInsert;
 
 // ─── Enum types ─────────────────────────────────────────────────────────────
 

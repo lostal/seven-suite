@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ResourceMapDialog } from "@/components/booking/resource-map-dialog";
 
 import type { SpotWithStatus } from "@/types";
 import {
@@ -51,6 +52,8 @@ interface EmployeeDaySheetProps {
   onClose: () => void;
   /** Callback tras una acción exitosa para refrescar el calendario */
   onActionSuccess: () => void;
+  mapMimeType: string | null;
+  mapUrl: string | null;
 }
 
 export function EmployeeDaySheet({
@@ -60,6 +63,8 @@ export function EmployeeDaySheet({
   availableCount,
   onClose,
   onActionSuccess,
+  mapMimeType,
+  mapUrl,
 }: EmployeeDaySheetProps) {
   const [spots, setSpots] = React.useState<SpotWithStatus[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -178,6 +183,13 @@ export function EmployeeDaySheet({
                   ? "No hay plazas disponibles"
                   : `${spots.length} ${spots.length === 1 ? "plaza disponible" : "plazas disponibles"}`}
           </SheetDescription>
+          {mapMimeType && mapUrl && (
+            <ResourceMapDialog
+              mapUrl={mapUrl}
+              mimeType={mapMimeType}
+              resourceLabel="parking"
+            />
+          )}
         </SheetHeader>
 
         <ScrollArea className="min-h-0 flex-1">

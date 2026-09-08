@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ResourceMapDialog } from "@/components/booking/resource-map-dialog";
 
 import type { SpotWithStatus, TimeSlot } from "@/types";
 import {
@@ -53,6 +54,8 @@ interface OfficeDaySheetProps {
   timeSlotsEnabled?: boolean;
   onClose: () => void;
   onActionSuccess: () => void;
+  mapMimeType: string | null;
+  mapUrl: string | null;
 }
 
 export function OfficeDaySheet({
@@ -65,6 +68,8 @@ export function OfficeDaySheet({
   timeSlotsEnabled = false,
   onClose,
   onActionSuccess,
+  mapMimeType,
+  mapUrl,
 }: OfficeDaySheetProps) {
   const [spots, setSpots] = React.useState<SpotWithStatus[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -243,6 +248,13 @@ export function OfficeDaySheet({
                         }`}
               </SheetDescription>
             </>
+          )}
+          {mapMimeType && mapUrl && (
+            <ResourceMapDialog
+              mapUrl={mapUrl}
+              mimeType={mapMimeType}
+              resourceLabel="oficinas"
+            />
           )}
         </SheetHeader>
 

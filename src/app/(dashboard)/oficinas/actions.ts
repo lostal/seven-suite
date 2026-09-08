@@ -194,7 +194,19 @@ export const createOfficeReservation = actionClient
           );
         }
 
-        const [occupiedRows, cessionRows] = await Promise.all([
+        const [existingRows, occupiedRows, cessionRows] = await Promise.all([
+          tx
+            .select({ id: reservations.id })
+            .from(reservations)
+            .where(
+              and(
+                eq(reservations.userId, user.id),
+                eq(reservations.date, parsedInput.date),
+                eq(reservations.resourceType, "office"),
+                eq(reservations.status, "confirmed")
+              )
+            )
+            .limit(1),
           tx
             .select({ id: reservations.id })
             .from(reservations)
@@ -219,6 +231,9 @@ export const createOfficeReservation = actionClient
             .limit(1),
         ]);
 
+        if (existingRows[0]) {
+          throw new Error("Ya tienes un puesto reservado para este día");
+        }
         if (occupiedRows[0]) {
           throw new Error("Este puesto ya está reservado para este día");
         }
@@ -231,6 +246,7 @@ export const createOfficeReservation = actionClient
           .values({
             spotId: parsedInput.spot_id,
             userId: user.id,
+            resourceType: "office",
             date: parsedInput.date,
             notes: parsedInput.notes ?? null,
           })
@@ -251,6 +267,7 @@ export const createOfficeReservation = actionClient
         err instanceof Error &&
         [
           "Puesto no encontrado",
+          "Ya tienes un puesto reservado para este día",
           "Este puesto no es un espacio de oficina",
           "El puesto seleccionado no pertenece a la sede activa",
           "Este puesto ya está reservado para este día",

@@ -27,13 +27,14 @@ import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { requireModuleEnabled } from "@/lib/module-guard";
+import { getResourceMap } from "@/lib/queries/resource-maps";
 
 export default async function OficinasPage() {
   const user = await requireAuth();
 
   const entityId = await getEffectiveEntityId();
   await requireModuleEnabled("office", entityId);
-  const [assignedSpotRows, officeConfig] = await Promise.all([
+  const [assignedSpotRows, officeConfig, officeMap] = await Promise.all([
     db
       .select({ id: spots.id, label: spots.label })
       .from(spots)
@@ -42,6 +43,7 @@ export default async function OficinasPage() {
       )
       .limit(1),
     getAllResourceConfigs("office", entityId),
+    getResourceMap(entityId, "office"),
   ]);
   const assignedSpot = assignedSpotRows[0] ?? null;
   const {
@@ -102,6 +104,8 @@ export default async function OficinasPage() {
             hasAssignedSpot={!!assignedSpot}
             assignedSpot={assignedSpot ?? null}
             timeSlotsEnabled={Boolean(timeSlotsEnabled)}
+            mapMimeType={officeMap?.mimeType ?? null}
+            mapUrl={entityId ? `/api/resource-maps/${entityId}/office` : null}
           />
         </div>
       </Main>

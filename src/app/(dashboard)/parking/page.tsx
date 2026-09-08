@@ -27,22 +27,26 @@ import { ROUTES } from "@/lib/constants";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { requireModuleEnabled } from "@/lib/module-guard";
 import { eq, and } from "drizzle-orm";
+import { getResourceMap } from "@/lib/queries/resource-maps";
 
 export default async function ParkingPage() {
   const user = await requireAuth();
 
   const entityId = await getEffectiveEntityId();
   await requireModuleEnabled("parking", entityId);
-  const [[assignedParkingSpot], bookingEnabled] = await Promise.all([
-    db
-      .select()
-      .from(spots)
-      .where(
-        and(eq(spots.assignedTo, user.id), eq(spots.resourceType, "parking"))
-      )
-      .limit(1),
-    getResourceConfig("parking", "booking_enabled", entityId),
-  ]);
+  const [[assignedParkingSpot], bookingEnabled, parkingMap] = await Promise.all(
+    [
+      db
+        .select()
+        .from(spots)
+        .where(
+          and(eq(spots.assignedTo, user.id), eq(spots.resourceType, "parking"))
+        )
+        .limit(1),
+      getResourceConfig("parking", "booking_enabled", entityId),
+      getResourceMap(entityId, "parking"),
+    ]
+  );
 
   const title = "Parking";
   const description = assignedParkingSpot
@@ -96,6 +100,8 @@ export default async function ParkingPage() {
             key={entityId ?? "global"}
             hasAssignedSpot={!!assignedParkingSpot}
             assignedSpot={assignedParkingSpot}
+            mapMimeType={parkingMap?.mimeType ?? null}
+            mapUrl={entityId ? `/api/resource-maps/${entityId}/parking` : null}
           />
         </div>
       </Main>

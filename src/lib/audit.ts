@@ -25,10 +25,12 @@ export type AuditEventType =
   | "document.deleted"
   | "user.deleted"
   | "spot.assigned"
-  | "spot.unassigned";
+  | "spot.unassigned"
+  | "resource_map.uploaded"
+  | "resource_map.deleted";
 
 export type AuditEntityType =
-  "document" | "leave_request" | "profile" | "user" | "spot";
+  "document" | "leave_request" | "profile" | "user" | "spot" | "resource_map";
 
 /**
  * Registra un evento de auditoría.

@@ -16,7 +16,12 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  customType,
 } from "drizzle-orm/pg-core";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
 
@@ -141,6 +146,43 @@ export const entities = pgTable("entities", {
     .defaultNow(),
 });
 
+// ─── Resource Maps ──────────────────────────────────────────────────────────
+
+/**
+ * Optional visual map shown before booking a parking spot or office seat.
+ * There is at most one map per entity and resource type.
+ */
+export const resourceMaps = pgTable(
+  "resource_maps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    resourceType: resourceTypeEnum("resource_type").notNull(),
+    fileData: bytea("file_data").notNull(),
+    fileName: text("file_name").notNull(),
+    mimeType: text("mime_type").notNull(),
+    fileSizeBytes: integer("file_size_bytes").notNull(),
+    uploadedBy: uuid("uploaded_by").references(() => profiles.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_resource_maps_entity_resource").on(
+      table.entityId,
+      table.resourceType
+    ),
+    index("idx_resource_maps_entity_id").on(table.entityId),
+  ]
+);
+
 // ─── Profiles ───────────────────────────────────────────────────────────────
 
 export const profiles = pgTable(
@@ -220,6 +262,9 @@ export const reservations = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
+    resourceType: resourceTypeEnum("resource_type")
+      .notNull()
+      .default("parking"),
     date: date("date").notNull(),
     status: reservationStatusEnum("status").notNull().default("confirmed"),
     notes: text("notes"),
@@ -239,7 +284,7 @@ export const reservations = pgTable(
       .on(table.spotId, table.date)
       .where(sql`status = 'confirmed' AND start_time IS NULL`),
     uniqueIndex("idx_reservations_user_date")
-      .on(table.userId, table.date)
+      .on(table.userId, table.date, table.resourceType)
       .where(sql`status = 'confirmed' AND start_time IS NULL`),
     // Partial unique index for time-slotted reservations (office)
     uniqueIndex("idx_reservations_spot_date_slot")
@@ -745,6 +790,18 @@ export const entitiesRelations = relations(entities, ({ many }) => ({
   holidayCalendars: many(entityHolidayCalendars),
   announcements: many(announcements),
   documents: many(documents),
+  resourceMaps: many(resourceMaps),
+}));
+
+export const resourceMapsRelations = relations(resourceMaps, ({ one }) => ({
+  entity: one(entities, {
+    fields: [resourceMaps.entityId],
+    references: [entities.id],
+  }),
+  uploader: one(profiles, {
+    fields: [resourceMaps.uploadedBy],
+    references: [profiles.id],
+  }),
 }));
 
 export const spotsRelations = relations(spots, ({ one, many }) => ({

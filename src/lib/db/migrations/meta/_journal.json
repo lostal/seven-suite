@@ -29,6 +29,20 @@
       "when": 1780785790000,
       "tag": "0003_repair_postgres_objects",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788884337747,
+      "tag": "0004_aberrant_cerise",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788885651127,
+      "tag": "0005_heavy_natasha_romanoff",
+      "breakpoints": true
     }
   ]
 }
