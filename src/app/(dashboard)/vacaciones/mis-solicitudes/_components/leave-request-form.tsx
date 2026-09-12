@@ -223,7 +223,7 @@ export function LeaveRequestForm({
                             : undefined
                         }
                         locale={es}
-                        initialFocus
+                        autoFocus
                       />
                     </PopoverContent>
                   </Popover>
@@ -277,7 +277,7 @@ export function LeaveRequestForm({
                             : { before: new Date() }
                         }
                         locale={es}
-                        initialFocus
+                        autoFocus
                       />
                     </PopoverContent>
                   </Popover>

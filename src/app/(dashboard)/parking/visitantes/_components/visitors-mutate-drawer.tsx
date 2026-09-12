@@ -248,7 +248,7 @@ export function VisitorsMutateDrawer({
                         }}
                         disabled={{ before: new Date() }}
                         locale={es}
-                        initialFocus
+                        autoFocus
                       />
                     </PopoverContent>
                   </Popover>
