@@ -213,7 +213,7 @@ Next.js y PostgreSQL 16 se ejecutan en servidor propio mediante Docker Compose. 
 
 ### Configuración y despliegue
 
-La versión de ejecución es Node 22 (`.nvmrc`, CI y Docker) y el gestor es pnpm 12.3.4. El login de desarrollo está desactivado por defecto: solo se habilita en un entorno local con `DEV_LOGIN_ENABLED=true` y una `DEV_LOGIN_PASSWORD` dedicada. No se debe activar en producción.
+La versión de ejecución es Node 22 (`.nvmrc`, CI y Docker) y el gestor es pnpm 12.3.4. El login de desarrollo está desactivado por defecto y solo se habilita en un entorno local con `DEV_LOGIN_ENABLED=true`. No se debe activar en producción.
 
 `AUTH_SECRET` y `MICROSOFT_TOKEN_ENCRYPTION_KEY` son obligatorias para el flujo de autenticación; esta última debe ser independiente y estable, porque cifra los tokens de Microsoft almacenados en la base de datos.
 

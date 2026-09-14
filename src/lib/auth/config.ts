@@ -10,7 +10,6 @@
 
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { and, eq } from "drizzle-orm";
-import { timingSafeEqual } from "node:crypto";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
@@ -31,18 +30,6 @@ const ALLOWED_EMAIL_PATTERN = /^[^@\s]+@gruposiete\.es$/i;
 const DEV_LOGIN_ENABLED =
   process.env.NODE_ENV !== "production" &&
   process.env.DEV_LOGIN_ENABLED === "true";
-
-function hasValidDevPassword(password: unknown): boolean {
-  const expected = process.env.DEV_LOGIN_PASSWORD;
-  if (typeof password !== "string" || !expected) return false;
-
-  const actualBuffer = Buffer.from(password);
-  const expectedBuffer = Buffer.from(expected);
-  return (
-    actualBuffer.length === expectedBuffer.length &&
-    timingSafeEqual(actualBuffer, expectedBuffer)
-  );
-}
 
 function isAllowedEmail(email: string | null | undefined): boolean {
   return email ? ALLOWED_EMAIL_PATTERN.test(email.trim()) : false;
@@ -82,10 +69,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: "Dev Login",
             credentials: {
               email: { label: "Email", type: "email" },
-              password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-              if (!hasValidDevPassword(credentials.password)) return null;
               const email = (credentials.email as string | undefined)?.trim();
               if (!email || !isAllowedEmail(email)) return null;
 
