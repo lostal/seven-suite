@@ -1,5 +1,5 @@
 {
-  "id": "d608cf9f-42d3-4d1a-ae8e-7cf2023e10b4",
+  "id": "badcd317-962e-4139-8f4b-7071a3df934d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -977,6 +977,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {},
@@ -1379,38 +1386,20 @@
           "primaryKey": false,
           "notNull": false
         },
-        "manager_id": {
-          "name": "manager_id",
+        "reviewer_id": {
+          "name": "reviewer_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
-        "manager_action_at": {
-          "name": "manager_action_at",
+        "reviewed_at": {
+          "name": "reviewed_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "manager_notes": {
-          "name": "manager_notes",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "hr_id": {
-          "name": "hr_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "hr_action_at": {
-          "name": "hr_action_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "hr_notes": {
-          "name": "hr_notes",
+        "reviewer_notes": {
+          "name": "reviewer_notes",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -1452,11 +1441,11 @@
           "method": "btree",
           "with": {}
         },
-        "idx_leave_requests_manager_id": {
-          "name": "idx_leave_requests_manager_id",
+        "idx_leave_requests_reviewer_id": {
+          "name": "idx_leave_requests_reviewer_id",
           "columns": [
             {
-              "expression": "manager_id",
+              "expression": "reviewer_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1493,20 +1482,11 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "leave_requests_manager_id_profiles_id_fk": {
-          "name": "leave_requests_manager_id_profiles_id_fk",
+        "leave_requests_reviewer_id_profiles_id_fk": {
+          "name": "leave_requests_reviewer_id_profiles_id_fk",
           "tableFrom": "leave_requests",
           "tableTo": "profiles",
-          "columnsFrom": ["manager_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "leave_requests_hr_id_profiles_id_fk": {
-          "name": "leave_requests_hr_id_profiles_id_fk",
-          "tableFrom": "leave_requests",
-          "tableTo": "profiles",
-          "columnsFrom": ["hr_id"],
+          "columnsFrom": ["reviewer_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -1746,6 +1726,14 @@
           "primaryKey": false,
           "notNull": true
         },
+        "resource_type": {
+          "name": "resource_type",
+          "type": "resource_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'parking'"
+        },
         "date": {
           "name": "date",
           "type": "date",
@@ -1763,18 +1751,6 @@
         "notes": {
           "name": "notes",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "start_time": {
-          "name": "start_time",
-          "type": "time",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "end_time": {
-          "name": "end_time",
-          "type": "time",
           "primaryKey": false,
           "notNull": false
         },
@@ -1826,7 +1802,7 @@
             }
           ],
           "isUnique": true,
-          "where": "status = 'confirmed' AND start_time IS NULL",
+          "where": "status = 'confirmed'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1845,10 +1821,16 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last"
+            },
+            {
+              "expression": "resource_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
             }
           ],
           "isUnique": true,
-          "where": "status = 'confirmed' AND start_time IS NULL",
+          "where": "status = 'confirmed'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1871,6 +1853,139 @@
           "columnsFrom": ["user_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.resource_maps": {
+      "name": "resource_maps",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resource_type": {
+          "name": "resource_type",
+          "type": "resource_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_data": {
+          "name": "file_data",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_size_bytes": {
+          "name": "file_size_bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "uploaded_by": {
+          "name": "uploaded_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_resource_maps_entity_resource": {
+          "name": "idx_resource_maps_entity_resource",
+          "columns": [
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "resource_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_resource_maps_entity_id": {
+          "name": "idx_resource_maps_entity_id",
+          "columns": [
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "resource_maps_entity_id_entities_id_fk": {
+          "name": "resource_maps_entity_id_entities_id_fk",
+          "tableFrom": "resource_maps",
+          "tableTo": "entities",
+          "columnsFrom": ["entity_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "resource_maps_uploaded_by_profiles_id_fk": {
+          "name": "resource_maps_uploaded_by_profiles_id_fk",
+          "tableFrom": "resource_maps",
+          "tableTo": "profiles",
+          "columnsFrom": ["uploaded_by"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -2042,6 +2157,28 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_spots_assigned_resource": {
+          "name": "idx_spots_assigned_resource",
+          "columns": [
+            {
+              "expression": "assigned_to",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "resource_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "assigned_to IS NOT NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2708,13 +2845,7 @@
     "public.leave_status": {
       "name": "leave_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "manager_approved",
-        "hr_approved",
-        "rejected",
-        "cancelled"
-      ]
+      "values": ["pending", "approved", "rejected", "cancelled"]
     },
     "public.leave_type": {
       "name": "leave_type",

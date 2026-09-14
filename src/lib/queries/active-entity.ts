@@ -34,5 +34,14 @@ export async function getEffectiveEntityId(): Promise<string | null> {
 
     return entity?.id ?? null;
   }
-  return user.profile?.entityId ?? null;
+  const entityId = user.profile?.entityId ?? null;
+  if (!entityId) return null;
+
+  const [entity] = await db
+    .select({ id: entities.id })
+    .from(entities)
+    .where(and(eq(entities.id, entityId), eq(entities.isActive, true)))
+    .limit(1);
+
+  return entity?.id ?? null;
 }

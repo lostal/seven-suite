@@ -207,6 +207,7 @@ export const createReservation = actionClient
           .select({
             id: spots.id,
             resourceType: spots.resourceType,
+            type: spots.type,
             entityId: spots.entityId,
             isActive: spots.isActive,
             assignedTo: spots.assignedTo,
@@ -221,10 +222,14 @@ export const createReservation = actionClient
         if (spot.resourceType !== "parking") {
           throw new Error("Esta plaza no es un espacio de parking");
         }
-        if (entityId && spot.entityId !== null && spot.entityId !== entityId) {
+        if (!isAdmin && spot.entityId !== null && spot.entityId !== entityId) {
           throw new Error(
             "La plaza seleccionada no pertenece a la sede activa"
           );
+        }
+
+        if (spot.type === "standard" && spot.assignedTo === null) {
+          throw new Error("La plaza seleccionada no está asignada");
         }
 
         const [existingRows, occupiedRows, visitorRows, cessionRows] =
@@ -365,7 +370,8 @@ export const cancelReservation = actionClient
       .where(
         and(
           eq(reservations.id, parsedInput.id),
-          eq(reservations.userId, user.id)
+          eq(reservations.userId, user.id),
+          eq(reservations.resourceType, "parking")
         )
       )
       .returning({ id: reservations.id });

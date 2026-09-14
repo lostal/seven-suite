@@ -1,6 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useState } from "react";
 
 const DEMO_USERS = [
   {
@@ -31,6 +32,8 @@ const DEMO_USERS = [
 ];
 
 export function DevLoginClient() {
+  const [password, setPassword] = useState("");
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-zinc-950 p-8">
       <div className="text-center">
@@ -41,12 +44,21 @@ export function DevLoginClient() {
       </div>
 
       <div className="grid w-full max-w-sm gap-3">
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          placeholder="Contraseña de desarrollo"
+          className="rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-zinc-600"
+          autoComplete="current-password"
+        />
         {DEMO_USERS.map((user) => (
           <button
             key={user.email}
             onClick={() =>
               signIn("dev-credentials", {
                 email: user.email,
+                password,
                 callbackUrl: "/",
               })
             }

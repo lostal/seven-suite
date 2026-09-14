@@ -247,6 +247,9 @@ export const spots = pgTable(
     index("idx_spots_type").on(table.type),
     index("idx_spots_resource_type").on(table.resourceType),
     index("idx_spots_assigned_to").on(table.assignedTo),
+    uniqueIndex("idx_spots_assigned_resource")
+      .on(table.assignedTo, table.resourceType)
+      .where(sql`assigned_to IS NOT NULL`),
   ]
 );
 
@@ -268,8 +271,6 @@ export const reservations = pgTable(
     date: date("date").notNull(),
     status: reservationStatusEnum("status").notNull().default("confirmed"),
     notes: text("notes"),
-    startTime: time("start_time"),
-    endTime: time("end_time"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -279,17 +280,13 @@ export const reservations = pgTable(
   },
   (table) => [
     index("idx_reservations_date").on(table.date),
-    // Partial unique indexes for full-day reservations
+    // A confirmed resource and user can only be booked once per day.
     uniqueIndex("idx_reservations_spot_date")
       .on(table.spotId, table.date)
-      .where(sql`status = 'confirmed' AND start_time IS NULL`),
+      .where(sql`status = 'confirmed'`),
     uniqueIndex("idx_reservations_user_date")
       .on(table.userId, table.date, table.resourceType)
-      .where(sql`status = 'confirmed' AND start_time IS NULL`),
-    // Partial unique index for time-slotted reservations (office)
-    uniqueIndex("idx_reservations_spot_date_slot")
-      .on(table.spotId, table.date, table.startTime, table.endTime)
-      .where(sql`status = 'confirmed' AND start_time IS NOT NULL`),
+      .where(sql`status = 'confirmed'`),
   ]
 );
 

@@ -74,6 +74,6 @@ export async function getEntityEnabledModules(
       "[entities] getEntityEnabledModules error (¿migración pendiente?):",
       err
     );
-    return ALL_MODULES;
+    return [];
   }
 }

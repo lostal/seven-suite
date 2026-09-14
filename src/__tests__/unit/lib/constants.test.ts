@@ -56,7 +56,7 @@ describe("ROUTES", () => {
 
 describe("getHomeRouteForRole", () => {
   it("returns dashboard for admin role", () => {
-    expect(getHomeRouteForRole("admin")).toBe("/parking");
+    expect(getHomeRouteForRole("admin")).toBe("/panel");
   });
 
   it("returns parking for employee role", () => {

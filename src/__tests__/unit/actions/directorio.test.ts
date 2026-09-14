@@ -39,7 +39,7 @@ describe("updateDirectorioUser", () => {
 
   it("success → returns { success: true, data: { updated: true } }", async () => {
     // update profiles
-    setupUpdateMock([]);
+    setupUpdateMock([{ id: "550e8400-e29b-41d4-a716-446655440123" }]);
 
     const result = await updateDirectorioUser({
       user_id: "550e8400-e29b-41d4-a716-446655440123",
@@ -56,7 +56,7 @@ describe("updateDirectorioUser", () => {
   });
 
   it("success with all optional fields → returns { success: true, data: { updated: true } }", async () => {
-    setupUpdateMock([]);
+    setupUpdateMock([{ id: "550e8400-e29b-41d4-a716-446655440123" }]);
 
     const result = await updateDirectorioUser({
       user_id: "550e8400-e29b-41d4-a716-446655440123",

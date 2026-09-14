@@ -40,7 +40,11 @@ export default async function ParkingPage() {
         .select()
         .from(spots)
         .where(
-          and(eq(spots.assignedTo, user.id), eq(spots.resourceType, "parking"))
+          and(
+            eq(spots.assignedTo, user.id),
+            eq(spots.resourceType, "parking"),
+            eq(spots.isActive, true)
+          )
         )
         .limit(1),
       getResourceConfig("parking", "booking_enabled", entityId),

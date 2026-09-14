@@ -26,6 +26,7 @@ import { z } from "zod/v4";
 import { parseISO } from "date-fns";
 import { isPast, getDayOfWeek } from "@/lib/utils";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
+import { assertModuleEnabled } from "@/lib/module-guard";
 import { eq, and, gte, lte, ne, or, isNull } from "drizzle-orm";
 
 type ResourceType = "parking" | "office";
@@ -35,8 +36,6 @@ type MyReservationRow = {
   spotId: string;
   date: string;
   spotLabel: string | null;
-  startTime: string | null;
-  endTime: string | null;
 };
 
 const calendarDataSchema = z.object({
@@ -51,6 +50,7 @@ export function buildCalendarAction(resourceType: ResourceType) {
       if (!user) throw new Error("No autenticado");
 
       const entityId = await getEffectiveEntityId();
+      await assertModuleEnabled(resourceType, entityId);
       const config = await getAllResourceConfigs(resourceType, entityId);
       const allowedDays: number[] = config.allowed_days;
 
@@ -160,8 +160,6 @@ export function buildCalendarAction(resourceType: ResourceType) {
                 id: reservations.id,
                 spotId: reservations.spotId,
                 date: reservations.date,
-                startTime: reservations.startTime,
-                endTime: reservations.endTime,
               })
               .from(reservations)
               .where(
@@ -193,8 +191,6 @@ export function buildCalendarAction(resourceType: ResourceType) {
             spotId: r.spotId,
             date: r.date,
             spotLabel: spotLabelById.get(r.spotId) ?? null,
-            startTime: r.startTime ?? null,
-            endTime: r.endTime ?? null,
           }));
 
         const allSpotIds = new Set(allSpots.map((s) => s.id));
@@ -231,8 +227,6 @@ export function buildCalendarAction(resourceType: ResourceType) {
           {
             id: string;
             spotLabel?: string;
-            startTime?: string | null;
-            endTime?: string | null;
           }
         >();
         for (const r of myReservationRowsWithLabel) {
@@ -240,8 +234,6 @@ export function buildCalendarAction(resourceType: ResourceType) {
           myReservationByDate.set(r.date, {
             id: r.id,
             spotLabel: r.spotLabel ?? undefined,
-            startTime: r.startTime,
-            endTime: r.endTime,
           });
         }
 
@@ -289,8 +281,6 @@ export function buildCalendarAction(resourceType: ResourceType) {
             availableCount,
             myReservationId: myRes?.id,
             myReservationSpotLabel: myRes?.spotLabel,
-            myReservationStartTime: myRes?.startTime ?? null,
-            myReservationEndTime: myRes?.endTime ?? null,
           };
         });
       }

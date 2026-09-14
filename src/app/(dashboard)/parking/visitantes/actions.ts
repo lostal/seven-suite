@@ -39,8 +39,16 @@ import {
 } from "@/lib/queries/visitor-reservations";
 import { getAllResourceConfigs, getResourceConfig } from "@/lib/config";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
+import { assertVisitorsEnabled } from "@/lib/module-guard";
 import { eq, and, ne } from "drizzle-orm";
 import { validateBookingDate } from "@/lib/booking-validation";
+
+function requireEntityContext(entityId: string | null): string {
+  if (!entityId) {
+    throw new Error("No tienes una sede activa seleccionada");
+  }
+  return entityId;
+}
 
 // ─── Funciones de consulta ────────────────────────────────────
 
@@ -55,7 +63,8 @@ export async function getVisitorReservationsAction(): Promise<
     if (!user) return error("No autenticado");
 
     const isAdmin = user.profile?.role === "admin";
-    const entityId = await getEffectiveEntityId();
+    const entityId = requireEntityContext(await getEffectiveEntityId());
+    await assertVisitorsEnabled(entityId);
     const reservations = await getUpcomingVisitorReservations(
       isAdmin ? undefined : user.id,
       entityId
@@ -79,7 +88,8 @@ export async function getAvailableVisitorSpotsAction(
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
 
-    const entityId = await getEffectiveEntityId();
+    const entityId = requireEntityContext(await getEffectiveEntityId());
+    await assertVisitorsEnabled(entityId);
     const availableSpots = await getAvailableVisitorSpotsForDate(
       date,
       excludeReservationId,
@@ -152,7 +162,8 @@ export const createVisitorReservation = actionClient
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
 
-    const entityId = await getEffectiveEntityId();
+    const entityId = requireEntityContext(await getEffectiveEntityId());
+    await assertVisitorsEnabled(entityId);
     const parkingConfig = await getAllResourceConfigs("parking", entityId);
     const [bookingEnabled, visitorEnabled] = await Promise.all([
       getResourceConfig("parking", "booking_enabled", entityId),
@@ -192,11 +203,7 @@ export const createVisitorReservation = actionClient
         throw new Error("La plaza seleccionada no es una plaza de visitantes");
       }
 
-      if (
-        entityId &&
-        spotData.entityId !== null &&
-        spotData.entityId !== entityId
-      ) {
+      if (spotData.entityId !== entityId) {
         throw new Error("La plaza seleccionada no pertenece a la sede activa");
       }
 
@@ -273,7 +280,6 @@ export const createVisitorReservation = actionClient
         {
           reservationId,
           userId: user.id,
-          visitorEmail: parsedInput.visitor_email,
           error: emailErr instanceof Error ? emailErr.message : emailErr,
         }
       );
@@ -295,7 +301,8 @@ export const updateVisitorReservation = actionClient
 
     const isAdmin = user.profile?.role === "admin";
 
-    const entityId = await getEffectiveEntityId();
+    const entityId = requireEntityContext(await getEffectiveEntityId());
+    await assertVisitorsEnabled(entityId);
     const [bookingEnabled, visitorEnabled] = await Promise.all([
       getResourceConfig("parking", "booking_enabled", entityId),
       getResourceConfig("parking", "visitor_booking_enabled", entityId),
@@ -336,11 +343,7 @@ export const updateVisitorReservation = actionClient
       throw new Error("La plaza seleccionada no es una plaza de visitantes");
     }
 
-    if (
-      entityId &&
-      spotData.entityId !== null &&
-      spotData.entityId !== entityId
-    ) {
+    if (spotData.entityId !== entityId) {
       throw new Error("La plaza seleccionada no pertenece a la sede activa");
     }
 
@@ -380,9 +383,7 @@ export const updateVisitorReservation = actionClient
           lockedSpot.isActive === false ||
           lockedSpot.type !== "visitor" ||
           lockedSpot.resourceType !== "parking" ||
-          (entityId &&
-            lockedSpot.entityId !== null &&
-            lockedSpot.entityId !== entityId)
+          lockedSpot.entityId !== entityId
         ) {
           throw new Error("La plaza seleccionada no está disponible");
         }
@@ -478,7 +479,6 @@ export const updateVisitorReservation = actionClient
         {
           reservationId: parsedInput.id,
           userId: user.id,
-          visitorEmail: parsedInput.visitor_email,
           error: emailErr instanceof Error ? emailErr.message : emailErr,
         }
       );
@@ -500,7 +500,8 @@ export const cancelVisitorReservation = actionClient
 
     const isAdmin = user.profile?.role === "admin";
 
-    const entityId = await getEffectiveEntityId();
+    const entityId = requireEntityContext(await getEffectiveEntityId());
+    await assertVisitorsEnabled(entityId);
     const [bookingEnabled, visitorEnabled] = await Promise.all([
       getResourceConfig("parking", "booking_enabled", entityId),
       getResourceConfig("parking", "visitor_booking_enabled", entityId),

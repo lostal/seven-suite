@@ -13,7 +13,7 @@ vi.mock("@/lib/db", async () => {
 
 import { cookies } from "next/headers";
 import { getCurrentUser } from "@/lib/auth/helpers";
-import { setupSelectMock } from "../../mocks/db";
+import { resetDbMocks, setupSelectMock } from "../../mocks/db";
 import {
   getActiveEntityId,
   getEffectiveEntityId,
@@ -33,6 +33,7 @@ function mockCookieStore(entityId: string | undefined): CookieStore {
 
 describe("getActiveEntityId", () => {
   beforeEach(() => {
+    resetDbMocks();
     vi.clearAllMocks();
   });
 
@@ -45,6 +46,7 @@ describe("getActiveEntityId", () => {
 
   it("cookie missing → returns null", async () => {
     vi.mocked(cookies).mockResolvedValue(mockCookieStore(undefined));
+    setupSelectMock([{ id: "ent-789" }]);
 
     const result = await getActiveEntityId();
     expect(result).toBeNull();
@@ -108,6 +110,7 @@ describe("getEffectiveEntityId", () => {
       profile: { role: "employee", entityId: "ent-789" } as never,
     });
     vi.mocked(cookies).mockResolvedValue(mockCookieStore(undefined));
+    setupSelectMock([{ id: "ent-789" }]);
 
     const result = await getEffectiveEntityId();
     expect(result).toBe("ent-789");
@@ -133,6 +136,7 @@ describe("getEffectiveEntityId", () => {
     });
     // Cookie is set but should be ignored for non-admin users
     vi.mocked(cookies).mockResolvedValue(mockCookieStore("ent-from-cookie"));
+    setupSelectMock([{ id: "ent-from-profile" }]);
 
     const result = await getEffectiveEntityId();
     expect(result).toBe("ent-from-profile");
@@ -157,6 +161,7 @@ describe("getEffectiveEntityId", () => {
       profile: { role: "hr", entityId: "ent-hr" } as never,
     });
     vi.mocked(cookies).mockResolvedValue(mockCookieStore(undefined));
+    setupSelectMock([{ id: "ent-hr" }]);
 
     const result = await getEffectiveEntityId();
     expect(result).toBe("ent-hr");

@@ -57,20 +57,6 @@ export interface SpotWithStatus {
   reserved_by_name?: string;
 }
 
-/**
- * Time slot for office reservations.
- * start_time and end_time are HH:MM strings (24h format).
- */
-export interface TimeSlot {
-  start_time: string;
-  end_time: string;
-  /** Whether this slot is available for the given spot/date */
-  available: boolean;
-}
-
-/**
- * Reservation with optional time slot (for office reservations).
- */
 export interface ReservationWithDetails {
   id: string;
   spot_id: string;
@@ -81,7 +67,5 @@ export interface ReservationWithDetails {
   date: string;
   status: string;
   notes?: string | null;
-  start_time?: string | null;
-  end_time?: string | null;
   created_at: string;
 }

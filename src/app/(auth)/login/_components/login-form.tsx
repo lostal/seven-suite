@@ -1,6 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 
@@ -20,8 +21,15 @@ const MicrosoftIcon = () => (
 );
 
 export function LoginForm() {
-  const handleSignIn = () => {
-    signIn("microsoft-entra-id", { callbackUrl: "/" });
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const handleSignIn = async () => {
+    setIsSigningIn(true);
+    try {
+      await signIn("microsoft-entra-id", { callbackUrl: "/" });
+    } catch {
+      setIsSigningIn(false);
+    }
   };
 
   return (
@@ -58,7 +66,12 @@ export function LoginForm() {
             </p>
           </div>
 
-          <Button onClick={handleSignIn} className="w-full" size="lg">
+          <Button
+            onClick={handleSignIn}
+            className="w-full"
+            size="lg"
+            disabled={isSigningIn}
+          >
             <MicrosoftIcon />
             Iniciar sesión con Microsoft
           </Button>

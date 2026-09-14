@@ -13,9 +13,9 @@ vi.mock("next/cache", () => ({
 import {
   mockDb,
   resetDbMocks,
+  setupSelectMock,
   setupInsertMock,
   setupUpdateMock,
-  setupDeleteMock,
 } from "../../mocks/db";
 import { requireAdmin } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
@@ -114,10 +114,11 @@ describe("updateEntity", () => {
   beforeEach(() => {
     resetDbMocks();
     vi.mocked(requireAdmin).mockResolvedValue(mockAdminUser as never);
+    setupSelectMock([{ name: "Sede Original", autonomousCommunity: null }]);
   });
 
   it("success → returns { success: true, data: { updated: true } }", async () => {
-    setupUpdateMock([]);
+    setupUpdateMock([{ id: "550e8400-e29b-41d4-a716-446655440001" }]);
 
     const result = await updateEntity({
       id: "550e8400-e29b-41d4-a716-446655440001",
@@ -171,7 +172,7 @@ describe("deleteEntity", () => {
   });
 
   it("success → returns { success: true, data: { deleted: true } }", async () => {
-    setupDeleteMock([]);
+    setupUpdateMock([{ id: "550e8400-e29b-41d4-a716-446655440001" }]);
 
     const result = await deleteEntity({
       id: "550e8400-e29b-41d4-a716-446655440001",
@@ -185,7 +186,7 @@ describe("deleteEntity", () => {
   });
 
   it("DB error → success: false, error contains 'Error al eliminar la sede'", async () => {
-    mockDb.delete.mockImplementationOnce(() => {
+    mockDb.update.mockImplementationOnce(() => {
       throw Object.assign(new Error("foreign key violation"), {
         code: "23503",
       });

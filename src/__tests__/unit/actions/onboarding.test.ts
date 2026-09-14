@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { mockDb, resetDbMocks } from "../../mocks/db";
+import { mockDb, resetDbMocks, setupSelectMock } from "../../mocks/db";
 
 vi.mock("@/lib/db", async () => {
   const { mockDb } = await import("../../mocks/db");
@@ -38,7 +38,11 @@ function setupAuthUser(role = "employee") {
   vi.mocked(requireAuth).mockResolvedValue({
     id: "user-00000000-0000-0000-0000-000000000001",
     email: "test@example.com",
-    profile: { role } as AuthUser["profile"],
+    profile: {
+      role,
+      entityId:
+        role === "admin" ? null : "550e8400-e29b-41d4-a716-446655440000",
+    } as AuthUser["profile"],
   } as AuthUser);
 }
 
@@ -46,6 +50,7 @@ describe("completeOnboarding", () => {
   beforeEach(() => {
     resetDbMocks();
     vi.clearAllMocks();
+    setupSelectMock([{ id: "550e8400-e29b-41d4-a716-446655440000" }]);
   });
 
   it("rejects when entityId is missing", async () => {
@@ -65,6 +70,23 @@ describe("completeOnboarding", () => {
     } as never);
 
     expect(result.success).toBe(false);
+  });
+
+  it("rejects non-admin onboarding without an assigned entity", async () => {
+    setupAuthUser("employee");
+    vi.mocked(requireAuth).mockResolvedValue({
+      id: "user-00000000-0000-0000-0000-000000000001",
+      email: "test@example.com",
+      profile: { role: "employee", entityId: null } as AuthUser["profile"],
+    } as AuthUser);
+
+    const result = await completeOnboarding({
+      entityId: "550e8400-e29b-41d4-a716-446655440000",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain("sede asignada");
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 
   it("calls requireAuth to get current user", async () => {

@@ -17,8 +17,6 @@ import { OfficeCessionSheet } from "./office-cession-sheet";
 interface OfficeCalendarViewProps {
   hasAssignedSpot: boolean;
   assignedSpot?: { id: string; label: string } | null;
-  /** Leído en el Server Component padre para evitar llamadas server-only desde cliente */
-  timeSlotsEnabled: boolean;
   mapMimeType: string | null;
   mapUrl: string | null;
 }
@@ -28,7 +26,6 @@ interface OfficeCalendarViewProps {
 export function OfficeCalendarView({
   hasAssignedSpot,
   assignedSpot,
-  timeSlotsEnabled,
   mapMimeType,
   mapUrl,
 }: OfficeCalendarViewProps) {
@@ -44,10 +41,7 @@ export function OfficeCalendarView({
           date={date}
           myReservationId={data?.myReservationId}
           myReservationSpotLabel={data?.myReservationSpotLabel}
-          myReservationStartTime={data?.myReservationStartTime}
-          myReservationEndTime={data?.myReservationEndTime}
           availableCount={data?.availableCount}
-          timeSlotsEnabled={timeSlotsEnabled}
           onClose={onClose}
           onActionSuccess={onSuccess}
           mapMimeType={mapMimeType}

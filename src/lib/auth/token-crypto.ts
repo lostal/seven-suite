@@ -10,8 +10,20 @@ const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 
 function getEncryptionKey(): Buffer {
-  const secret =
-    process.env.MICROSOFT_TOKEN_ENCRYPTION_KEY ?? process.env.AUTH_SECRET;
+  const encryptionSecret = process.env.MICROSOFT_TOKEN_ENCRYPTION_KEY;
+  if (process.env.NODE_ENV === "production" && !encryptionSecret) {
+    throw new Error("MICROSOFT_TOKEN_ENCRYPTION_KEY is required in production");
+  }
+  if (
+    process.env.NODE_ENV === "production" &&
+    encryptionSecret === process.env.AUTH_SECRET
+  ) {
+    throw new Error(
+      "MICROSOFT_TOKEN_ENCRYPTION_KEY must be independent from AUTH_SECRET"
+    );
+  }
+
+  const secret = encryptionSecret ?? process.env.AUTH_SECRET;
 
   if (!secret) {
     throw new Error("Missing token encryption key");

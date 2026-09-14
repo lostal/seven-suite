@@ -26,8 +26,6 @@ export interface ReservationRow {
   date: string;
   status: string;
   notes: string | null;
-  start_time: string | null;
-  end_time: string | null;
   created_at: Date;
   updated_at: Date;
   spot_label: string;
@@ -69,8 +67,6 @@ export async function getReservationsByDate(
       date: reservationsTable.date,
       status: reservationsTable.status,
       notes: reservationsTable.notes,
-      start_time: reservationsTable.startTime,
-      end_time: reservationsTable.endTime,
       created_at: reservationsTable.createdAt,
       updated_at: reservationsTable.updatedAt,
       spot_label: spotsTable.label,
@@ -90,8 +86,6 @@ export async function getReservationsByDate(
     date: r.date,
     status: r.status,
     notes: r.notes,
-    start_time: r.start_time,
-    end_time: r.end_time,
     created_at: r.created_at,
     updated_at: r.updated_at,
     spot_label: r.spot_label,
@@ -137,8 +131,6 @@ export async function getUserReservations(
       date: reservationsTable.date,
       status: reservationsTable.status,
       notes: reservationsTable.notes,
-      start_time: reservationsTable.startTime,
-      end_time: reservationsTable.endTime,
       created_at: reservationsTable.createdAt,
       updated_at: reservationsTable.updatedAt,
       spot_label: spotsTable.label,
@@ -158,8 +150,6 @@ export async function getUserReservations(
     date: r.date,
     status: r.status,
     notes: r.notes,
-    start_time: r.start_time,
-    end_time: r.end_time,
     created_at: r.created_at,
     updated_at: r.updated_at,
     spot_label: r.spot_label,
@@ -192,8 +182,6 @@ export async function getUserReservationForDate(
         date: reservationsTable.date,
         status: reservationsTable.status,
         notes: reservationsTable.notes,
-        start_time: reservationsTable.startTime,
-        end_time: reservationsTable.endTime,
         created_at: reservationsTable.createdAt,
         updated_at: reservationsTable.updatedAt,
         spot_label: spotsTable.label,
@@ -221,8 +209,6 @@ export async function getUserReservationForDate(
       date: first.date,
       status: first.status,
       notes: first.notes,
-      start_time: first.start_time,
-      end_time: first.end_time,
       created_at: first.created_at,
       updated_at: first.updated_at,
       spot_label: first.spot_label,
@@ -253,8 +239,6 @@ export async function getUserReservationForDate(
       date: reservationsTable.date,
       status: reservationsTable.status,
       notes: reservationsTable.notes,
-      start_time: reservationsTable.startTime,
-      end_time: reservationsTable.endTime,
       created_at: reservationsTable.createdAt,
       updated_at: reservationsTable.updatedAt,
       spot_label: spotsTable.label,
@@ -283,8 +267,6 @@ export async function getUserReservationForDate(
     date: last.date,
     status: last.status,
     notes: last.notes,
-    start_time: last.start_time,
-    end_time: last.end_time,
     created_at: last.created_at,
     updated_at: last.updated_at,
     spot_label: last.spot_label,

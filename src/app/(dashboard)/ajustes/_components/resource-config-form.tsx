@@ -4,8 +4,7 @@
  * Formulario de configuración por tipo de recurso
  *
  * Usado tanto para la página de parking como para la de oficinas.
- * Los campos de franjas horarias solo se muestran si time_slots_enabled
- * está activado (relevante para oficinas).
+ * Parking y oficinas comparten reservas de día completo.
  */
 
 import { useState } from "react";
@@ -41,8 +40,6 @@ interface ResourceConfigFormProps {
   onSave: (
     data: UpdateResourceConfigInput
   ) => Promise<{ success: boolean; error?: string }>;
-  /** Whether time slot fields should be shown (only for offices) */
-  showTimeSlots?: boolean;
   /** Whether the visitor booking toggle should be shown (false for offices) */
   showVisitorBooking?: boolean;
   /** Whether this is a per-entity override (shows restore defaults button) */
@@ -130,99 +127,6 @@ function VisitorSection({
           setValue("visitor_booking_enabled", checked, { shouldDirty: true })
         }
       />
-    </div>
-  );
-}
-
-function TimeSlotsSection({
-  values,
-  errors,
-  register,
-  setValue,
-}: SectionProps) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h4 className="text-sm leading-none font-medium">Franjas horarias</h4>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Configura si las reservas son por día completo o por tramos de tiempo
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label className="text-base">Reserva por franjas</Label>
-            <p className="text-muted-foreground text-sm">
-              Activa para permitir reservas por hora. Desactiva para reservas de
-              día completo
-            </p>
-          </div>
-          <Switch
-            checked={values.time_slots_enabled}
-            onCheckedChange={(checked) =>
-              setValue("time_slots_enabled", checked, { shouldDirty: true })
-            }
-          />
-        </div>
-
-        {values.time_slots_enabled && (
-          <div className="rounded-lg border p-4">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="slot_duration_minutes">
-                  Duración del tramo (min)
-                </Label>
-                <Input
-                  id="slot_duration_minutes"
-                  type="number"
-                  min={15}
-                  max={480}
-                  step={15}
-                  {...register("slot_duration_minutes", {
-                    valueAsNumber: true,
-                  })}
-                />
-                {errors.slot_duration_minutes && (
-                  <p className="text-destructive text-sm">
-                    {errors.slot_duration_minutes.message}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="day_start_hour">Hora de inicio (0-23)</Label>
-                <Input
-                  id="day_start_hour"
-                  type="number"
-                  min={0}
-                  max={23}
-                  {...register("day_start_hour", { valueAsNumber: true })}
-                />
-                {errors.day_start_hour && (
-                  <p className="text-destructive text-sm">
-                    {errors.day_start_hour.message}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="day_end_hour">Hora de fin (1-24)</Label>
-                <Input
-                  id="day_end_hour"
-                  type="number"
-                  min={1}
-                  max={24}
-                  {...register("day_end_hour", { valueAsNumber: true })}
-                />
-                {errors.day_end_hour && (
-                  <p className="text-destructive text-sm">
-                    {errors.day_end_hour.message}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -413,7 +317,6 @@ function CessionRulesSection({
 export function ResourceConfigForm({
   config,
   onSave,
-  showTimeSlots = true,
   showVisitorBooking = true,
   isEntityOverride = false,
   onRestoreDefaults,
@@ -438,10 +341,6 @@ export function ResourceConfigForm({
       max_weekly_reservations: config.max_weekly_reservations,
       max_monthly_reservations: config.max_monthly_reservations,
       max_daily_reservations: config.max_daily_reservations,
-      time_slots_enabled: config.time_slots_enabled,
-      slot_duration_minutes: config.slot_duration_minutes,
-      day_start_hour: config.day_start_hour,
-      day_end_hour: config.day_end_hour,
       cession_enabled: config.cession_enabled,
       cession_min_advance_hours: config.cession_min_advance_hours,
       cession_max_per_week: config.cession_max_per_week,
@@ -562,14 +461,6 @@ export function ResourceConfigForm({
       </div>
 
       <Separator />
-
-      {/* ─── Franjas horarias (solo oficinas) ───────────── */}
-      {showTimeSlots && (
-        <>
-          <TimeSlotsSection {...sectionProps} />
-          <Separator />
-        </>
-      )}
 
       {/* ─── Límites de reserva ──────────────────────────── */}
       <ReservationLimitsSection {...sectionProps} />

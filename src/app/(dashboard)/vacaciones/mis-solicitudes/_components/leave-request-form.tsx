@@ -82,6 +82,24 @@ export function LeaveRequestForm({
         },
   });
 
+  React.useEffect(() => {
+    form.reset(
+      currentRow
+        ? {
+            leave_type: currentRow.leaveType,
+            start_date: currentRow.startDate,
+            end_date: currentRow.endDate,
+            reason: currentRow.reason ?? "",
+          }
+        : {
+            leave_type: "vacation",
+            start_date: "",
+            end_date: "",
+            reason: "",
+          }
+    );
+  }, [currentRow, form]);
+
   // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() es el patrón estándar de RHF
   const leaveType = form.watch("leave_type");
   const startDate = form.watch("start_date");

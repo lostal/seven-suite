@@ -72,10 +72,6 @@ const defaultConfig = {
   max_weekly_reservations: 5,
   max_monthly_reservations: 20,
   max_daily_reservations: null,
-  time_slots_enabled: false,
-  slot_duration_minutes: null,
-  day_start_hour: null,
-  day_end_hour: null,
   cession_enabled: true,
   cession_min_advance_hours: 24,
   cession_max_per_week: 5,
@@ -146,7 +142,6 @@ describe("buildCalendarAction — input validation", () => {
 
   it("accepts valid monthStart for office", async () => {
     setupAuthUser();
-    setupConfig({ time_slots_enabled: true });
     setupSelectMock([]);
 
     const action = buildCalendarAction("office");
@@ -312,7 +307,6 @@ describe("buildCalendarAction — cession mode (user with assigned spot)", () =>
   });
 
   it("works with office resource type in cession mode", async () => {
-    setupConfig({ time_slots_enabled: true });
     setupSelectMock([{ id: "spot-office-1", label: "OF-01" }]);
     setupSelectMock([]);
 
@@ -730,7 +724,6 @@ describe("buildCalendarAction — booking mode (user without assigned spot)", ()
   });
 
   it("office resource type returns booking data correctly", async () => {
-    setupConfig({ time_slots_enabled: true });
     setupSelectMock([]); // no assigned spot
     setupSelectMock([]); // no spots
     setupSelectMock([]); // no reservations
@@ -745,31 +738,6 @@ describe("buildCalendarAction — booking mode (user without assigned spot)", ()
       expect(result.data).toHaveLength(30);
       const monday = result.data.find((d) => d.date === "2026-06-01");
       expect(monday?.bookingStatus).toBe("none");
-    }
-  });
-
-  it("includes time fields on my reservations when present", async () => {
-    setupBookingMode({
-      spots: [{ id: STANDARD_SPOT_ID_1, type: "standard", assignedTo: null }],
-      myReservations: [
-        {
-          id: "res-1",
-          spotId: STANDARD_SPOT_ID_1,
-          date: "2026-06-01",
-          startTime: "09:00",
-          endTime: "10:00",
-        },
-      ],
-    });
-
-    const action = buildCalendarAction("parking");
-    const result = await action({ monthStart: MONTH });
-
-    expect(result.success).toBe(true);
-    if (result.success) {
-      const day1 = result.data.find((d) => d.date === "2026-06-01");
-      expect(day1?.myReservationStartTime).toBe("09:00");
-      expect(day1?.myReservationEndTime).toBe("10:00");
     }
   });
 });

@@ -39,7 +39,6 @@ export type CalendarMode = "booking" | "cession";
 
 /**
  * Unified per-day payload for both parking and office calendars.
- * Time fields are optional and only populated for office reservations.
  */
 export interface ResourceDayData {
   date: string; // "yyyy-MM-dd"
@@ -49,11 +48,6 @@ export interface ResourceDayData {
   availableCount?: number;
   myReservationId?: string;
   myReservationSpotLabel?: string;
-  /** Office only: time of the reservation (null for parking / all-day) */
-  myReservationStartTime?: string | null;
-  /** Office only: time of the reservation (null for parking / all-day) */
-  myReservationEndTime?: string | null;
-
   // Cession mode fields
   cessionDayStatus?: ResourceCessionDayStatus;
   myCessionId?: string;

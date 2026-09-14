@@ -25,7 +25,7 @@ const USER_ID = "user-00000000-0000-0000-0000-000000000001";
 
 /**
  * Shape returned by getReservationsByDate / getUserReservations Drizzle select:
- * { id, spot_id, user_id, date, status, notes, start_time, end_time, created_at,
+ * { id, spot_id, user_id, date, status, notes, created_at,
  *   updated_at, spot_label, spot_resource_type, spot_entity_id, user_name }
  */
 function makeReservationJoinRow(overrides?: Record<string, unknown>) {
@@ -36,8 +36,6 @@ function makeReservationJoinRow(overrides?: Record<string, unknown>) {
     date: DATE,
     status: "confirmed",
     notes: null,
-    start_time: null,
-    end_time: null,
     created_at: new Date("2025-01-01T10:00:00Z"),
     updated_at: new Date("2025-01-01T10:00:00Z"),
     spot_label: "A-01",

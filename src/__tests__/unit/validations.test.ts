@@ -652,10 +652,6 @@ describe("updateResourceConfigSchema", () => {
     max_weekly_reservations: 5,
     max_monthly_reservations: 20,
     max_daily_reservations: 1,
-    time_slots_enabled: false,
-    slot_duration_minutes: null,
-    day_start_hour: null,
-    day_end_hour: null,
     cession_enabled: true,
     cession_min_advance_hours: 24,
     cession_max_per_week: 5,
@@ -743,100 +739,6 @@ describe("createOfficeReservationSchema", () => {
       date: DATE,
     });
     expect(r.success).toBe(true);
-  });
-
-  it("rechaza reserva con horario porque solo admite día completo", () => {
-    const r = createOfficeReservationSchema.safeParse({
-      spot_id: UUID,
-      date: DATE,
-      start_time: "09:00",
-      end_time: "11:00",
-    });
-    expect(r.success).toBe(false);
-    if (!r.success) {
-      expect(r.error.issues).toContainEqual(
-        expect.objectContaining({
-          message: "Las reservas de oficina son únicamente de día completo",
-        })
-      );
-    }
-  });
-
-  it("rechaza start_time sin end_time", () => {
-    const r = createOfficeReservationSchema.safeParse({
-      spot_id: UUID,
-      date: DATE,
-      start_time: "09:00",
-    });
-    expect(r.success).toBe(false);
-    if (!r.success) {
-      expect(r.error.issues).toContainEqual(
-        expect.objectContaining({
-          message: "Las reservas de oficina son únicamente de día completo",
-        })
-      );
-    }
-  });
-
-  it("rechaza end_time sin start_time", () => {
-    const r = createOfficeReservationSchema.safeParse({
-      spot_id: UUID,
-      date: DATE,
-      end_time: "11:00",
-    });
-    expect(r.success).toBe(false);
-    if (!r.success) {
-      expect(r.error.issues).toContainEqual(
-        expect.objectContaining({
-          message: "Las reservas de oficina son únicamente de día completo",
-        })
-      );
-    }
-  });
-
-  it("rechaza end_time <= start_time", () => {
-    const r = createOfficeReservationSchema.safeParse({
-      spot_id: UUID,
-      date: DATE,
-      start_time: "11:00",
-      end_time: "09:00",
-    });
-    expect(r.success).toBe(false);
-    if (!r.success) {
-      expect(r.error.issues).toContainEqual(
-        expect.objectContaining({
-          message: "Las reservas de oficina son únicamente de día completo",
-        })
-      );
-    }
-  });
-
-  it("rechaza end_time igual a start_time", () => {
-    const r = createOfficeReservationSchema.safeParse({
-      spot_id: UUID,
-      date: DATE,
-      start_time: "10:00",
-      end_time: "10:00",
-    });
-    expect(r.success).toBe(false);
-    if (!r.success) {
-      expect(r.error.issues).toContainEqual(
-        expect.objectContaining({
-          message: "Las reservas de oficina son únicamente de día completo",
-        })
-      );
-    }
-  });
-
-  it("rechaza horario con formato incorrecto", () => {
-    const r = createOfficeReservationSchema.safeParse({
-      spot_id: UUID,
-      date: DATE,
-      start_time: "9:00",
-      end_time: "17:00",
-    });
-    expect(r.success).toBe(false);
-    expect(errorPaths(r)).toContain("start_time");
   });
 
   it("rechaza spot_id no UUID", () => {

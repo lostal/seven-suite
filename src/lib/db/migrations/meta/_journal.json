@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1774712618482,
-      "tag": "0000_public_argent",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1775155200000,
-      "tag": "0001_clean_leave_workflow",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1780785781399,
-      "tag": "0002_loose_mimic",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1780785790000,
-      "tag": "0003_repair_postgres_objects",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1788884337747,
-      "tag": "0004_aberrant_cerise",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1788885651127,
-      "tag": "0005_heavy_natasha_romanoff",
+      "when": 1789411302108,
+      "tag": "0000_neat_professor_monster",
       "breakpoints": true
     }
   ]

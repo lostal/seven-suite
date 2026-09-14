@@ -9,30 +9,44 @@
 
 import { z } from "zod/v4";
 
-const envSchema = z.object({
-  // Database
-  DATABASE_URL: z.string().min(1),
+const envSchema = z
+  .object({
+    // Database
+    DATABASE_URL: z.string().min(1),
 
-  // Auth.js
-  AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
-  // Optional; AUTH_SECRET is used as the documented fallback.
-  MICROSOFT_TOKEN_ENCRYPTION_KEY: z
-    .string()
-    .min(32, "MICROSOFT_TOKEN_ENCRYPTION_KEY must be at least 32 characters")
-    .optional(),
+    // Auth.js
+    AUTH_SECRET: z
+      .string()
+      .min(32, "AUTH_SECRET must be at least 32 characters"),
+    DEV_LOGIN_ENABLED: z.enum(["true", "false"]).default("false"),
+    DEV_LOGIN_PASSWORD: z.string().min(1).optional(),
+    // Required in production; the crypto helper enforces independence from AUTH_SECRET.
+    MICROSOFT_TOKEN_ENCRYPTION_KEY: z
+      .string()
+      .min(32, "MICROSOFT_TOKEN_ENCRYPTION_KEY must be at least 32 characters")
+      .optional(),
 
-  // Microsoft Entra ID (SSO obligatorio)
-  MICROSOFT_CLIENT_ID: z.string().min(1),
-  MICROSOFT_CLIENT_SECRET: z.string().min(1),
-  MICROSOFT_TENANT_ID: z.string().min(1),
+    // Microsoft Entra ID (SSO obligatorio)
+    MICROSOFT_CLIENT_ID: z.string().min(1),
+    MICROSOFT_CLIENT_SECRET: z.string().min(1),
+    MICROSOFT_TENANT_ID: z.string().min(1),
 
-  // Resend (opcional)
-  RESEND_API_KEY: z.string().min(1).optional(),
-  RESEND_FROM_EMAIL: z.email().optional(),
+    // Resend (opcional)
+    RESEND_API_KEY: z.string().min(1).optional(),
+    RESEND_FROM_EMAIL: z.email().optional(),
 
-  // App
-  NEXT_PUBLIC_APP_URL: z.url().optional(),
-});
+    // App
+    NEXT_PUBLIC_APP_URL: z.url().optional(),
+  })
+  .superRefine((env, context) => {
+    if (env.DEV_LOGIN_ENABLED === "true" && !env.DEV_LOGIN_PASSWORD) {
+      context.addIssue({
+        code: "custom",
+        path: ["DEV_LOGIN_PASSWORD"],
+        message: "DEV_LOGIN_PASSWORD is required when dev login is enabled",
+      });
+    }
+  });
 
 export type Env = z.infer<typeof envSchema>;
 

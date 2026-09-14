@@ -28,7 +28,7 @@ import {
 import { getHolidayDatesSetForYears } from "@/lib/queries/holidays";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { assertModuleEnabled } from "@/lib/module-guard";
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { toServerDateStr } from "@/lib/utils";
 
 // ─── Working days calculation ─────────────────────────────────
@@ -220,6 +220,10 @@ export const updateLeaveRequest = actionClient
       throw new Error("Tu usuario no tiene una sede asignada");
     }
     await assertModuleEnabled("vacaciones", entityId);
+    const today = toServerDateStr(new Date());
+    if (parsedInput.leave_type !== "sick" && parsedInput.start_date < today) {
+      throw new Error("No se pueden solicitar días pasados");
+    }
     const workingDays = await calcWorkingDays(
       parsedInput.start_date,
       parsedInput.end_date,

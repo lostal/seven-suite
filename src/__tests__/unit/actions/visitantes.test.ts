@@ -68,7 +68,11 @@ vi.mock("next/cache", () => ({
 }));
 
 vi.mock("@/lib/queries/active-entity", () => ({
-  getEffectiveEntityId: vi.fn().mockResolvedValue(null),
+  getEffectiveEntityId: vi.fn().mockResolvedValue("entity-A"),
+}));
+
+vi.mock("@/lib/module-guard", () => ({
+  assertVisitorsEnabled: vi.fn(),
 }));
 
 import { getCurrentUser } from "@/lib/auth/helpers";
@@ -122,7 +126,7 @@ describe("getVisitorReservationsAction", () => {
     // Admin: se llama sin userId (undefined)
     expect(getUpcomingVisitorReservations).toHaveBeenCalledWith(
       undefined,
-      null
+      "entity-A"
     );
     if (result.success) expect(result.data).toEqual(mockReservations);
   });
@@ -139,7 +143,10 @@ describe("getVisitorReservationsAction", () => {
 
     expect(result.success).toBe(true);
     // Empleado: se llama con su propio userId
-    expect(getUpcomingVisitorReservations).toHaveBeenCalledWith(USER_ID, null);
+    expect(getUpcomingVisitorReservations).toHaveBeenCalledWith(
+      USER_ID,
+      "entity-A"
+    );
   });
 });
 
@@ -165,7 +172,7 @@ describe("createVisitorReservation", () => {
     setupSelectMock([
       {
         label: "V-01",
-        entityId: null,
+        entityId: "entity-A",
         type: "visitor",
         resourceType: "parking",
       },
@@ -186,7 +193,7 @@ describe("createVisitorReservation", () => {
     setupSelectMock([
       {
         label: "V-01",
-        entityId: null,
+        entityId: "entity-A",
         type: "visitor",
         resourceType: "parking",
       },
@@ -208,7 +215,7 @@ describe("createVisitorReservation", () => {
     setupSelectMock([
       {
         label: "P-01",
-        entityId: null,
+        entityId: "entity-A",
         type: "standard",
         resourceType: "parking",
       },
@@ -224,7 +231,7 @@ describe("createVisitorReservation", () => {
     setupSelectMock([
       {
         label: "V-01",
-        entityId: null,
+        entityId: "entity-A",
         type: "visitor",
         resourceType: "parking",
         isActive: false,
@@ -319,10 +326,11 @@ describe("updateVisitorReservation", () => {
   beforeEach(() => {
     resetDbMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
-    vi.mocked(getEffectiveEntityId).mockResolvedValue(null);
+    vi.mocked(getEffectiveEntityId).mockResolvedValue("entity-A");
   });
 
-  it("happy path: spot con entity_id null actualiza sin error", async () => {
+  it("rechaza actualizar si el spot no tiene entidad", async () => {
+    vi.mocked(getEffectiveEntityId).mockResolvedValue(null);
     // 1. select spot
     setupSelectMock([
       {
@@ -332,27 +340,10 @@ describe("updateVisitorReservation", () => {
         resourceType: "parking",
       },
     ]);
-    // 2. transaction lock and occupancy checks
-    setupSelectMock([
-      {
-        id: SPOT_ID,
-        isActive: true,
-        type: "visitor",
-        resourceType: "parking",
-        entityId: null,
-      },
-    ]);
-    setupSelectMock([]);
-    setupSelectMock([]);
-    // 2. update visitor reservation
-    setupUpdateMock([{ id: VISITOR_ID }]);
-    // 3. update notificationSent (non-blocking)
-    setupUpdateMock([]);
-
     const result = await updateVisitorReservation(validInput);
 
-    expect(result.success).toBe(true);
-    if (result.success) expect(result.data).toHaveProperty("id", VISITOR_ID);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain("sede activa");
   });
 
   it("rechaza si el spot pertenece a una sede distinta a la activa", async () => {
@@ -378,7 +369,7 @@ describe("updateVisitorReservation", () => {
     setupSelectMock([
       {
         label: "P-01",
-        entityId: null,
+        entityId: "entity-A",
         type: "standard",
         resourceType: "parking",
       },

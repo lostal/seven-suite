@@ -90,14 +90,36 @@ export const updateEntity = actionClient
     await requireAdmin();
     const { id, name, is_active, autonomous_community } = parsedInput;
 
+    const [currentEntity] = await db
+      .select({
+        name: entities.name,
+        autonomousCommunity: entities.autonomousCommunity,
+      })
+      .from(entities)
+      .where(eq(entities.id, id))
+      .limit(1);
+
+    if (!currentEntity) throw new Error("Sede no encontrada");
+
     const updateValues: Partial<typeof entities.$inferInsert> = {};
     if (name !== undefined) updateValues.name = name;
     if (is_active !== undefined) updateValues.isActive = is_active;
     if (autonomous_community !== undefined)
       updateValues.autonomousCommunity = autonomous_community ?? null;
+    if (name !== undefined || autonomous_community !== undefined) {
+      updateValues.shortCode = buildShortCode(
+        name ?? currentEntity.name,
+        autonomous_community ?? currentEntity.autonomousCommunity
+      );
+    }
 
     try {
-      await db.update(entities).set(updateValues).where(eq(entities.id, id));
+      const updated = await db
+        .update(entities)
+        .set(updateValues)
+        .where(eq(entities.id, id))
+        .returning({ id: entities.id });
+      if (updated.length === 0) throw new Error("Sede no encontrada");
     } catch (err) {
       if (isUniqueViolation(err)) {
         throw new Error("Ya existe una sede con ese nombre o código");
@@ -131,7 +153,12 @@ export const deleteEntity = actionClient
   .action(async ({ parsedInput }) => {
     await requireAdmin();
     try {
-      await db.delete(entities).where(eq(entities.id, parsedInput.id));
+      const deleted = await db
+        .update(entities)
+        .set({ isActive: false })
+        .where(eq(entities.id, parsedInput.id))
+        .returning({ id: entities.id });
+      if (deleted.length === 0) throw new Error("Sede no encontrada");
     } catch (err) {
       console.error("[entities] deleteEntity DB error:", err);
       throw new Error("Error al eliminar la sede");

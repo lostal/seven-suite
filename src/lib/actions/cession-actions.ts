@@ -16,6 +16,7 @@ import { getAllResourceConfigs } from "@/lib/config";
 import { assertModuleEnabled } from "@/lib/module-guard";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { isTooSoonForCession } from "@/lib/calendar/calendar-utils";
+import { validateBookingDate } from "@/lib/booking-validation";
 import {
   getUserCessions,
   type CessionWithDetails,
@@ -43,12 +44,19 @@ export function buildCessionActions(cfg: CessionConfig) {
       if (!user) throw new Error("No autenticado");
 
       const entityId = await getEffectiveEntityId();
+      if (user.profile?.role !== "admin" && !entityId) {
+        throw new Error("Tu usuario no tiene una sede asignada");
+      }
       await assertModuleEnabled(cfg.resourceType, entityId);
       const config = await getAllResourceConfigs(cfg.resourceType, entityId);
       if (!config.cession_enabled) {
         throw new Error(
           `Las cesiones de ${cfg.resourceType === "parking" ? "parking" : "oficina"} están deshabilitadas`
         );
+      }
+
+      if (new Set(parsedInput.dates).size !== parsedInput.dates.length) {
+        throw new Error("No puedes seleccionar la misma fecha más de una vez");
       }
 
       try {
@@ -83,6 +91,7 @@ export function buildCessionActions(cfg: CessionConfig) {
           if (
             entityId &&
             spot.entityId !== null &&
+            spot.entityId !== undefined &&
             spot.entityId !== entityId
           ) {
             throw new Error(
@@ -100,6 +109,10 @@ export function buildCessionActions(cfg: CessionConfig) {
                 );
               }
             }
+          }
+
+          for (const dateStr of parsedInput.dates) {
+            validateBookingDate(dateStr, config);
           }
 
           const [reserved, existingCessions] = await Promise.all([
@@ -186,81 +199,92 @@ export function buildCessionActions(cfg: CessionConfig) {
       if (!user) throw new Error("No autenticado");
 
       const cancelEntityId = await getEffectiveEntityId();
+      if (user.profile?.role !== "admin" && !cancelEntityId) {
+        throw new Error("Tu usuario no tiene una sede asignada");
+      }
       await assertModuleEnabled(cfg.resourceType, cancelEntityId);
 
-      const [cession] = await db
-        .select({
-          id: cessions.id,
-          status: cessions.status,
-          userId: cessions.userId,
-          spotId: cessions.spotId,
-          date: cessions.date,
-        })
-        .from(cessions)
-        .where(eq(cessions.id, parsedInput.id))
-        .limit(1);
+      let activeReservation: { id: string } | undefined;
+      try {
+        await db.transaction(async (tx) => {
+          const [cession] = await tx
+            .select({
+              id: cessions.id,
+              status: cessions.status,
+              userId: cessions.userId,
+              spotId: cessions.spotId,
+              date: cessions.date,
+            })
+            .from(cessions)
+            .where(eq(cessions.id, parsedInput.id))
+            .for("update")
+            .limit(1);
 
-      if (!cession) throw new Error("Cesión no encontrada");
+          if (!cession) throw new Error("Cesión no encontrada");
+          if (cession.status === "cancelled") {
+            throw new Error("La cesión ya está cancelada");
+          }
+          if (cession.userId !== user.id && user.profile?.role !== "admin") {
+            throw new Error("No puedes cancelar esta cesión");
+          }
 
-      if (cession.userId !== user.id && user.profile?.role !== "admin") {
-        throw new Error("No puedes cancelar esta cesión");
-      }
+          const [reservation] = await tx
+            .select({ id: reservations.id })
+            .from(reservations)
+            .where(
+              and(
+                eq(reservations.spotId, cession.spotId),
+                eq(reservations.date, cession.date),
+                eq(reservations.status, "confirmed")
+              )
+            )
+            .for("update")
+            .limit(1);
+          activeReservation = reservation;
 
-      // Comprobamos la reserva real en BD, NO el campo cession.status,
-      // para evitar estados inconsistentes si la sincronización falló.
-      const [activeReservation] = await db
-        .select({ id: reservations.id })
-        .from(reservations)
-        .where(
-          and(
-            eq(reservations.spotId, cession.spotId),
-            eq(reservations.date, cession.date),
-            eq(reservations.status, "confirmed")
-          )
-        )
-        .limit(1);
+          if (activeReservation && user.profile?.role !== "admin") {
+            throw new Error(
+              `No se puede cancelar: alguien ya ha reservado est${cfg.noun === "plaza" ? "a" : "e"} ${cfg.noun}`
+            );
+          }
 
-      if (activeReservation && user.profile?.role !== "admin") {
-        throw new Error(
-          `No se puede cancelar: alguien ya ha reservado est${cfg.noun === "plaza" ? "a" : "e"} ${cfg.noun}`
-        );
-      }
-
-      // Cancelar la reserva activa y la cesión en una sola transacción:
-      // si cualquiera de las dos operaciones falla, se hace rollback de ambas.
-      if (activeReservation) {
-        try {
-          await db.transaction(async (tx) => {
+          if (activeReservation) {
             await tx
               .update(reservations)
               .set({ status: "cancelled" })
               .where(eq(reservations.id, activeReservation.id));
-            await tx
-              .update(cessions)
-              .set({ status: "cancelled" })
-              .where(eq(cessions.id, parsedInput.id));
-          });
-        } catch (err) {
-          console.error(
-            `${cfg.logPrefix} cancelCession transaction error:`,
-            err
-          );
-          throw new Error("No se pudo cancelar la cesión");
-        }
-      } else {
-        try {
-          await db
+          }
+
+          const cancelled = await tx
             .update(cessions)
             .set({ status: "cancelled" })
-            .where(eq(cessions.id, parsedInput.id));
-        } catch (err) {
-          console.error(`${cfg.logPrefix} cancelCession DB error:`, {
-            userId: user.id,
-            cessionId: parsedInput.id,
-            error: err,
-          });
-          throw new Error("Error al cancelar cesión");
+            .where(
+              and(
+                eq(cessions.id, parsedInput.id),
+                ne(cessions.status, "cancelled")
+              )
+            )
+            .returning({ id: cessions.id });
+          if (cancelled.length === 0) {
+            throw new Error("La cesión ya está cancelada");
+          }
+        });
+      } catch (err) {
+        if (
+          err instanceof Error &&
+          ([
+            "Cesión no encontrada",
+            "La cesión ya está cancelada",
+            "No puedes cancelar esta cesión",
+          ].includes(err.message) ||
+            err.message.startsWith(
+              "No se puede cancelar: alguien ya ha reservado"
+            ))
+        ) {
+          throw err;
         }
+        console.error(`${cfg.logPrefix} cancelCession transaction error:`, err);
+        throw new Error("No se pudo cancelar la cesión");
       }
 
       revalidatePath(cfg.basePath);

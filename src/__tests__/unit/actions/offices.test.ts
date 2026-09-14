@@ -5,7 +5,6 @@
  * - createOfficeReservation: validación, duplicado, constraint violation
  * - cancelOfficeReservation: autenticación y verificación de filas afectadas
  * - getOfficeSpotsForDate: autenticación, booking_enabled, allowed_days
- * - getOfficeTimeSlotsForSpot: time_slots_enabled, config incompleta
  */
 
 import {
@@ -21,7 +20,6 @@ import {
   createOfficeReservation,
   cancelOfficeReservation,
   getOfficeSpotsForDate,
-  getOfficeTimeSlotsForSpot,
 } from "@/app/(dashboard)/oficinas/actions";
 import {
   mockDb,
@@ -56,16 +54,11 @@ vi.mock("@/lib/config", () => ({
     max_consecutive_days: 5,
     max_weekly_reservations: 5,
     max_monthly_reservations: 20,
-    time_slots_enabled: false,
-    slot_duration_minutes: 60,
-    day_start_hour: 8,
-    day_end_hour: 18,
   }),
 }));
 
 vi.mock("@/lib/queries/offices", () => ({
   getOfficeAvailabilityForDate: vi.fn().mockResolvedValue([]),
-  getAvailableTimeSlots: vi.fn().mockResolvedValue([]),
   getUserOfficeReservations: vi.fn().mockResolvedValue([]),
 }));
 
@@ -79,10 +72,7 @@ vi.mock("@/lib/booking-validation", () => ({
 
 import { getCurrentUser } from "@/lib/auth/helpers";
 import { getAllResourceConfigs } from "@/lib/config";
-import {
-  getOfficeAvailabilityForDate,
-  getAvailableTimeSlots,
-} from "@/lib/queries/offices";
+import { getOfficeAvailabilityForDate } from "@/lib/queries/offices";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -143,7 +133,6 @@ describe("createOfficeReservation", () => {
       max_consecutive_days: 5,
       max_weekly_reservations: 5,
       max_monthly_reservations: 20,
-      time_slots_enabled: false,
     } as never);
 
     const result = await createOfficeReservation({
@@ -322,11 +311,7 @@ describe("getOfficeSpotsForDate", () => {
       max_consecutive_days: 5,
       max_weekly_reservations: 5,
       max_monthly_reservations: 20,
-      time_slots_enabled: false,
       visitor_booking_enabled: false,
-      slot_duration_minutes: 60,
-      day_start_hour: 8,
-      day_end_hour: 18,
       cession_enabled: false,
       cession_min_advance_hours: 0,
     } as never);
@@ -337,6 +322,9 @@ describe("getOfficeSpotsForDate", () => {
       booking_enabled: false,
       allowed_days: [1, 2, 3, 4, 5],
     } as never);
+    setupSelectMock([
+      { resourceType: "office", entityId: null, isActive: true },
+    ]);
 
     // 2027-01-11 es lunes
     const result = await getOfficeSpotsForDate("2027-01-11");
@@ -376,32 +364,8 @@ describe("getOfficeSpotsForDate", () => {
     if (result.success) expect(result.data).toEqual(mockSpots);
     expect(getOfficeAvailabilityForDate).toHaveBeenCalledWith(
       "2027-01-11",
-      undefined,
-      undefined,
       null
     );
-  });
-
-  it("pasa startTime y endTime a getOfficeAvailabilityForDate", async () => {
-    vi.mocked(getOfficeAvailabilityForDate).mockResolvedValue([]);
-
-    await getOfficeSpotsForDate("2027-01-11", "09:00", "11:00");
-
-    expect(getOfficeAvailabilityForDate).toHaveBeenCalledWith(
-      "2027-01-11",
-      "09:00",
-      "11:00",
-      null
-    );
-  });
-
-  it("rechaza una franja horaria no disponible", async () => {
-    vi.mocked(getOfficeAvailabilityForDate).mockResolvedValue([]);
-
-    const result = await getOfficeSpotsForDate("2027-01-11", "17:00", "19:00");
-
-    expect(result.success).toBe(true);
-    if (result.success) expect(result.data).toEqual([]);
   });
 
   it("falla si el usuario no está autenticado", async () => {
@@ -411,83 +375,5 @@ describe("getOfficeSpotsForDate", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBe("No autenticado");
-  });
-});
-
-// ─── getOfficeTimeSlotsForSpot ────────────────────────────────────────────────
-
-describe("getOfficeTimeSlotsForSpot", () => {
-  const SPOT_UUID = "770e8400-e29b-41d4-a716-446655440002";
-
-  beforeEach(() => {
-    resetDbMocks();
-    vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
-    vi.mocked(getEffectiveEntityId).mockResolvedValue(null);
-    vi.mocked(getAllResourceConfigs).mockResolvedValue({
-      booking_enabled: true,
-      time_slots_enabled: true,
-      slot_duration_minutes: 60,
-      day_start_hour: 8,
-      day_end_hour: 18,
-      allowed_days: [1, 2, 3, 4, 5],
-    } as never);
-  });
-
-  it("falla si el usuario no está autenticado", async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue(null);
-
-    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2027-01-11");
-
-    expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toBe("No autenticado");
-  });
-
-  it("falla si time_slots_enabled es false", async () => {
-    vi.mocked(getAllResourceConfigs).mockResolvedValue({
-      time_slots_enabled: false,
-    } as never);
-
-    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2027-01-11");
-
-    expect(result.success).toBe(false);
-    if (!result.success)
-      expect(result.error).toContain("franjas horarias no están habilitadas");
-  });
-
-  it("falla si la configuración de franjas está incompleta (null values)", async () => {
-    vi.mocked(getAllResourceConfigs).mockResolvedValue({
-      time_slots_enabled: true,
-      slot_duration_minutes: null,
-      day_start_hour: null,
-      day_end_hour: null,
-    } as never);
-
-    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2027-01-11");
-
-    expect(result.success).toBe(false);
-    if (!result.success)
-      expect(result.error).toContain(
-        "configuración de franjas no está completa"
-      );
-  });
-
-  it("devuelve franjas cuando la configuración es válida", async () => {
-    const mockSlots = [
-      { start_time: "09:00", end_time: "10:00" },
-      { start_time: "10:00", end_time: "11:00" },
-    ];
-    vi.mocked(getAvailableTimeSlots).mockResolvedValue(mockSlots as never);
-
-    const result = await getOfficeTimeSlotsForSpot(SPOT_UUID, "2027-01-11");
-
-    expect(result.success).toBe(true);
-    if (result.success) expect(result.data).toEqual(mockSlots);
-    expect(getAvailableTimeSlots).toHaveBeenCalledWith(
-      SPOT_UUID,
-      "2027-01-11",
-      8,
-      18,
-      60
-    );
   });
 });

@@ -22,7 +22,6 @@ import {
   Building2,
   CalendarDays,
   Car,
-  Clock,
   Loader2,
   Repeat2,
   Trash2,
@@ -144,10 +143,6 @@ function ReservationItem({
   const date = parseLocalDate(reservation.date);
   const isToday = reservation.date === toClientDateStr(new Date());
   const isOffice = reservation.resourceType === "office";
-  const officeRes = isOffice
-    ? (reservation as OfficeReservationWithDetails & { resourceType: "office" })
-    : null;
-  const hasTimeSlot = isOffice && officeRes?.start_time;
 
   return (
     <div className="flex items-center gap-4 py-3 pl-1">
@@ -191,16 +186,6 @@ function ReservationItem({
           </p>
         </div>
         <div className="text-muted-foreground flex items-center gap-1 text-xs capitalize">
-          {hasTimeSlot && officeRes && (
-            <>
-              <Clock className="size-3" />
-              <span>
-                {officeRes.start_time?.slice(0, 5)}–
-                {officeRes.end_time?.slice(0, 5)}
-              </span>
-              ·
-            </>
-          )}
           <span>{format(date, "EEEE d 'de' MMMM", { locale: es })}</span>
         </div>
       </div>
@@ -213,6 +198,7 @@ function ReservationItem({
             variant="ghost"
             className="hover:bg-destructive/10 hover:text-destructive shrink-0"
             onClick={() => onCancel(reservation.id, reservation.resourceType)}
+            aria-label="Cancelar reserva"
             disabled={cancellingId === reservation.id}
           >
             {cancellingId === reservation.id ? (
@@ -299,6 +285,7 @@ function CessionRow({
               variant="ghost"
               className="hover:bg-destructive/10 hover:text-destructive"
               onClick={() => onCancel(cession.id, cession.resource_type)}
+              aria-label="Cancelar cesión"
               disabled={cancellingId === cession.id}
             >
               {cancellingId === cession.id ? (

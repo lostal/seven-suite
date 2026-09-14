@@ -60,7 +60,6 @@ export default async function ConfiguracionParkingPage() {
         key={entityId ?? "global"}
         config={config}
         onSave={updateParkingConfig}
-        showTimeSlots={false}
         isEntityOverride={!!entityId}
         onRestoreDefaults={entityId ? restoreParkingDefaults : undefined}
       />

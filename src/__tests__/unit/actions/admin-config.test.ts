@@ -102,10 +102,6 @@ const validResourceConfig = {
   max_weekly_reservations: 5,
   max_monthly_reservations: 20,
   max_daily_reservations: null,
-  time_slots_enabled: false,
-  slot_duration_minutes: 60,
-  day_start_hour: 8,
-  day_end_hour: 20,
   cession_enabled: true,
   cession_min_advance_hours: 2,
   cession_max_per_week: 5,
@@ -287,11 +283,7 @@ describe("updateOfficeConfig", () => {
       setupInsertMock([{}]);
     }
 
-    await updateOfficeConfig({
-      ...validResourceConfig,
-      time_slots_enabled: true,
-      slot_duration_minutes: 30,
-    });
+    await updateOfficeConfig(validResourceConfig);
 
     // invalidateConfigCache solo se llama 1 vez por acción
     expect(invalidateConfigCache).toHaveBeenCalledOnce();

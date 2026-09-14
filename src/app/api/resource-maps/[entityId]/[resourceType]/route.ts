@@ -28,7 +28,17 @@ async function canAccessEntity(entityId: string): Promise<boolean> {
   const user = await getCurrentUser();
   if (!user?.profile) return false;
 
-  if (user.profile.role === "admin" || user.profile.role === "manager") {
+  if (user.profile.role === "admin") {
+    const [entity] = await db
+      .select({ id: entities.id })
+      .from(entities)
+      .where(and(eq(entities.id, entityId), eq(entities.isActive, true)))
+      .limit(1);
+    return Boolean(entity);
+  }
+
+  if (user.profile.role === "manager") {
+    if (user.profile.entityId !== entityId) return false;
     const [entity] = await db
       .select({ id: entities.id })
       .from(entities)
@@ -45,6 +55,16 @@ async function getRouteValues(context: RouteContext) {
   if (!isResourceType(resourceType)) return null;
   if (!(await canAccessEntity(entityId))) return null;
   return { entityId, resourceType };
+}
+
+function hasTrustedOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+
+  const configuredOrigin = process.env.NEXT_PUBLIC_APP_URL
+    ? new URL(process.env.NEXT_PUBLIC_APP_URL).origin
+    : new URL(request.url).origin;
+  return origin === configuredOrigin;
 }
 
 export async function GET(_request: Request, context: RouteContext) {
@@ -79,6 +99,9 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function POST(request: Request, context: RouteContext) {
+  if (!hasTrustedOrigin(request)) {
+    return NextResponse.json({ error: "Origen no permitido" }, { status: 403 });
+  }
   const values = await getRouteValues(context);
   const user = await getCurrentUser();
   if (!values || !user?.profile) {
@@ -156,6 +179,9 @@ export async function POST(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
+  if (!hasTrustedOrigin(_request)) {
+    return NextResponse.json({ error: "Origen no permitido" }, { status: 403 });
+  }
   const values = await getRouteValues(context);
   const user = await getCurrentUser();
   if (!values || !user?.profile) {

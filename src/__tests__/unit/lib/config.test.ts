@@ -41,7 +41,6 @@ describe("getAllResourceConfigs", () => {
     expect(config.max_advance_days).toBe(14);
     expect(config.allowed_days).toEqual([1, 2, 3, 4, 5]);
     expect(config.cession_enabled).toBe(true);
-    expect(config.time_slots_enabled).toBe(false);
   });
 
   it("empty DB → returns office defaults", async () => {
@@ -49,10 +48,6 @@ describe("getAllResourceConfigs", () => {
     const config = await getAllResourceConfigs("office");
     expect(config.booking_enabled).toBe(true);
     expect(config.max_advance_days).toBe(7);
-    expect(config.time_slots_enabled).toBe(true);
-    expect(config.slot_duration_minutes).toBe(60);
-    expect(config.day_start_hour).toBe(8);
-    expect(config.day_end_hour).toBe(20);
   });
 
   it("DB has parking.max_advance_days=30 → returns 30", async () => {
@@ -95,12 +90,6 @@ describe("getAllResourceConfigs", () => {
     setupConfigMock([{ key: "parking.allowed_days", value: [1, 3, 5] }]);
     const config = await getAllResourceConfigs("parking");
     expect(config.allowed_days).toEqual([1, 3, 5]);
-  });
-
-  it("DB has parking.slot_duration_minutes=null → null", async () => {
-    setupConfigMock([{ key: "parking.slot_duration_minutes", value: null }]);
-    const config = await getAllResourceConfigs("parking");
-    expect(config.slot_duration_minutes).toBeNull();
   });
 
   it("DB has office.max_consecutive_days=2 → returns 2", async () => {

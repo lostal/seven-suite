@@ -1,8 +1,10 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;--> statement-breakpoint
+CREATE EXTENSION IF NOT EXISTS btree_gist;--> statement-breakpoint
 CREATE TYPE "public"."cession_rule_type" AS ENUM('out_of_office', 'day_of_week');--> statement-breakpoint
 CREATE TYPE "public"."cession_status" AS ENUM('available', 'reserved', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."document_access" AS ENUM('own', 'entity', 'global');--> statement-breakpoint
 CREATE TYPE "public"."document_category" AS ENUM('payslip', 'corporate', 'contract', 'other');--> statement-breakpoint
-CREATE TYPE "public"."leave_status" AS ENUM('pending', 'manager_approved', 'hr_approved', 'rejected', 'cancelled');--> statement-breakpoint
+CREATE TYPE "public"."leave_status" AS ENUM('pending', 'approved', 'rejected', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."leave_type" AS ENUM('vacation', 'personal', 'sick', 'other');--> statement-breakpoint
 CREATE TYPE "public"."reservation_status" AS ENUM('confirmed', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."resource_type" AS ENUM('parking', 'office');--> statement-breakpoint
@@ -106,6 +108,7 @@ CREATE TABLE "entities" (
 	"is_active" boolean DEFAULT true NOT NULL,
 	"autonomous_community" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "entities_name_unique" UNIQUE("name"),
 	CONSTRAINT "entities_short_code_unique" UNIQUE("short_code")
 );
@@ -160,12 +163,9 @@ CREATE TABLE "leave_requests" (
 	"end_date" date NOT NULL,
 	"status" "leave_status" DEFAULT 'pending' NOT NULL,
 	"reason" text,
-	"manager_id" uuid,
-	"manager_action_at" timestamp with time zone,
-	"manager_notes" text,
-	"hr_id" uuid,
-	"hr_action_at" timestamp with time zone,
-	"hr_notes" text,
+	"reviewer_id" uuid,
+	"reviewed_at" timestamp with time zone,
+	"reviewer_notes" text,
 	"working_days" smallint,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -200,11 +200,23 @@ CREATE TABLE "reservations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"spot_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
+	"resource_type" "resource_type" DEFAULT 'parking' NOT NULL,
 	"date" date NOT NULL,
 	"status" "reservation_status" DEFAULT 'confirmed' NOT NULL,
 	"notes" text,
-	"start_time" time,
-	"end_time" time,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "resource_maps" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"entity_id" uuid NOT NULL,
+	"resource_type" "resource_type" NOT NULL,
+	"file_data" "bytea" NOT NULL,
+	"file_name" text NOT NULL,
+	"mime_type" text NOT NULL,
+	"file_size_bytes" integer NOT NULL,
+	"uploaded_by" uuid,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -333,13 +345,14 @@ ALTER TABLE "entity_holiday_calendars" ADD CONSTRAINT "entity_holiday_calendars_
 ALTER TABLE "entity_modules" ADD CONSTRAINT "entity_modules_entity_id_entities_id_fk" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "holidays" ADD CONSTRAINT "holidays_calendar_id_holiday_calendars_id_fk" FOREIGN KEY ("calendar_id") REFERENCES "public"."holiday_calendars"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "leave_requests" ADD CONSTRAINT "leave_requests_employee_id_profiles_id_fk" FOREIGN KEY ("employee_id") REFERENCES "public"."profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "leave_requests" ADD CONSTRAINT "leave_requests_manager_id_profiles_id_fk" FOREIGN KEY ("manager_id") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "leave_requests" ADD CONSTRAINT "leave_requests_hr_id_profiles_id_fk" FOREIGN KEY ("hr_id") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "leave_requests" ADD CONSTRAINT "leave_requests_reviewer_id_profiles_id_fk" FOREIGN KEY ("reviewer_id") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notification_subscriptions" ADD CONSTRAINT "notification_subscriptions_user_id_profiles_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "profiles" ADD CONSTRAINT "profiles_id_users_id_fk" FOREIGN KEY ("id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "profiles" ADD CONSTRAINT "profiles_entity_id_entities_id_fk" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "reservations" ADD CONSTRAINT "reservations_spot_id_spots_id_fk" FOREIGN KEY ("spot_id") REFERENCES "public"."spots"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "reservations" ADD CONSTRAINT "reservations_user_id_profiles_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "resource_maps" ADD CONSTRAINT "resource_maps_entity_id_entities_id_fk" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "resource_maps" ADD CONSTRAINT "resource_maps_uploaded_by_profiles_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."profiles"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_users_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "spots" ADD CONSTRAINT "spots_assigned_to_profiles_id_fk" FOREIGN KEY ("assigned_to") REFERENCES "public"."profiles"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "spots" ADD CONSTRAINT "spots_entity_id_entities_id_fk" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
@@ -367,16 +380,78 @@ CREATE INDEX "idx_documents_period" ON "documents" USING btree ("period_year","p
 CREATE UNIQUE INDEX "idx_holidays_calendar_date" ON "holidays" USING btree ("calendar_id","date");--> statement-breakpoint
 CREATE INDEX "idx_holidays_date" ON "holidays" USING btree ("date");--> statement-breakpoint
 CREATE INDEX "idx_leave_requests_employee_id" ON "leave_requests" USING btree ("employee_id");--> statement-breakpoint
-CREATE INDEX "idx_leave_requests_manager_id" ON "leave_requests" USING btree ("manager_id");--> statement-breakpoint
+CREATE INDEX "idx_leave_requests_reviewer_id" ON "leave_requests" USING btree ("reviewer_id");--> statement-breakpoint
 CREATE INDEX "idx_leave_requests_status" ON "leave_requests" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "idx_profiles_entity_id" ON "profiles" USING btree ("entity_id");--> statement-breakpoint
 CREATE INDEX "idx_profiles_dni" ON "profiles" USING btree ("dni");--> statement-breakpoint
 CREATE INDEX "idx_reservations_date" ON "reservations" USING btree ("date");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_reservations_spot_date" ON "reservations" USING btree ("spot_id","date") WHERE status = 'confirmed' AND start_time IS NULL;--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_reservations_user_date" ON "reservations" USING btree ("user_id","date") WHERE status = 'confirmed' AND start_time IS NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "idx_reservations_spot_date" ON "reservations" USING btree ("spot_id","date") WHERE status = 'confirmed';--> statement-breakpoint
+CREATE UNIQUE INDEX "idx_reservations_user_date" ON "reservations" USING btree ("user_id","date","resource_type") WHERE status = 'confirmed';--> statement-breakpoint
+CREATE UNIQUE INDEX "idx_resource_maps_entity_resource" ON "resource_maps" USING btree ("entity_id","resource_type");--> statement-breakpoint
+CREATE INDEX "idx_resource_maps_entity_id" ON "resource_maps" USING btree ("entity_id");--> statement-breakpoint
 CREATE INDEX "idx_spots_type" ON "spots" USING btree ("type");--> statement-breakpoint
 CREATE INDEX "idx_spots_resource_type" ON "spots" USING btree ("resource_type");--> statement-breakpoint
 CREATE INDEX "idx_spots_assigned_to" ON "spots" USING btree ("assigned_to");--> statement-breakpoint
+CREATE UNIQUE INDEX "idx_spots_assigned_resource" ON "spots" USING btree ("assigned_to","resource_type") WHERE assigned_to IS NOT NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX "idx_visitor_reservations_spot_date" ON "visitor_reservations" USING btree ("spot_id","date") WHERE status = 'confirmed';--> statement-breakpoint
 CREATE INDEX "idx_visitor_reservations_date" ON "visitor_reservations" USING btree ("date");--> statement-breakpoint
-CREATE INDEX "idx_visitor_reservations_reserved_by" ON "visitor_reservations" USING btree ("reserved_by");
+CREATE INDEX "idx_visitor_reservations_reserved_by" ON "visitor_reservations" USING btree ("reserved_by");--> statement-breakpoint
+
+ALTER TABLE "profiles"
+  ADD CONSTRAINT "profiles_manager_id_profiles_id_fk"
+  FOREIGN KEY ("manager_id") REFERENCES "public"."profiles"("id")
+  ON DELETE SET NULL ON UPDATE no action;--> statement-breakpoint
+
+CREATE OR REPLACE FUNCTION public.validate_reservation_resource_type()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+  spot_resource_type resource_type;
+BEGIN
+  SELECT resource_type
+    INTO spot_resource_type
+    FROM public.spots
+   WHERE id = NEW.spot_id;
+
+  IF spot_resource_type IS NULL OR NEW.resource_type <> spot_resource_type THEN
+    RAISE EXCEPTION 'Reservation resource type does not match spot resource type';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;--> statement-breakpoint
+
+CREATE TRIGGER trg_validate_reservation_resource_type
+BEFORE INSERT OR UPDATE OF spot_id, resource_type ON public.reservations
+FOR EACH ROW EXECUTE FUNCTION public.validate_reservation_resource_type();--> statement-breakpoint
+
+CREATE OR REPLACE FUNCTION public.prevent_spot_resource_type_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.resource_type <> OLD.resource_type
+     AND EXISTS (
+       SELECT 1 FROM public.reservations WHERE spot_id = OLD.id
+     ) THEN
+    RAISE EXCEPTION 'Cannot change resource type of a spot with reservations';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;--> statement-breakpoint
+
+CREATE TRIGGER trg_prevent_spot_resource_type_change
+BEFORE UPDATE OF resource_type ON public.spots
+FOR EACH ROW EXECUTE FUNCTION public.prevent_spot_resource_type_change();--> statement-breakpoint
+
+ALTER TABLE "leave_requests"
+  ADD CONSTRAINT "leave_requests_no_overlap"
+  EXCLUDE USING gist (
+    "employee_id" WITH =,
+    daterange("start_date", "end_date", '[]') WITH &&
+  )
+  WHERE ("status" IN ('pending', 'approved'));

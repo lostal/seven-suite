@@ -25,10 +25,6 @@ export type ResourceConfigKey =
   | "max_consecutive_days"
   | "max_weekly_reservations"
   | "max_monthly_reservations"
-  | "time_slots_enabled"
-  | "slot_duration_minutes"
-  | "day_start_hour"
-  | "day_end_hour"
   | "cession_enabled"
   | "cession_min_advance_hours"
   | "cession_max_per_week"
@@ -53,10 +49,6 @@ export const ALL_RESOURCE_CONFIG_KEYS: ResourceConfigKey[] = [
   "max_consecutive_days",
   "max_weekly_reservations",
   "max_monthly_reservations",
-  "time_slots_enabled",
-  "slot_duration_minutes",
-  "day_start_hour",
-  "day_end_hour",
   "cession_enabled",
   "cession_min_advance_hours",
   "cession_max_per_week",
@@ -87,10 +79,6 @@ export interface ResourceConfigValues {
   max_weekly_reservations: number | null;
   /** null = sin límite mensual */
   max_monthly_reservations: number | null;
-  time_slots_enabled: boolean;
-  slot_duration_minutes: number | null;
-  day_start_hour: number | null;
-  day_end_hour: number | null;
   cession_enabled: boolean;
   cession_min_advance_hours: number;
   cession_max_per_week: number;

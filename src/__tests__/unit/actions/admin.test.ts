@@ -313,8 +313,8 @@ describe("deleteSpot", () => {
   it("elimina la plaza con éxito", async () => {
     // 1. select spot
     setupSelectMock([{ id: UUID, entityId: null }]);
-    // 2. delete spot
-    setupDeleteMock([{ id: UUID }]);
+    // 2. deactivate spot without deleting its history
+    setupUpdateMock([{ id: UUID }]);
 
     const result = await deleteSpot({ id: UUID });
 
@@ -326,7 +326,7 @@ describe("deleteSpot", () => {
     // 1. select spot succeeds
     setupSelectMock([{ id: UUID, entityId: null }]);
     // 2. delete throws error
-    mockDb.delete.mockImplementationOnce(() => {
+    mockDb.update.mockImplementationOnce(() => {
       throw new Error("Foreign key constraint");
     });
 
@@ -363,23 +363,23 @@ describe("updateUserRole", () => {
   });
 
   it("actualiza el rol con éxito", async () => {
-    setupSelectMock([{ id: UUID }]);
+    setupSelectMock([{ id: UUID2, role: "employee" }]);
     // update profiles
     setupUpdateMock([]);
 
-    const result = await updateUserRole({ user_id: UUID, role: "employee" });
+    const result = await updateUserRole({ user_id: UUID2, role: "employee" });
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual({ updated: true });
   });
 
   it("falla si la BD devuelve error", async () => {
-    setupSelectMock([{ id: UUID }]);
+    setupSelectMock([{ id: UUID2, role: "employee" }]);
     mockDb.update.mockImplementationOnce(() => {
       throw new Error("No se pudo actualizar");
     });
 
-    const result = await updateUserRole({ user_id: UUID, role: "employee" });
+    const result = await updateUserRole({ user_id: UUID2, role: "employee" });
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBeDefined();
@@ -636,13 +636,14 @@ describe("deleteUser", () => {
   beforeEach(() => {
     resetDbMocks();
     setupAdminUser();
+    setupSelectMock([{ role: "employee" }]);
   });
 
   it("elimina el usuario con éxito", async () => {
     // delete users table
-    setupDeleteMock([{ id: UUID }]);
+    setupDeleteMock([{ id: UUID2 }]);
 
-    const result = await deleteUser({ user_id: UUID });
+    const result = await deleteUser({ user_id: UUID2 });
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual({ deleted: true });
@@ -652,7 +653,7 @@ describe("deleteUser", () => {
     // delete returns empty rows → user not found
     setupDeleteMock([]);
 
-    const result = await deleteUser({ user_id: UUID });
+    const result = await deleteUser({ user_id: UUID2 });
 
     expect(result.success).toBe(false);
     if (!result.success)
@@ -664,7 +665,7 @@ describe("deleteUser", () => {
       throw new Error("User not found");
     });
 
-    const result = await deleteUser({ user_id: UUID });
+    const result = await deleteUser({ user_id: UUID2 });
 
     expect(result.success).toBe(false);
     if (!result.success)
@@ -680,9 +681,9 @@ describe("deleteUser", () => {
 
   it("es global para admin aunque haya activeEntityId", async () => {
     vi.mocked(getActiveEntityId).mockResolvedValueOnce("ent-1");
-    setupDeleteMock([{ id: UUID }]);
+    setupDeleteMock([{ id: UUID2 }]);
 
-    const result = await deleteUser({ user_id: UUID });
+    const result = await deleteUser({ user_id: UUID2 });
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual({ deleted: true });

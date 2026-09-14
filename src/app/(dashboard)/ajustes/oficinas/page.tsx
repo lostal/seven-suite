@@ -37,7 +37,7 @@ export default async function ConfiguracionOficinaPage() {
   return (
     <ContentSection
       title="Configuración de Oficinas"
-      desc="Reglas de disponibilidad, franjas horarias, límites de reserva y cesiones para los puestos de oficina."
+      desc="Reglas de disponibilidad, límites de reserva y cesiones para los puestos de oficina."
     >
       {entityId && entityName ? (
         <Alert className="mb-6">
@@ -60,7 +60,6 @@ export default async function ConfiguracionOficinaPage() {
         key={entityId ?? "global"}
         config={config}
         onSave={updateOfficeConfig}
-        showTimeSlots={true}
         showVisitorBooking={false}
         isEntityOverride={!!entityId}
         onRestoreDefaults={entityId ? restoreOfficeDefaults : undefined}

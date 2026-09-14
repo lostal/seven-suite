@@ -104,6 +104,28 @@ export function VisitorsMutateDrawer({
         },
   });
 
+  React.useEffect(() => {
+    form.reset(
+      currentRow
+        ? {
+            spot_id: currentRow.spot_id,
+            date: currentRow.date,
+            visitor_name: currentRow.visitor_name,
+            visitor_company: currentRow.visitor_company,
+            visitor_email: currentRow.visitor_email,
+            notes: currentRow.notes ?? "",
+          }
+        : {
+            spot_id: "",
+            date: "",
+            visitor_name: "",
+            visitor_company: "",
+            visitor_email: "",
+            notes: "",
+          }
+    );
+  }, [currentRow, form]);
+
   // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() es el patrón estándar de RHF
   const selectedDate = form.watch("date");
 

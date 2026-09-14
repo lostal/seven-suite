@@ -211,6 +211,20 @@ Los módulos del dashboard dependen débilmente de `lib/`: importan lo necesario
 
 Next.js y PostgreSQL 16 se ejecutan en servidor propio mediante Docker Compose. La separación entre servidor de aplicaciones y base de datos responde al requisito de disponibilidad (RNF-02). La ausencia de proveedores cloud para la persistencia materializa el requisito de portabilidad (RNF-07).
 
+### Configuración y despliegue
+
+La versión de ejecución es Node 22 (`.nvmrc`, CI y Docker) y el gestor es pnpm 12.3.4. El login de desarrollo está desactivado por defecto: solo se habilita en un entorno local con `DEV_LOGIN_ENABLED=true` y una `DEV_LOGIN_PASSWORD` dedicada. No se debe activar en producción.
+
+`AUTH_SECRET` y `MICROSOFT_TOKEN_ENCRYPTION_KEY` son obligatorias para el flujo de autenticación; esta última debe ser independiente y estable, porque cifra los tokens de Microsoft almacenados en la base de datos.
+
+Para preparar la base de datos local desde cero:
+
+```bash
+pnpm db:migrate
+```
+
+El comando aplica la migración inicial del schema actual mediante el journal de Drizzle. Después se pueden cargar los datos demo con `pnpm db:seed`. Para cambios posteriores del schema, generar una nueva migración con `pnpm db:generate`; no usar `db:push` como sustituto de una migración versionada.
+
 #### Trazabilidad clases de análisis → código
 
 Cada clase de análisis tiene su contraparte directa en el repositorio, verificable sin ambigüedad:

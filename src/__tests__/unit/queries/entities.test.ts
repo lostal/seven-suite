@@ -157,14 +157,13 @@ describe("getEntityEnabledModules", () => {
     expect(result).not.toContain("office");
   });
 
-  it("DB throws (e.g. migration pending) → returns all 6 modules as fallback", async () => {
+  it("DB throws (e.g. migration pending) → disables modules safely", async () => {
     // Simulate DB error by making the select mock throw
     vi.spyOn(mockDb, "select").mockImplementationOnce(() => {
       throw new Error("relation does not exist");
     });
 
     const result = await getEntityEnabledModules("ent-1");
-    expect(result).toHaveLength(5);
-    expect(result).toEqual(expect.arrayContaining(ALL_MODULES));
+    expect(result).toHaveLength(0);
   });
 });

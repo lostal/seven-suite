@@ -48,9 +48,9 @@ export const ROUTES = {
  * mirroring the order of items in the sidebar (first visible item per role).
  */
 export function getHomeRouteForRole(
-  _role: "admin" | "employee" | string | undefined | null
+  role: "admin" | "employee" | string | undefined | null
 ): string {
-  return ROUTES.PARKING;
+  return role === "admin" ? ROUTES.DASHBOARD : ROUTES.PARKING;
 }
 
 // ─── Spot type labels ─────────────────────────────────────────────────────────

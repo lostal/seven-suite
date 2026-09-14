@@ -9,6 +9,7 @@ services:
       POSTGRES_DB: seven_suite
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U seven_suite"]
       interval: 5s

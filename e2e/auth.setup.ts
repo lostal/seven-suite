@@ -12,6 +12,10 @@ const authFile = path.join(__dirname, ".auth/user.json");
 setup("authenticate via dev-login", async ({ page }) => {
   await page.goto("/dev-login");
 
+  const devPassword = process.env.DEV_LOGIN_PASSWORD;
+  if (!devPassword) throw new Error("DEV_LOGIN_PASSWORD is required for E2E");
+  await page.locator('input[type="password"]').fill(devPassword);
+
   // El botón de Administrador es el primero
   const adminButton = page.getByText("Administrador");
   await expect(adminButton).toBeVisible({ timeout: 5000 });
@@ -19,7 +23,7 @@ setup("authenticate via dev-login", async ({ page }) => {
 
   // Debe redirigir al dashboard (no a /login)
   await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
-  await expect(page).toHaveURL(/\/parking/, { timeout: 15000 });
+  await expect(page).toHaveURL(/\/panel/, { timeout: 15000 });
 
   await page.context().storageState({ path: authFile });
 });
@@ -32,6 +36,9 @@ setup("authenticate restricted roles", async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
     await page.goto("/dev-login");
+    const devPassword = process.env.DEV_LOGIN_PASSWORD;
+    if (!devPassword) throw new Error("DEV_LOGIN_PASSWORD is required for E2E");
+    await page.locator('input[type="password"]').fill(devPassword);
     await page.getByText(role, { exact: true }).click();
     await expect(page).toHaveURL(/\/parking/, { timeout: 15000 });
     await context.storageState({

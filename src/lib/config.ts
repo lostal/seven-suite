@@ -47,10 +47,6 @@ const PARKING_DEFAULTS: ResourceConfigValues = {
   max_weekly_reservations: 5,
   max_monthly_reservations: 20,
   max_daily_reservations: 1,
-  time_slots_enabled: false,
-  slot_duration_minutes: null,
-  day_start_hour: null,
-  day_end_hour: null,
   cession_enabled: true,
   cession_min_advance_hours: 24,
   cession_max_per_week: 5,
@@ -66,10 +62,6 @@ const OFFICE_DEFAULTS: ResourceConfigValues = {
   max_weekly_reservations: 10,
   max_monthly_reservations: 40,
   max_daily_reservations: 2,
-  time_slots_enabled: true,
-  slot_duration_minutes: 60,
-  day_start_hour: 8,
-  day_end_hour: 20,
   cession_enabled: true,
   cession_min_advance_hours: 24,
   cession_max_per_week: 5,
@@ -109,7 +101,7 @@ const fetchRawConfigs = unstable_cache(
       return Object.fromEntries(rows.map((row) => [row.key, row.value]));
     } catch (error) {
       console.error("[config] Error fetching system_config:", error);
-      return {};
+      throw new Error("No se pudo cargar la configuración del sistema");
     }
   },
   ["system-config-all"],
@@ -249,7 +241,7 @@ const fetchEntityConfigs = unstable_cache(
       return Object.fromEntries(rows.map((row) => [row.key, row.value]));
     } catch (error) {
       console.error("[config] Error fetching entity_config:", error);
-      return {};
+      throw new Error("No se pudo cargar la configuración de la sede");
     }
   },
   ["entity-config"],

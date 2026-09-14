@@ -4,7 +4,7 @@
  * Server Actions de Reservas de Oficina
  *
  * Server Actions para reservar puestos de trabajo en la oficina.
- * Soporta reservas de día completo y por franjas horarias (según config).
+ * Las reservas de oficina son siempre de día completo, igual que parking.
  */
 
 import { revalidatePath } from "next/cache";
@@ -17,13 +17,12 @@ import {
   createOfficeReservationSchema,
   cancelReservationSchema,
 } from "@/lib/validations";
-import type { SpotWithStatus, TimeSlot, ReservationWithDetails } from "@/types";
+import type { SpotWithStatus, ReservationWithDetails } from "@/types";
 import { getAllResourceConfigs } from "@/lib/config";
 import { assertModuleEnabled } from "@/lib/module-guard";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import {
   getOfficeAvailabilityForDate,
-  getAvailableTimeSlots,
   getUserOfficeReservations,
 } from "@/lib/queries/offices";
 import { getDayOfWeek } from "@/lib/utils";
@@ -34,12 +33,9 @@ import { eq, and, ne } from "drizzle-orm";
 
 /**
  * Obtiene la disponibilidad de puestos de oficina para una fecha.
- * Si se proporcionan start_time/end_time, filtra por solapamiento de franja.
  */
 export async function getOfficeSpotsForDate(
-  date: string,
-  startTime?: string,
-  endTime?: string
+  date: string
 ): Promise<ActionResult<SpotWithStatus[]>> {
   try {
     const user = await getCurrentUser();
@@ -54,59 +50,11 @@ export async function getOfficeSpotsForDate(
     const dayOfWeek = getDayOfWeek(date);
     if (!config.allowed_days.includes(dayOfWeek)) return success([]);
 
-    const officeSpots = await getOfficeAvailabilityForDate(
-      date,
-      startTime,
-      endTime,
-      entityId
-    );
+    const officeSpots = await getOfficeAvailabilityForDate(date, entityId);
     return success(officeSpots);
   } catch (err) {
     console.error("[oficinas] getOfficeSpotsForDate error:", err);
     return error("Error al obtener disponibilidad");
-  }
-}
-
-/**
- * Devuelve las franjas horarias disponibles para un puesto en una fecha.
- * Lee la configuración de franjas (duración, hora de inicio/fin) desde system_config.
- */
-export async function getOfficeTimeSlotsForSpot(
-  spotId: string,
-  date: string
-): Promise<ActionResult<TimeSlot[]>> {
-  try {
-    const user = await getCurrentUser();
-    if (!user) return error("No autenticado");
-
-    const entityId = await getEffectiveEntityId();
-    await assertModuleEnabled("office", entityId);
-    const config = await getAllResourceConfigs("office", entityId);
-
-    if (!config.time_slots_enabled) {
-      return error("Las franjas horarias no están habilitadas");
-    }
-
-    if (
-      config.slot_duration_minutes === null ||
-      config.day_start_hour === null ||
-      config.day_end_hour === null
-    ) {
-      return error("La configuración de franjas no está completa");
-    }
-
-    const slots = await getAvailableTimeSlots(
-      spotId,
-      date,
-      config.day_start_hour,
-      config.day_end_hour,
-      config.slot_duration_minutes
-    );
-
-    return success(slots);
-  } catch (err) {
-    console.error("[oficinas] getOfficeTimeSlotsForSpot error:", err);
-    return error("Error al obtener franjas");
   }
 }
 
@@ -137,8 +85,7 @@ export async function getMyOfficeReservations(): Promise<
  * - Las reservas deben estar habilitadas (office.booking_enabled)
  * - La fecha debe ser un día permitido (office.allowed_days)
  * - La fecha no puede superar el límite de antelación (office.max_advance_days)
- * - Si time_slots_enabled, start_time y end_time son obligatorios
- * - No puede haber solapamiento de franjas para el mismo puesto/fecha
+ * - No puede haber otra reserva del usuario o del puesto ese día
  */
 export const createOfficeReservation = actionClient
   .schema(createOfficeReservationSchema)
@@ -174,6 +121,7 @@ export const createOfficeReservation = actionClient
           .select({
             id: spots.id,
             resourceType: spots.resourceType,
+            type: spots.type,
             entityId: spots.entityId,
             isActive: spots.isActive,
             assignedTo: spots.assignedTo,
@@ -188,10 +136,14 @@ export const createOfficeReservation = actionClient
         if (spot.resourceType !== "office") {
           throw new Error("Este puesto no es un espacio de oficina");
         }
-        if (entityId && spot.entityId !== null && spot.entityId !== entityId) {
+        if (!isAdmin && spot.entityId !== null && spot.entityId !== entityId) {
           throw new Error(
             "El puesto seleccionado no pertenece a la sede activa"
           );
+        }
+
+        if (spot.type === "standard" && spot.assignedTo === null) {
+          throw new Error("El puesto seleccionado no está asignado");
         }
 
         const [existingRows, occupiedRows, cessionRows] = await Promise.all([
@@ -300,7 +252,8 @@ export const cancelOfficeReservation = actionClient
       .where(
         and(
           eq(reservations.id, parsedInput.id),
-          eq(reservations.userId, user.id)
+          eq(reservations.userId, user.id),
+          eq(reservations.resourceType, "office")
         )
       )
       .returning({ id: reservations.id });

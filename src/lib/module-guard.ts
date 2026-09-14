@@ -19,7 +19,7 @@ export async function assertModuleEnabled(
   module: EntityModuleKey,
   entityId: string | null
 ): Promise<void> {
-  if (!entityId) return; // global context (no entity selected) — allow all
+  if (!entityId) return;
   const enabled = await getEntityEnabledModules(entityId);
   if (!enabled.includes(module)) {
     throw new Error(`El módulo "${module}" está desactivado para esta sede`);

@@ -1,7 +1,7 @@
 /**
  * Oficinas Page – Vista de calendario de puestos de trabajo
  *
- * Sin puesto asignado: reserva puestos por día (con o sin franja horaria).
+ * Sin puesto asignado: reserva puestos por día.
  * Con puesto asignado (assigned_to != null): cede su puesto los días que no lo use.
  */
 
@@ -39,17 +39,18 @@ export default async function OficinasPage() {
       .select({ id: spots.id, label: spots.label })
       .from(spots)
       .where(
-        and(eq(spots.assignedTo, user.id), eq(spots.resourceType, "office"))
+        and(
+          eq(spots.assignedTo, user.id),
+          eq(spots.resourceType, "office"),
+          eq(spots.isActive, true)
+        )
       )
       .limit(1),
     getAllResourceConfigs("office", entityId),
     getResourceMap(entityId, "office"),
   ]);
   const assignedSpot = assignedSpotRows[0] ?? null;
-  const {
-    booking_enabled: bookingEnabled,
-    time_slots_enabled: timeSlotsEnabled,
-  } = officeConfig;
+  const { booking_enabled: bookingEnabled } = officeConfig;
 
   const title = "Oficinas";
   const description = assignedSpot
@@ -103,7 +104,6 @@ export default async function OficinasPage() {
             key={entityId ?? "global"}
             hasAssignedSpot={!!assignedSpot}
             assignedSpot={assignedSpot ?? null}
-            timeSlotsEnabled={Boolean(timeSlotsEnabled)}
             mapMimeType={officeMap?.mimeType ?? null}
             mapUrl={entityId ? `/api/resource-maps/${entityId}/office` : null}
           />

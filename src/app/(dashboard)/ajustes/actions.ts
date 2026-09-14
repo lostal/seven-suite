@@ -50,12 +50,13 @@ import { getMicrosoftAccessToken } from "@/lib/microsoft/graph";
  * Actualiza (o inserta) múltiples claves en system_config.
  */
 async function upsertConfigs(
+  database: Pick<typeof db, "insert">,
   entries: Array<{ key: string; value: unknown }>,
   adminUserId: string
 ): Promise<void> {
   for (const { key, value } of entries) {
     const dbValue = value === null ? sql`'null'::jsonb` : (value as never);
-    await db
+    await database
       .insert(systemConfig)
       .values({
         key,
@@ -78,13 +79,14 @@ async function upsertConfigs(
  * Actualiza (o inserta) múltiples claves en entity_config para la sede indicada.
  */
 async function upsertEntityConfigs(
+  database: Pick<typeof db, "insert">,
   entityId: string,
   entries: Array<{ key: string; value: unknown }>,
   adminUserId: string
 ): Promise<void> {
   for (const { key, value } of entries) {
     const dbValue = value === null ? sql`'null'::jsonb` : (value as never);
-    await db
+    await database
       .insert(entityConfig)
       .values({
         entityId,
@@ -131,7 +133,7 @@ export const updateGlobalConfig = actionClient
       value,
     }));
 
-    await upsertConfigs(entries, adminUser.id);
+    await db.transaction((tx) => upsertConfigs(tx, entries, adminUser.id));
     await invalidateConfigCache();
     revalidatePath("/ajustes/general");
 
@@ -149,10 +151,12 @@ export const updateParkingConfig = actionClient
     const entries = resourceConfigToEntries("parking", parsedInput);
 
     if (entityId) {
-      await upsertEntityConfigs(entityId, entries, currentUser.id);
+      await db.transaction((tx) =>
+        upsertEntityConfigs(tx, entityId, entries, currentUser.id)
+      );
       await invalidateEntityConfigCache();
     } else {
-      await upsertConfigs(entries, currentUser.id);
+      await db.transaction((tx) => upsertConfigs(tx, entries, currentUser.id));
     }
 
     await invalidateConfigCache();
@@ -195,10 +199,12 @@ export const updateOfficeConfig = actionClient
     const entries = resourceConfigToEntries("office", parsedInput);
 
     if (entityId) {
-      await upsertEntityConfigs(entityId, entries, currentUser.id);
+      await db.transaction((tx) =>
+        upsertEntityConfigs(tx, entityId, entries, currentUser.id)
+      );
       await invalidateEntityConfigCache();
     } else {
-      await upsertConfigs(entries, currentUser.id);
+      await db.transaction((tx) => upsertConfigs(tx, entries, currentUser.id));
     }
 
     await invalidateConfigCache();
@@ -514,6 +520,12 @@ export const deleteSelfAccount = actionClient
   .schema(z.object({}))
   .action(async () => {
     const user = await requireAuth();
+
+    if (user.profile?.role === "admin") {
+      throw new Error(
+        "Una cuenta de administrador no puede eliminarse desde este flujo"
+      );
+    }
 
     const deleted = await db
       .delete(users)

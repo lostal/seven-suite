@@ -254,6 +254,7 @@ function DateBadgeRow({
           variant="ghost"
           className="hover:bg-destructive/10 hover:text-destructive size-7"
           onClick={onCancel}
+          aria-label="Cancelar cesión"
           disabled={isCancelling}
         >
           {isCancelling ? (

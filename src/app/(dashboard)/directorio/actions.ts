@@ -13,12 +13,25 @@ import { requireManagerOrAbove } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { getActiveEntityId } from "@/lib/queries/active-entity";
+import { isUniqueViolation } from "@/lib/db/helpers";
 import {
   updateDirectorioUserSchema,
   createDirectorioUserSchema,
 } from "@/lib/validations";
 
-async function assertEntityInAdminScope(entityId?: string | null) {
+async function assertEntityInAdminScope(
+  user: Awaited<ReturnType<typeof requireManagerOrAbove>>,
+  entityId?: string | null
+) {
+  if (user.profile?.role !== "admin") {
+    const ownEntityId = user.profile?.entityId;
+    if (!ownEntityId) throw new Error("Tu usuario no tiene una sede asignada");
+    if (entityId !== ownEntityId) {
+      throw new Error("No tienes permisos para gestionar otra sede");
+    }
+    return ownEntityId;
+  }
+
   let activeEntityId: string | null = null;
   try {
     activeEntityId = await getActiveEntityId();
@@ -44,8 +57,9 @@ async function assertEntityInAdminScope(entityId?: string | null) {
 export const updateDirectorioUser = actionClient
   .schema(updateDirectorioUserSchema)
   .action(async ({ parsedInput }) => {
-    await requireManagerOrAbove();
+    const user = await requireManagerOrAbove();
     const activeEntityId = await assertEntityInAdminScope(
+      user,
       parsedInput.entity_id
     );
 
@@ -56,15 +70,12 @@ export const updateDirectorioUser = actionClient
         .where(eq(profiles.id, parsedInput.user_id))
         .limit(1);
 
-      if (
-        targetProfile?.entityId &&
-        targetProfile.entityId !== activeEntityId
-      ) {
+      if (targetProfile?.entityId !== activeEntityId) {
         throw new Error("No tienes permisos para modificar este usuario");
       }
     }
 
-    await db
+    const updated = await db
       .update(profiles)
       .set({
         fullName: parsedInput.nombre,
@@ -73,7 +84,9 @@ export const updateDirectorioUser = actionClient
         entityId: parsedInput.entity_id || null,
         updatedAt: new Date(),
       })
-      .where(eq(profiles.id, parsedInput.user_id));
+      .returning({ id: profiles.id });
+
+    if (updated.length === 0) throw new Error("Usuario no encontrado");
 
     revalidatePath("/directorio");
     return { updated: true };
@@ -86,8 +99,11 @@ export const updateDirectorioUser = actionClient
 export const createDirectorioUser = actionClient
   .schema(createDirectorioUserSchema)
   .action(async ({ parsedInput }) => {
-    await requireManagerOrAbove();
-    await assertEntityInAdminScope(parsedInput.entity_id);
+    const user = await requireManagerOrAbove();
+    const entityId = await assertEntityInAdminScope(
+      user,
+      parsedInput.entity_id
+    );
 
     // Check if user already exists
     const [existing] = await db
@@ -100,36 +116,33 @@ export const createDirectorioUser = actionClient
       throw new Error("Ya existe un usuario con ese correo electrónico.");
     }
 
-    // Create user (without password — auth is handled by Microsoft Entra ID)
-    const [user] = await db
-      .insert(users)
-      .values({
-        email: parsedInput.correo,
-        name: parsedInput.nombre,
-      })
-      .returning({ id: users.id });
+    try {
+      await db.transaction(async (tx) => {
+        const [createdUser] = await tx
+          .insert(users)
+          .values({ email: parsedInput.correo, name: parsedInput.nombre })
+          .returning({ id: users.id });
 
-    if (!user) throw new Error("Error al crear el usuario");
+        if (!createdUser) throw new Error("Error al crear el usuario");
 
-    // Create profile
-    await db
-      .insert(profiles)
-      .values({
-        id: user.id,
-        email: parsedInput.correo,
-        fullName: parsedInput.nombre,
-        jobTitle: parsedInput.puesto || null,
-        phone: parsedInput.telefono || null,
-        entityId: parsedInput.entity_id || null,
-        role: "employee",
-      })
-      .onConflictDoNothing();
+        await tx.insert(profiles).values({
+          id: createdUser.id,
+          email: parsedInput.correo,
+          fullName: parsedInput.nombre,
+          jobTitle: parsedInput.puesto || null,
+          phone: parsedInput.telefono || null,
+          entityId,
+          role: "employee",
+        });
 
-    // Create default preferences
-    await db
-      .insert(userPreferences)
-      .values({ userId: user.id })
-      .onConflictDoNothing();
+        await tx.insert(userPreferences).values({ userId: createdUser.id });
+      });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        throw new Error("Ya existe un usuario con ese correo electrónico.");
+      }
+      throw err;
+    }
 
     revalidatePath("/directorio");
     return { created: true };

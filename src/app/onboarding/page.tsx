@@ -10,7 +10,10 @@ export default async function OnboardingPage() {
     redirect("/");
   }
 
-  const entities = await getAllEntities().catch(() => []);
+  const entities =
+    user.profile?.role === "admin"
+      ? await getAllEntities().catch(() => [])
+      : [];
   const activeEntities = entities.filter((e) => e.isActive);
 
   return (

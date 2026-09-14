@@ -241,10 +241,6 @@ export const updateResourceConfigSchema = z.object({
   max_monthly_reservations: z.number().int().min(1).max(200).nullable(),
   /** null = sin límite diario */
   max_daily_reservations: z.number().int().min(1).max(50).nullable(),
-  time_slots_enabled: z.boolean(),
-  slot_duration_minutes: z.number().int().min(15).max(480).nullable(),
-  day_start_hour: z.number().int().min(0).max(23).nullable(),
-  day_end_hour: z.number().int().min(1).max(24).nullable(),
   cession_enabled: z.boolean(),
   cession_min_advance_hours: z.number().int().min(0).max(168),
   cession_max_per_week: z.number().int().min(1).max(7),
@@ -293,25 +289,11 @@ export type ToggleEntityModuleInput = z.infer<typeof toggleEntityModuleSchema>;
 
 // ─── Office Reservations ──────────────────────────────────────
 
-export const createOfficeReservationSchema = z
-  .object({
-    spot_id: uuidString(),
-    date: z.iso.date(),
-    // Kept in the input type for existing forms, but full-day bookings reject them.
-    start_time: z
-      .string()
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Formato HH:MM")
-      .optional(),
-    end_time: z
-      .string()
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Formato HH:MM")
-      .optional(),
-    notes: z.string().max(500).optional(),
-  })
-  .refine((data) => !data.start_time && !data.end_time, {
-    message: "Las reservas de oficina son únicamente de día completo",
-    path: ["start_time"],
-  });
+export const createOfficeReservationSchema = z.object({
+  spot_id: uuidString(),
+  date: z.iso.date(),
+  notes: z.string().max(500).optional(),
+});
 
 export type CreateOfficeReservationInput = z.infer<
   typeof createOfficeReservationSchema

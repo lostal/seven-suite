@@ -40,7 +40,13 @@ vi.mock("@/lib/config", () => ({
   getAllResourceConfigs: vi.fn().mockResolvedValue({
     cession_enabled: true,
     cession_min_advance_hours: 0,
+    allowed_days: [1, 2, 3, 4, 5],
+    max_advance_days: 365,
   }),
+}));
+
+vi.mock("@/lib/module-guard", () => ({
+  assertModuleEnabled: vi.fn(),
 }));
 
 vi.mock("@/lib/calendar/calendar-utils", () => ({
@@ -48,7 +54,7 @@ vi.mock("@/lib/calendar/calendar-utils", () => ({
 }));
 
 vi.mock("@/lib/queries/active-entity", () => ({
-  getEffectiveEntityId: vi.fn().mockResolvedValue(null),
+  getEffectiveEntityId: vi.fn().mockResolvedValue("entity-1"),
 }));
 
 import { getCurrentUser } from "@/lib/auth/helpers";
@@ -62,8 +68,8 @@ const OTHER_USER_ID = "other-0000-0000-0000-000000000002";
 const SPOT_UUID = "550e8400-e29b-41d4-a716-446655440000";
 const CESSION_UUID = "660e8400-e29b-41d4-a716-446655440001";
 const RESERVATION_UUID = "770e8400-e29b-41d4-a716-446655440002";
-// 2025-01-13 = lunes (día laborable futuro para evitar problemas de fecha)
-const FUTURE_DATE = "2025-01-13";
+// Fecha laborable futura para evitar depender del día de ejecución.
+const FUTURE_DATE = "2027-01-13";
 
 // ─── createCession ────────────────────────────────────────────────────────────
 
@@ -78,6 +84,8 @@ describe("createCession", () => {
     vi.mocked(getAllResourceConfigs).mockResolvedValue({
       cession_enabled: true,
       cession_min_advance_hours: 0,
+      allowed_days: [1, 2, 3, 4, 5],
+      max_advance_days: 365,
     } as never);
   });
 
@@ -318,7 +326,7 @@ describe("cancelCession", () => {
     // 2. select active reservation → none
     setupSelectMock([]);
     // 3. update cession
-    setupUpdateMock([]);
+    setupUpdateMock([{ id: CESSION_UUID }]);
 
     const result = await cancelCession({ id: CESSION_UUID });
 
@@ -353,7 +361,7 @@ describe("cancelCession", () => {
     // 3. update reservation (cancel it)
     setupUpdateMock([]);
     // 4. update cession (cancel it)
-    setupUpdateMock([]);
+    setupUpdateMock([{ id: CESSION_UUID }]);
 
     const result = await cancelCession({ id: CESSION_UUID });
 
